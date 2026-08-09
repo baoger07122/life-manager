@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>生活管家</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -10,19 +10,20 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#F5F5F7">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="apple-mobile-web-app-title" content="生活管家">
 <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
 <style>
+html{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:128px}
-.app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#FFFFFF;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:128px}
+.app{max-width:420px;margin:0 auto;background:#FFFFFF;min-height:100vh;position:relative}
 
 /* ========= Header（真实状态栏安全区 + 页面大标题） ========= */
-.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#F5F5F7}
+.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#FFFFFF}
 .hero-title{font-size:26px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px}
 .hero-sub{font-size:13px;color:#8E8E93;margin-top:3px}
 
@@ -97,7 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .item-right .sub{font-size:11px;color:#8E8E93;margin-top:2px}
 .item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
-.mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#F5F5F7}
+.mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#FFFFFF}
 .mini-tag.warn{background:#FFF4E5;color:#FF9500}
 .mini-tag.danger{background:#FFEBEC;color:#FF3B30}
 .action-btn{padding:9px 20px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
@@ -110,7 +111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .act-btn:hover{color:#1C1C1E}
 .act-btn.del{color:#FF3B30}
 .act-btn.del:hover{color:#E02D22}
-.tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#F5F5F7;color:#8E8E93;flex-shrink:0}
+.tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#FFFFFF;color:#8E8E93;flex-shrink:0}
 .tag-mini.warn{background:#FFF4E5;color:#FF9500}
 .tag-mini.danger{background:#FFEBEC;color:#FF3B30}
 .row-check{width:22px;height:22px;border-radius:50%;background:#FF9500;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
@@ -156,7 +157,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .list-editor .ing-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:14px}
 .list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
 .list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
-.list-editor .ing-add input{flex:1;padding:8px 12px;border:none;border-radius:8px;background:#F5F5F7;font-size:13px;outline:none;color:#1C1C1E}
+.list-editor .ing-add input{flex:1;padding:8px 12px;border:1px solid #E5E5EA;border-radius:8px;background:#F2F2F7;font-size:13px;outline:none;color:#1C1C1E}
 .list-editor .ing-add button{padding:8px 16px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
 
 /* ===== Switch 开关 ===== */
@@ -198,7 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .back-btn{display:inline-flex;align-items:center;gap:2px;background:none;border:none;color:#FF9500;font-size:13px;font-weight:500;cursor:pointer;outline:none;padding:0;margin-bottom:8px;font-family:inherit}
 .back-btn svg{width:16px;height:16px}
 .add-cat-row{display:flex;gap:8px;margin-top:14px}
-.add-cat-row input{flex:1;padding:12px 14px;border:none;border-radius:12px;background:#F5F5F7;font-size:14px;color:#1C1C1E;outline:none;font-family:inherit}
+.add-cat-row input{flex:1;padding:12px 14px;border:1px solid #E5E5EA;border-radius:12px;background:#F2F2F7;font-size:14px;color:#1C1C1E;outline:none;font-family:inherit}
 .add-cat-row .btn-save{padding:12px 22px;border-radius:999px;flex:0 0 auto}
 .cat-row-name{flex:1;min-width:0;font-size:14px;color:#1C1C1E;font-weight:500;text-align:left;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit}
 .cat-row-name:active{color:#FF9500}
@@ -288,7 +289,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.12</div>
+      <div class="hero-sub">生活管家 v8.9.13</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -306,7 +307,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.12 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.13 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -484,7 +485,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.12';
+const VERSION = '8.9.13';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],

@@ -148,6 +148,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .form-actions button{flex:1}
 .btn-cancel{padding:12px;border-radius:12px;background:#fff;color:#1C1C1E;border:none;font-size:15px;cursor:pointer}
 .btn-save{padding:12px;border-radius:12px;background:#35C6A0;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
+/* ========= 自定义分类 chips ========= */
+.cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cat-chip{padding:6px 14px;border-radius:16px;background:#F5F5F7;color:#1C1C1E;font-size:12px;cursor:pointer;border:none;outline:none;font-family:inherit;transition:all .15s}
+.cat-chip.active{background:#35C6A0;color:#fff}
+
+/* ========= 列表编辑器 ========= */
 .list-editor{background:#fff;border-radius:12px;padding:10px}
 .list-editor .ing-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:14px}
 .list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
@@ -200,15 +206,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <div class="hero-sub">共 <span id="ing-count">0</span> 件食材</div>
     </div>
     <div class="content">
-      <div class="filter-row" id="ing-filters">
-        <button class="pill active" data-cat="all">全部</button>
-        <button class="pill" data-cat="蔬菜">蔬菜</button>
-        <button class="pill" data-cat="水果">水果</button>
-        <button class="pill" data-cat="肉类">肉类</button>
-        <button class="pill" data-cat="海鲜">海鲜</button>
-        <button class="pill" data-cat="调味品">调味品</button>
-        <button class="pill" data-cat="其他">其他</button>
-      </div>
+      <div class="filter-row" id="ing-filters"></div>
       <div id="ingredient-list"></div>
     </div>
   </div>
@@ -220,14 +218,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <div class="hero-sub">共 <span id="pet-count">0</span> 件用品</div>
     </div>
     <div class="content">
-      <div class="filter-row" id="pet-filters">
-        <button class="pill active" data-cat="all">全部</button>
-        <button class="pill" data-cat="食品">食品</button>
-        <button class="pill" data-cat="玩具">玩具</button>
-        <button class="pill" data-cat="清洁">清洁</button>
-        <button class="pill" data-cat="医疗">医疗</button>
-        <button class="pill" data-cat="其他">其他</button>
-      </div>
+      <div class="filter-row" id="pet-filters"></div>
       <div id="pet-list"></div>
     </div>
   </div>
@@ -239,14 +230,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <div class="hero-sub">共 <span id="rec-count">0</span> 道食谱</div>
     </div>
     <div class="content">
-      <div class="filter-row" id="rec-filters">
-        <button class="pill active" data-cat="all">全部</button>
-        <button class="pill" data-cat="家常菜">家常菜</button>
-        <button class="pill" data-cat="汤羹">汤羹</button>
-        <button class="pill" data-cat="主食">主食</button>
-        <button class="pill" data-cat="甜品">甜品</button>
-        <button class="pill" data-cat="烘焙">烘焙</button>
-      </div>
+      <div class="filter-row" id="rec-filters"></div>
       <div id="recipe-list"></div>
     </div>
   </div>
@@ -280,6 +264,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
           <div class="stat-label">临期食材</div>
         </div>
       </div>
+      <button class="sec-head" onclick="void 0">
+        <span class="sec-title">分类管理</span>
+        <span class="sec-more">点 × 删除</span>
+      </button>
+      <div id="cat-manage"></div>
     </div>
   </div>
 
@@ -314,11 +303,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-ingredient">
           <div class="form-group"><label>名称</label><input type="text" id="ing-name" required></div>
-          <div class="form-group"><label>分类</label>
-            <select id="ing-category">
-              <option>蔬菜</option><option>水果</option><option>肉类</option><option>海鲜</option>
-              <option>蛋奶</option><option>调味品</option><option>主食</option><option>其他</option>
-            </select>
+          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
+            <input type="text" id="ing-category" placeholder="选择下方分类，或输入新的">
+            <div class="cat-chips" id="ing-cat-chips"></div>
           </div>
           <div class="form-group"><label>数量</label><input type="text" id="ing-qty" placeholder="如 500g / 2个" required></div>
           <div class="form-group"><label>过期日期</label><input type="date" id="ing-expiry"></div>
@@ -327,10 +314,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-pet" style="display:none">
           <div class="form-group"><label>名称</label><input type="text" id="pet-name" required></div>
-          <div class="form-group"><label>分类</label>
-            <select id="pet-category">
-              <option>食品</option><option>玩具</option><option>清洁</option><option>医疗</option><option>窝具</option><option>其他</option>
-            </select>
+          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
+            <input type="text" id="pet-category" placeholder="选择下方分类，或输入新的">
+            <div class="cat-chips" id="pet-cat-chips"></div>
           </div>
           <div class="form-group"><label>数量</label><input type="text" id="pet-qty" required></div>
           <div class="form-group"><label>备注</label><input type="text" id="pet-note"></div>
@@ -338,10 +324,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-recipe" style="display:none">
           <div class="form-group"><label>食谱名称</label><input type="text" id="rec-name" required></div>
-          <div class="form-group"><label>分类</label>
-            <select id="rec-category">
-              <option>家常菜</option><option>汤羹</option><option>主食</option><option>甜品</option><option>饮品</option><option>烘焙</option><option>其他</option>
-            </select>
+          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
+            <input type="text" id="rec-category" placeholder="选择下方分类，或输入新的">
+            <div class="cat-chips" id="rec-cat-chips"></div>
           </div>
           <div class="form-group"><label>烹饪时长</label><input type="text" id="rec-time" placeholder="如 15分钟"></div>
           <div class="form-group"><label>食材清单</label>
@@ -367,7 +352,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-function getData(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[]}}catch{return{ingredients:[],pets:[],recipes:[]}}}
+const DEFAULT_CATS = {
+  ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
+  pets: ['食品','玩具','清洁','医疗','窝具','其他'],
+  recipes: ['家常菜','汤羹','主食','甜品','饮品','烘焙','其他']
+};
+function getData(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[]};
+    d.cats={
+      ingredients:(d.cats&&d.cats.ingredients)||DEFAULT_CATS.ingredients.slice(),
+      pets:(d.cats&&d.cats.pets)||DEFAULT_CATS.pets.slice(),
+      recipes:(d.cats&&d.cats.recipes)||DEFAULT_CATS.recipes.slice()
+    };
+    return d;
+  }catch{return{ingredients:[],pets:[],recipes:[],cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
+}
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
 
 /* ===== 灰色线条图标（feather 风格） ===== */
@@ -398,18 +398,27 @@ function quickAdd(){
   else openModal(currentPage==='ingredients'?'ingredient':currentPage==='pets'?'pet':'recipe');
 }
 
-document.querySelectorAll('#ing-filters .pill').forEach(p=>p.addEventListener('click',function(){
-  document.querySelectorAll('#ing-filters .pill').forEach(x=>x.classList.remove('active'));
-  this.classList.add('active'); ingFilter=this.dataset.cat; renderIngredients();
-}));
-document.querySelectorAll('#pet-filters .pill').forEach(p=>p.addEventListener('click',function(){
-  document.querySelectorAll('#pet-filters .pill').forEach(x=>x.classList.remove('active'));
-  this.classList.add('active'); petFilter=this.dataset.cat; renderPets();
-}));
-document.querySelectorAll('#rec-filters .pill').forEach(p=>p.addEventListener('click',function(){
-  document.querySelectorAll('#rec-filters .pill').forEach(x=>x.classList.remove('active'));
-  this.classList.add('active'); recFilter=this.dataset.cat; renderRecipes();
-}));
+/* ===== 自定义分类：动态筛选胶囊 + 事件委托 ===== */
+function renderFilters(type){
+  const d=getData();
+  const cats=d.cats[type];
+  const el=document.getElementById(type==='ingredients'?'ing-filters':type==='pets'?'pet-filters':'rec-filters');
+  const cur=type==='ingredients'?ingFilter:type==='pets'?petFilter:recFilter;
+  el.innerHTML='<button class="pill'+(cur==='all'?' active':'')+'" data-cat="all">全部</button>'+
+    cats.map(c=>`<button class="pill${cur===c?' active':''}" data-cat="${c}">${c}</button>`).join('');
+}
+document.addEventListener('click',function(e){
+  const pill=e.target.closest('.pill');
+  if(!pill)return;
+  const row=pill.closest('.filter-row');
+  if(!row)return;
+  row.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+  pill.classList.add('active');
+  const cat=pill.dataset.cat;
+  if(row.id==='ing-filters'){ingFilter=cat;renderIngredients();}
+  else if(row.id==='pet-filters'){petFilter=cat;renderPets();}
+  else if(row.id==='rec-filters'){recFilter=cat;renderRecipes();}
+});
 
 function openModal(type,id){
   modalMode=type; editId=id||null;
@@ -424,22 +433,43 @@ function openModal(type,id){
     const d=getData(); let arr=type==='ingredient'?d.ingredients:type==='pet'?d.pets:d.recipes;
     const it=arr.find(i=>i.id===editId); if(it){
       if(type==='ingredient'){
-        ing_name.value=it.name||''; ing_category.value=it.category||'蔬菜';
+        ing_name.value=it.name||''; ing_category.value=it.category||'';
         ing_qty.value=it.qty||''; ing_expiry.value=it.expiry||''; ing_note.value=it.note||'';
       } else if(type==='pet'){
-        pet_name.value=it.name||''; pet_category.value=it.category||'食品';
+        pet_name.value=it.name||''; pet_category.value=it.category||'';
         pet_qty.value=it.qty||''; pet_note.value=it.note||'';
       } else {
-        rec_name.value=it.name||''; rec_category.value=it.category||'家常菜';
+        rec_name.value=it.name||''; rec_category.value=it.category||'';
         rec_time.value=it.time||''; rec_steps.value=it.steps||''; rec_note.value=it.note||'';
         (it.ingredients||[]).forEach(v=>addIngItem(v));
       }
     }
   }
+  renderCatChips(type);
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');modalMode=null;editId=null}
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
+
+/* ===== 自定义分类：弹窗 chips ===== */
+const CAT_MAP={
+  ingredient:{key:'ingredients',input:'ing-category',chips:'ing-cat-chips'},
+  pet:{key:'pets',input:'pet-category',chips:'pet-cat-chips'},
+  recipe:{key:'recipes',input:'rec-category',chips:'rec-cat-chips'}
+};
+function renderCatChips(type){
+  const m=CAT_MAP[type]; if(!m)return;
+  const d=getData();
+  const cur=document.getElementById(m.input).value.trim();
+  document.getElementById(m.chips).innerHTML=d.cats[m.key].map(c=>
+    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickCat('${type}','${c.replace(/'/g,"\\'")}')">${c}</button>`
+  ).join('');
+}
+function pickCat(type,cat){
+  const m=CAT_MAP[type];
+  document.getElementById(m.input).value=cat;
+  renderCatChips(type);
+}
 
 function addIngItem(text){
   const ed=document.getElementById('rec-ingredients-editor');
@@ -466,22 +496,28 @@ function saveForm(){
   const uid=()=>'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   if(modalMode==='ingredient'){
     const n=ing_name.value.trim(); if(!n){alert('请输入名称');return}
-    item={id:editId||uid(),name:n,category:ing_category.value,qty:ing_qty.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
+    const cat=ing_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
+    item={id:editId||uid(),name:n,category:cat,qty:ing_qty.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.ingredients.findIndex(x=>x.id===editId);if(i>-1)d.ingredients[i]=item}
     else d.ingredients.unshift(item);
   } else if(modalMode==='pet'){
     const n=pet_name.value.trim(); if(!n){alert('请输入名称');return}
-    item={id:editId||uid(),name:n,category:pet_category.value,qty:pet_qty.value.trim(),note:pet_note.value.trim(),createdAt:Date.now()};
+    const cat=pet_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
+    item={id:editId||uid(),name:n,category:cat,qty:pet_qty.value.trim(),note:pet_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.pets.findIndex(x=>x.id===editId);if(i>-1)d.pets[i]=item}
     else d.pets.unshift(item);
   } else if(modalMode==='recipe'){
     const n=rec_name.value.trim(); if(!n){alert('请输入名称');return}
+    const cat=rec_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
     const ings=[];
     document.querySelectorAll('#rec-ingredients-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())ings.push(el.textContent.trim())});
-    item={id:editId||uid(),name:n,category:rec_category.value,time:rec_time.value.trim(),ingredients:ings,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,category:cat,time:rec_time.value.trim(),ingredients:ings,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.recipes.findIndex(x=>x.id===editId);if(i>-1)d.recipes[i]=item}
     else d.recipes.unshift(item);
   }
+  // 新分类自动收录
+  const ck=modalMode==='ingredient'?'ingredients':modalMode==='pet'?'pets':'recipes';
+  if(!d.cats[ck].includes(item.category)){d.cats[ck].push(item.category)}
   saveData(d); closeModal(); renderAll();
 }
 
@@ -579,6 +615,20 @@ function renderStats(){
   document.getElementById('ing-count').textContent=d.ingredients.length;
   document.getElementById('pet-count').textContent=d.pets.length;
   document.getElementById('rec-count').textContent=d.recipes.length;
+  // 分类管理（可删除）
+  const catLabels={ingredients:'🥬 食材分类',pets:'🐾 宠物分类',recipes:'📖 食谱分类'};
+  document.getElementById('cat-manage').innerHTML=Object.keys(catLabels).map(k=>`
+    <div class="list-card" style="margin-bottom:12px">
+      <div style="font-size:13px;font-weight:600;color:#1C1C1E;padding:12px 0 2px">${catLabels[k]}</div>
+      <div class="cat-chips" style="padding:6px 0 12px">${d.cats[k].map(c=>`
+        <span class="cat-chip" style="display:inline-flex;align-items:center;gap:6px">${c}<b onclick="removeCat('${k}','${c.replace(/'/g,"\\'")}')" style="color:#FF3B30;cursor:pointer;font-size:14px;line-height:1">×</b></span>`).join('')}</div>
+    </div>`).join('');
+}
+function removeCat(type,cat){
+  if(!confirm(`删除分类「${cat}」？已有项目不受影响，只是不再出现在筛选中。`))return;
+  const d=getData();
+  d.cats[type]=d.cats[type].filter(c=>c!==cat);
+  saveData(d); renderAll();
 }
 
 /* ===== 食材列表 ===== */
@@ -654,7 +704,7 @@ function renderRecipes(){
   </div>`).join('');
 }
 
-function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes();renderStats();}
+function renderAll(){renderFilters('ingredients');renderFilters('pets');renderFilters('recipes');renderHome();renderIngredients();renderPets();renderRecipes();renderStats();}
 renderAll();
 
 if ('serviceWorker' in navigator) {

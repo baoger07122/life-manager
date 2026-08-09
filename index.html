@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#E8E6F5">
+<meta name="theme-color" content="#F5F5F7">
 <meta name="apple-mobile-web-app-title" content="生活管家">
 <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
@@ -18,206 +18,186 @@
 <link rel="manifest" href="manifest.json">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#F2F2F7;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:90px}
-.app{max-width:420px;margin:0 auto;background:#F2F2F7;min-height:100vh;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:110px}
+.app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
 
-/* ========= Header with gradient (顶部安全区自适应，配合真实状态栏) ========= */
-.hero{background:linear-gradient(180deg,#E8E6F5 0%,#F2F2F7 100%);padding:calc(env(safe-area-inset-top, 20px) + 12px) 20px 24px;position:relative}
-.hero-top{display:flex;justify-content:space-between;align-items:flex-start}
-.hero-title{font-size:24px;font-weight:700;color:#1C1C1E;letter-spacing:-0.3px}
-.hero-sub{font-size:13px;color:#8E8E93;margin-top:2px}
-.settings-btn{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer;border:none;outline:none;backdrop-filter:blur(10px)}
-
-/* ========= Summary Card ========= */
-.summary-card{background:#F5F5F7;border-radius:14px;padding:16px;margin:0 16px;margin-top:-8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.summary-left .num{font-size:26px;font-weight:700;color:#1C1C1E;letter-spacing:-0.5px}
-.summary-left .num span{font-size:15px;font-weight:500;color:#1C1C1E;margin-left:2px}
-.summary-left .meta{font-size:12px;color:#8E8E93;margin-top:2px}
-.summary-right{text-align:right}
-.summary-right .icons{display:flex;gap:4px;justify-content:flex-end;margin-bottom:4px}
-.summary-right .icons .ico{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}
-.summary-right .meta{font-size:11px;color:#8E8E93}
+/* ========= Header（真实状态栏安全区 + 页面大标题） ========= */
+.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#F5F5F7}
+.hero-title{font-size:26px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px}
+.hero-sub{font-size:13px;color:#8E8E93;margin-top:3px}
 
 /* ========= Content ========= */
-.content{padding:20px 16px 0}
+.content{padding:12px 16px 24px}
 
-/* ========= Section Header ========= */
-.sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.sec-title{font-size:20px;font-weight:700;color:#1C1C1E;letter-spacing:-0.3px}
-.sec-filters{display:flex;gap:8px;align-items:center}
-.filter-chip{padding:6px 12px;border-radius:14px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #E5E5EA;outline:none}
-.filter-chip.active{background:#1C1C1E;color:#fff;border-color:#1C1C1E}
-.sort-btn{width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid #E5E5EA;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1C1C1E;font-size:14px}
+/* ========= 2×2 统计网格 ========= */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+.stat-card{background:#fff;border-radius:18px;padding:14px 16px;border:none;cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.05);outline:none;font-family:inherit}
+.stat-card:active{transform:scale(0.98)}
+.stat-top{display:flex;justify-content:space-between;align-items:center}
+.stat-icon{width:38px;height:38px;border-radius:12px;background:#F0F0F5;display:flex;align-items:center;justify-content:center;color:#8E8E93}
+.stat-icon svg{width:21px;height:21px}
+.stat-num{font-size:28px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px;line-height:1}
+.stat-label{font-size:12px;color:#8E8E93;margin-top:10px}
 
-/* ========= Item Cards (兑换卡片风格) ========= */
-.item-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+/* ========= 区块标题 + 查看更多 ========= */
+.sec-head{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;outline:none;padding:16px 2px 10px;font-family:inherit}
+.sec-title{font-size:17px;font-weight:700;color:#1C1C1E;letter-spacing:-0.2px}
+.sec-more{display:flex;align-items:center;gap:2px;font-size:12px;color:#A0A0A8}
+.sec-more svg{width:14px;height:14px}
+
+/* ========= 进度卡片 ========= */
+.progress-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer}
+.progress-card:active{transform:scale(0.98)}
+.pc-top{display:flex;align-items:center;gap:10px}
+.pc-ic{width:34px;height:34px;border-radius:10px;background:#F0F0F5;display:flex;align-items:center;justify-content:center;color:#8E8E93}
+.pc-ic svg{width:19px;height:19px}
+.pc-pct{font-size:26px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px;margin-left:auto;line-height:1}
+.pc-tag{font-size:13px;color:#8E8E93}
+.progress-track{height:8px;background:#F0F0F5;border-radius:4px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:#007AFF;border-radius:4px;transition:width .5s ease;min-width:0}
+.pc-bottom{display:flex;justify-content:space-between;font-size:12px;color:#8E8E93}
+
+/* ========= 内容卡片（有数据时） ========= */
+.list-card{background:#fff;border-radius:18px;padding:6px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);overflow:hidden}
+.list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F5F5F7;cursor:pointer}
+.list-row:last-child{border-bottom:none}
+.row-ic{width:34px;height:34px;border-radius:10px;background:#F0F0F5;display:flex;align-items:center;justify-content:center;color:#8E8E93;flex-shrink:0}
+.row-ic svg{width:19px;height:19px}
+.list-row .info{flex:1;min-width:0}
+.list-row .name{font-size:14px;color:#1C1C1E;font-weight:600}
+.list-row .meta{font-size:11px;color:#8E8E93;margin-top:2px}
+.list-row .chev{color:#C7C7CC}
+.list-row .chev svg{width:16px;height:16px}
+
+/* ========= 空状态卡片 ========= */
+.empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.05);cursor:pointer;display:flex;flex-direction:column;align-items:center}
+.empty-card:active{transform:scale(0.98)}
+.ec-icon{width:44px;height:44px;border-radius:14px;background:#F5F5F7;display:flex;align-items:center;justify-content:center;color:#C7C7CC;margin-bottom:10px}
+.ec-icon svg{width:24px;height:24px}
+.empty-card p{font-size:13px;color:#A0A0A8}
+.ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px}
+
+/* ========= 列表页筛选胶囊 ========= */
+.filter-row{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:4px}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-row .pill{padding:8px 16px;border-radius:18px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:none;outline:none;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.filter-row .pill.active{background:#1C1C1E;color:#fff}
+
+/* ========= 列表页项目卡 ========= */
+.item-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05)}
 .item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .item-info{display:flex;gap:10px;align-items:center}
-.item-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff;flex-shrink:0}
+.item-icon{width:34px;height:34px;border-radius:10px;background:#F0F0F5;display:flex;align-items:center;justify-content:center;color:#8E8E93;flex-shrink:0}
+.item-icon svg{width:19px;height:19px}
 .item-info .name{font-size:15px;font-weight:600;color:#1C1C1E}
 .item-info .meta{font-size:11px;color:#8E8E93;margin-top:1px}
 .item-right{text-align:right}
 .item-right .big{font-size:16px;font-weight:700;color:#1C1C1E}
 .item-right .big span{font-size:11px;font-weight:400;color:#8E8E93;margin-left:2px}
 .item-right .sub{font-size:11px;color:#8E8E93;margin-top:2px}
-
-/* Bar Chart */
-.chart{display:flex;align-items:flex-end;gap:2px;height:36px;margin:8px 0}
-.chart .bar{flex:1;background:#007AFF;border-radius:2px 2px 0 0;min-height:2px;opacity:0.85}
-.chart.orange .bar{background:#FF9500}
-.chart.green .bar{background:#34C759}
-
-.item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
-.mini-tag{font-size:10px;color:#8E8E93;padding:2px 6px;border-radius:4px;background:#F5F5F7}
+.mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#F5F5F7}
 .mini-tag.warn{background:#FFF4E5;color:#FF9500}
 .mini-tag.danger{background:#FFEBEC;color:#FF3B30}
 .action-btn{padding:8px 16px;border-radius:10px;background:#007AFF;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
-.action-btn:hover{background:#0062CC}
+.detail-txt{font-size:13px;color:#1C1C1E;white-space:pre-line;padding-top:8px;border-top:1px solid #F5F5F7}
+.detail-meta{font-size:12px;color:#8E8E93;margin-top:6px}
 
-/* ========= List style (module pages) ========= */
-.list-card{background:#fff;border-radius:14px;padding:6px 16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.list-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F2F2F7}
-.list-row:last-child{border-bottom:none}
-.list-row .check{width:22px;height:22px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
-.list-row .check.empty{background:#fff;border:2px solid #E5E5EA}
-.list-row .info{flex:1;min-width:0}
-.list-row .name{font-size:14px;color:#1C1C1E;font-weight:500}
-.list-row .meta{font-size:11px;color:#8E8E93;margin-top:2px}
-.list-row .tag-mini{padding:2px 6px;border-radius:4px;font-size:10px;background:#F5F5F7;color:#8E8E93}
-.list-row .tag-mini.warn{background:#FFF4E5;color:#FF9500}
-.list-row .tag-mini.danger{background:#FFEBEC;color:#FF3B30}
-.list-row .actions{display:flex;gap:2px}
-.list-row .act-btn{background:none;border:none;color:#C7C7CC;cursor:pointer;font-size:14px;padding:4px 6px}
-.list-row .act-btn:hover{color:#1C1C1E}
+/* ========= 列表行（带操作） ========= */
+.row-actions{display:flex;gap:2px}
+.act-btn{background:none;border:none;color:#C7C7CC;cursor:pointer;font-size:15px;padding:4px 6px}
+.act-btn:hover{color:#1C1C1E}
+.tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#F5F5F7;color:#8E8E93;flex-shrink:0}
+.tag-mini.warn{background:#FFF4E5;color:#FF9500}
+.tag-mini.danger{background:#FFEBEC;color:#FF3B30}
+.row-check{width:22px;height:22px;border-radius:50%;background:#007AFF;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
+.row-check.empty{background:#fff;border:2px solid #E5E5EA;color:#A0A0A8}
 
-.empty-state{text-align:center;padding:40px 20px;color:#C7C7CC;font-size:14px}
-.empty-state .icon{font-size:48px;display:block;margin-bottom:8px;opacity:0.4}
-
-/* ========= Filter pills row ========= */
-.filter-row{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
-.filter-row::-webkit-scrollbar{display:none}
-.filter-row .pill{padding:8px 16px;border-radius:18px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #E5E5EA;outline:none;white-space:nowrap}
-.filter-row .pill.active{background:#1C1C1E;color:#fff;border-color:#1C1C1E}
+/* ========= 统计页 ========= */
+.stat-big{background:#fff;border-radius:18px;padding:18px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;justify-content:space-between;align-items:center}
+.stat-big .lbl{font-size:13px;color:#8E8E93}
+.stat-big .num{font-size:30px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px}
+.stat-big .num span{font-size:13px;font-weight:400;color:#8E8E93;margin-left:4px}
 
 /* ========= Page ========= */
 .page{display:none}.page.active{display:block}
 
-/* ========= Bottom Nav ========= */
-.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:420px;background:rgba(255,255,255,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid #E5E5EA;display:flex;padding:8px 0 calc(env(safe-area-inset-bottom, 0px) + 20px);z-index:50}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;cursor:pointer;outline:none;padding:4px 0;color:#8E8E93;font-size:11px}
-.nav-item .icon{font-size:22px}
-.nav-item.active{color:#007AFF}
+/* ========= 底部悬浮胶囊导航（5 Tab） ========= */
+.bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:24px;box-shadow:0 8px 28px rgba(0,0,0,0.10);display:flex;padding:6px;z-index:50}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;outline:none;padding:9px 0 7px;border-radius:18px;color:#A5A5AD;font-size:10px;font-weight:500;font-family:inherit;transition:all .2s}
+.nav-item .icon{display:flex}
+.nav-item .icon svg{width:22px;height:22px}
+.nav-item.active{background:#EEEEF3;color:#1C1C1E}
 
 /* ========= FAB ========= */
-.fab{position:fixed;bottom:96px;right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#007AFF,#0051D5);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:0 6px 16px rgba(0,122,255,0.35);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
+.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:#007AFF;color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(0,122,255,0.35);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
 
 /* ========= Modal ========= */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-end;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:#F2F2F7;border-radius:14px 14px 0 0;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;padding:8px 16px 24px;animation:slideUp .25s ease}
+.modal{background:#F2F2F7;border-radius:18px 18px 0 0;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;padding:8px 16px 24px;animation:slideUp .25s ease}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal-handle{width:36px;height:4px;background:#C7C7CC;border-radius:2px;margin:0 auto 14px}
+.modal-handle{width:36px;height:4px;background:#D1D1D6;border-radius:2px;margin:0 auto 14px}
 .modal-title{font-size:20px;font-weight:700;color:#1C1C1E;text-align:center;margin-bottom:16px;letter-spacing:-0.3px}
 .form-group{margin-bottom:10px}
-.form-group label{display:block;font-size:12px;color:#8E8E93;margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px}
-.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;border:none;border-radius:10px;background:#fff;font-size:15px;color:#1C1C1E;outline:none;font-family:inherit}
+.form-group label{display:block;font-size:12px;color:#8E8E93;margin-bottom:4px;font-weight:500}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;border:none;border-radius:12px;background:#fff;font-size:15px;color:#1C1C1E;outline:none;font-family:inherit}
 .form-group textarea{resize:vertical;min-height:60px}
 .form-actions{display:flex;gap:8px;margin-top:18px}
 .form-actions button{flex:1}
 .btn-cancel{padding:12px;border-radius:12px;background:#fff;color:#1C1C1E;border:none;font-size:15px;cursor:pointer}
 .btn-save{padding:12px;border-radius:12px;background:#007AFF;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
-
-.list-editor{background:#fff;border-radius:10px;padding:10px}
+.list-editor{background:#fff;border-radius:12px;padding:10px}
 .list-editor .ing-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:14px}
 .list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
 .list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
 .list-editor .ing-add input{flex:1;padding:8px 12px;border:none;border-radius:8px;background:#F5F5F7;font-size:13px;outline:none;color:#1C1C1E}
 .list-editor .ing-add button{padding:8px 14px;border-radius:8px;background:#007AFF;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
-
-/* ========= Performance/Stats pages ========= */
-.stat-block{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.stat-block h3{font-size:14px;font-weight:600;color:#1C1C1E;margin-bottom:12px}
-.stat-block .big-num{font-size:32px;font-weight:700;color:#1C1C1E;letter-spacing:-0.5px}
-.stat-block .big-num span{font-size:14px;font-weight:400;color:#8E8E93;margin-left:4px}
 </style>
 </head>
 <body>
 
 <div class="app">
 
-  <!-- ========= Home Page ========= -->
+  <!-- ========= Home（概览） ========= -->
   <div id="page-home" class="page active">
-
-    <!-- Hero with gradient (顶部安全区自适应真实状态栏) -->
     <div class="hero">
-      <div class="hero-top">
-        <div>
-          <div class="hero-title">生活管家 🌿</div>
-          <div class="hero-sub">每日凌晨 3 点数据重置</div>
-        </div>
-        <button class="settings-btn" onclick="alert('设置面板')">⚙</button>
-      </div>
+      <div class="hero-title">生活管家</div>
+      <div class="hero-sub">记录你的每日生活</div>
     </div>
-
-    <!-- Summary Card -->
-    <div class="summary-card">
-      <div class="summary-left">
-        <div class="num"><span id="s-total">0</span><span>件物品</span></div>
-        <div class="meta">今日新增 0 件</div>
-      </div>
-      <div class="summary-right">
-        <div class="icons">
-          <div class="ico" style="background:#34C759">🥬</div>
-          <div class="ico" style="background:#FF9500">🐾</div>
-          <div class="ico" style="background:#FF2D55">📖</div>
-        </div>
-        <div class="meta">3 类在管</div>
-      </div>
-    </div>
-
     <div class="content">
+      <!-- 2×2 统计网格 -->
+      <div class="stat-grid" id="home-stats-grid"></div>
 
-      <!-- 兑换 / 临期提醒 section -->
-      <div class="sec-head">
-        <div class="sec-title">临期提醒</div>
-        <div class="sec-filters">
-          <button class="filter-chip active">全部</button>
-          <button class="filter-chip">3天内</button>
-          <button class="sort-btn">⇅</button>
-        </div>
-      </div>
-      <div id="home-warnings"></div>
+      <!-- 区块 B：食材新鲜度（进度卡） -->
+      <button class="sec-head" onclick="goToPage('ingredients')">
+        <span class="sec-title">食材新鲜度</span>
+        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
+      <div id="home-progress"></div>
 
-      <!-- 最近食谱 section -->
-      <div class="sec-head" style="margin-top:24px">
-        <div class="sec-title">最近食谱</div>
-        <div class="sec-filters">
-          <button class="filter-chip active">全部</button>
-          <button class="filter-chip">家常</button>
-          <button class="sort-btn">⇅</button>
-        </div>
-      </div>
+      <!-- 区块 C：宠物用品 -->
+      <button class="sec-head" onclick="goToPage('pets')">
+        <span class="sec-title">宠物用品</span>
+        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
+      <div id="home-pets"></div>
+
+      <!-- 区块 D：我的食谱 -->
+      <button class="sec-head" onclick="goToPage('recipes')">
+        <span class="sec-title">我的食谱</span>
+        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      </button>
       <div id="home-recipes"></div>
-
-      <!-- 类别概览 -->
-      <div class="sec-head" style="margin-top:24px">
-        <div class="sec-title">数据概览</div>
-      </div>
-      <div id="home-stats"></div>
-
     </div>
   </div>
 
-  <!-- ========= Ingredients Page ========= -->
+  <!-- ========= Ingredients ========= -->
   <div id="page-ingredients" class="page">
     <div class="hero">
-      <div class="hero-top">
-        <div>
-          <div class="hero-title">食材管理</div>
-          <div class="hero-sub">共 <span id="ing-count">0</span> 件食材</div>
-        </div>
-      </div>
+      <div class="hero-title">食材管理</div>
+      <div class="hero-sub">共 <span id="ing-count">0</span> 件食材</div>
     </div>
     <div class="content">
       <div class="filter-row" id="ing-filters">
@@ -233,15 +213,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     </div>
   </div>
 
-  <!-- ========= Pets Page ========= -->
+  <!-- ========= Pets ========= -->
   <div id="page-pets" class="page">
     <div class="hero">
-      <div class="hero-top">
-        <div>
-          <div class="hero-title">宠物用品</div>
-          <div class="hero-sub">共 <span id="pet-count">0</span> 件用品</div>
-        </div>
-      </div>
+      <div class="hero-title">宠物用品</div>
+      <div class="hero-sub">共 <span id="pet-count">0</span> 件用品</div>
     </div>
     <div class="content">
       <div class="filter-row" id="pet-filters">
@@ -256,15 +232,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     </div>
   </div>
 
-  <!-- ========= Recipes Page ========= -->
+  <!-- ========= Recipes ========= -->
   <div id="page-recipes" class="page">
     <div class="hero">
-      <div class="hero-top">
-        <div>
-          <div class="hero-title">我的食谱</div>
-          <div class="hero-sub">共 <span id="rec-count">0</span> 道食谱</div>
-        </div>
-      </div>
+      <div class="hero-title">我的食谱</div>
+      <div class="hero-sub">共 <span id="rec-count">0</span> 道食谱</div>
     </div>
     <div class="content">
       <div class="filter-row" id="rec-filters">
@@ -279,32 +251,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     </div>
   </div>
 
-  <!-- ========= Performance / 表现 Page ========= -->
+  <!-- ========= Stats（数据概览） ========= -->
   <div id="page-stats" class="page">
     <div class="hero">
-      <div class="hero-top">
-        <div>
-          <div class="hero-title">数据概览</div>
-          <div class="hero-sub">所有数据一目了然</div>
-        </div>
-      </div>
+      <div class="hero-title">数据概览</div>
+      <div class="hero-sub">所有数据一目了然</div>
     </div>
     <div class="content">
-      <div class="stat-block">
-        <h3>📊 物品总量</h3>
-        <div class="big-num"><span id="st-total">0</span><span>件</span></div>
+      <div class="stat-big">
+        <span class="lbl">物品总量</span>
+        <span class="num"><span id="st-total">0</span><span>件</span></span>
       </div>
-      <div class="stat-block">
-        <h3>🥬 食材明细</h3>
-        <div class="big-num"><span id="st-ing">0</span><span>件</span></div>
-      </div>
-      <div class="stat-block">
-        <h3>🐾 宠物用品</h3>
-        <div class="big-num"><span id="st-pet">0</span><span>件</span></div>
-      </div>
-      <div class="stat-block">
-        <h3>📖 食谱收藏</h3>
-        <div class="big-num"><span id="st-rec">0</span><span>道</span></div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-icon" id="st-ic-1"></span><span class="stat-num" id="st-ing">0</span></div>
+          <div class="stat-label">食材</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-icon" id="st-ic-2"></span><span class="stat-num" id="st-pet">0</span></div>
+          <div class="stat-label">宠物用品</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-icon" id="st-ic-3"></span><span class="stat-num" id="st-rec">0</span></div>
+          <div class="stat-label">食谱</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-top"><span class="stat-icon" id="st-ic-4"></span><span class="stat-num" id="st-warn">0</span></div>
+          <div class="stat-label">临期食材</div>
+        </div>
       </div>
     </div>
   </div>
@@ -312,22 +286,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <!-- FAB -->
   <button class="fab" onclick="quickAdd()">+</button>
 
-  <!-- Bottom Nav -->
+  <!-- Bottom Nav（悬浮胶囊 5 Tab） -->
   <nav class="bottom-nav">
     <button class="nav-item active" data-page="home">
-      <span class="icon">🏠</span><span>首页</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg></span><span>首页</span>
     </button>
     <button class="nav-item" data-page="ingredients">
-      <span class="icon">🥬</span><span>食材</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg></span><span>食材</span>
     </button>
     <button class="nav-item" data-page="pets">
-      <span class="icon">🐾</span><span>宠物</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="16" r="2"/><ellipse cx="12" cy="14.5" rx="3.2" ry="3.6"/></svg></span><span>宠物</span>
     </button>
     <button class="nav-item" data-page="recipes">
-      <span class="icon">📖</span><span>食谱</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><span>食谱</span>
     </button>
     <button class="nav-item" data-page="stats">
-      <span class="icon">📊</span><span>数据</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span>数据</span>
     </button>
   </nav>
 
@@ -395,6 +369,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 const STORE_KEY = 'life_manager_v3';
 function getData(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[]}}catch{return{ingredients:[],pets:[],recipes:[]}}}
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
+
+/* ===== 灰色线条图标（feather 风格） ===== */
+const ICONS = {
+  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg>',
+  paw:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="16" r="2"/><ellipse cx="12" cy="14.5" rx="3.2" ry="3.6"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+};
 
 let modalMode=null, editId=null;
 let currentPage='home';
@@ -510,124 +494,109 @@ function deleteItem(type,id){
   saveData(d); renderAll();
 }
 
-function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes();renderStats();}
-
+/* ===== 首页渲染（2×2 统计 + 进度卡 + 空状态/内容卡） ===== */
 function renderHome(){
   const d=getData();
-  const total=d.ingredients.length+d.pets.length+d.recipes.length;
-  document.getElementById('s-total').textContent=total;
+  const ings=d.ingredients, pets=d.pets, recs=d.recipes;
+  const now=new Date();
+  const expired=ings.filter(i=>i.expiry&&new Date(i.expiry)<now);
+  const near=ings.filter(i=>i.expiry&&new Date(i.expiry)>=now&&(new Date(i.expiry)-now)/864e5<=3);
+  const usable=ings.length-expired.length;
+  const pct=ings.length?Math.round(usable/ings.length*100):0;
 
-  // 临期警告
-  const warns=d.ingredients.filter(i=>{if(!i.expiry)return false;const diff=(new Date(i.expiry)-new Date())/864e5;return diff<=3});
-  const wEl=document.getElementById('home-warnings');
-  if(!warns.length){
-    wEl.innerHTML='<div class="empty-state" style="padding:20px"><span class="icon">✅</span>暂无临期食材</div>';
-  } else {
-    wEl.innerHTML=warns.slice(0,5).map(i=>{
-      const expired=new Date(i.expiry)<new Date();
-      return `<div class="item-card">
-        <div class="item-head">
-          <div class="item-info">
-            <div class="item-icon" style="background:#34C759">🥬</div>
-            <div>
-              <div class="name">${i.name}</div>
-              <div class="meta">${i.category} · ${i.qty}</div>
-            </div>
-          </div>
-          <div class="item-right">
-            <div class="big">${i.expiry.slice(5)}<span>到期</span></div>
-            <div class="sub">${expired?'已过期':'即将过期'}</div>
-          </div>
-        </div>
-        <div class="chart"><div class="bar" style="height:${expired?8:18}px"></div><div class="bar" style="height:24px"></div><div class="bar" style="height:30px"></div><div class="bar" style="height:20px"></div><div class="bar" style="height:14px"></div></div>
-        <div class="item-bottom">
-          <div class="tags">${expired?'<span class="mini-tag danger">已过期</span>':'<span class="mini-tag warn">临期</span>'}</div>
-          <button class="action-btn" onclick="goToPage('ingredients')">查看</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
+  // 2×2 统计网格
+  document.getElementById('home-stats-grid').innerHTML=
+    statCard('leaf','食材',ings.length,'ingredients')+
+    statCard('paw','宠物用品',pets.length,'pets')+
+    statCard('book','食谱',recs.length,'recipes')+
+    statCard('clock','临期',expired.length+near.length,'ingredients');
 
-  // 最近食谱
-  const rEl=document.getElementById('home-recipes');
-  const recs=d.recipes.slice(0,3);
-  if(!recs.length){
-    rEl.innerHTML='<div class="empty-state" style="padding:20px"><span class="icon">📖</span>暂无食谱</div>';
-  } else {
-    rEl.innerHTML=recs.map(r=>`<div class="item-card">
-      <div class="item-head">
-        <div class="item-info">
-          <div class="item-icon" style="background:#FF2D55">📖</div>
-          <div>
-            <div class="name">${r.name}</div>
-            <div class="meta">${r.category} · ${r.ingredients.slice(0,2).join('、')}</div>
-          </div>
-        </div>
-        <div class="item-right">
-          <div class="big">${r.time||'—'}</div>
-          <div class="sub">${r.ingredients.length} 种食材</div>
-        </div>
+  // 进度卡：食材新鲜度
+  document.getElementById('home-progress').innerHTML=`
+    <div class="progress-card" onclick="goToPage('ingredients')">
+      <div class="pc-top">
+        <span class="pc-ic">${ICONS.leaf}</span>
+        <span class="pc-tag">食材新鲜度</span>
+        <span class="pc-pct">${pct}%</span>
       </div>
-      <div class="chart orange"><div class="bar" style="height:8px"></div><div class="bar" style="height:14px"></div><div class="bar" style="height:22px"></div><div class="bar" style="height:30px"></div><div class="bar" style="height:18px"></div></div>
-      <div class="item-bottom">
-        <div class="tags"><span class="mini-tag">${r.time||'未设置时长'}</span></div>
-        <button class="action-btn" onclick="goToPage('recipes')">查看</button>
-      </div>
-    </div>`).join('');
-  }
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="pc-bottom"><span>可用 ${usable} 件</span><span>临期 ${expired.length+near.length} 件</span></div>
+    </div>`;
 
-  // 数据概览
-  const stEl=document.getElementById('home-stats');
-  stEl.innerHTML=`
-    <div class="item-card">
-      <div class="item-head">
-        <div class="item-info">
-          <div class="item-icon" style="background:#34C759">🥬</div>
-          <div><div class="name">食材</div><div class="meta">已记录 ${d.ingredients.length} 件</div></div>
-        </div>
-        <div class="item-right"><div class="big">${d.ingredients.length}<span>件</span></div></div>
-      </div>
-    </div>
-    <div class="item-card">
-      <div class="item-head">
-        <div class="item-info">
-          <div class="item-icon" style="background:#FF9500">🐾</div>
-          <div><div class="name">宠物用品</div><div class="meta">已记录 ${d.pets.length} 件</div></div>
-        </div>
-        <div class="item-right"><div class="big">${d.pets.length}<span>件</span></div></div>
-      </div>
-    </div>
-  `;
+  // 宠物用品（有数据显示最近，无数据空状态卡）
+  document.getElementById('home-pets').innerHTML=pets.length?
+    `<div class="list-card">`+pets.slice(0,2).map(p=>`
+      <div class="list-row" onclick="goToPage('pets')">
+        <span class="row-ic">${ICONS.paw}</span>
+        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category} · ${p.qty||'—'}</div></div>
+        <span class="chev">${ICONS.chev}</span>
+      </div>`).join('')+`</div>`
+    :emptyCard('paw','还没有宠物用品哦 ~','pet');
+
+  // 我的食谱
+  document.getElementById('home-recipes').innerHTML=recs.length?
+    `<div class="list-card">`+recs.slice(0,2).map(r=>`
+      <div class="list-row" onclick="goToPage('recipes')">
+        <span class="row-ic">${ICONS.book}</span>
+        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.time?' · '+r.time:''}</div></div>
+        <span class="chev">${ICONS.chev}</span>
+      </div>`).join('')+`</div>`
+    :emptyCard('book','还没有收藏食谱呢 ~','recipe');
 }
 
+function statCard(icon,label,num,page){
+  return `<button class="stat-card" onclick="goToPage('${page}')">
+    <div class="stat-top"><span class="stat-icon">${ICONS[icon]}</span><span class="stat-num">${num}</span></div>
+    <div class="stat-label">${label}</div>
+  </button>`;
+}
+
+function emptyCard(icon,text,type){
+  return `<div class="empty-card" onclick="openModal('${type}')">
+    <span class="ec-icon">${ICONS[icon]}</span>
+    <p>${text}</p>
+    <span class="ec-hint">点击添加</span>
+  </div>`;
+}
+
+/* ===== 统计页 ===== */
 function renderStats(){
   const d=getData();
+  const now=new Date();
+  const expired=d.ingredients.filter(i=>i.expiry&&new Date(i.expiry)<now);
+  const near=d.ingredients.filter(i=>i.expiry&&new Date(i.expiry)>=now&&(new Date(i.expiry)-now)/864e5<=3);
   document.getElementById('st-total').textContent=d.ingredients.length+d.pets.length+d.recipes.length;
   document.getElementById('st-ing').textContent=d.ingredients.length;
   document.getElementById('st-pet').textContent=d.pets.length;
   document.getElementById('st-rec').textContent=d.recipes.length;
+  document.getElementById('st-warn').textContent=expired.length+near.length;
+  document.getElementById('st-ic-1').innerHTML=ICONS.leaf;
+  document.getElementById('st-ic-2').innerHTML=ICONS.paw;
+  document.getElementById('st-ic-3').innerHTML=ICONS.book;
+  document.getElementById('st-ic-4').innerHTML=ICONS.clock;
   document.getElementById('ing-count').textContent=d.ingredients.length;
   document.getElementById('pet-count').textContent=d.pets.length;
   document.getElementById('rec-count').textContent=d.recipes.length;
 }
 
+/* ===== 食材列表 ===== */
 function renderIngredients(){
   const d=getData();
   let items=d.ingredients;
   if(ingFilter!=='all')items=items.filter(i=>i.category===ingFilter);
   const el=document.getElementById('ingredient-list');
-  if(!items.length){el.innerHTML='<div class="empty-state"><span class="icon">🥬</span>还没有食材</div>';return}
+  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.leaf}</span><p>还没有食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
   el.innerHTML=`<div class="list-card">`+items.map(i=>{
     const expired=i.expiry&&new Date(i.expiry)<new Date();
     const near=i.expiry&&!expired&&(new Date(i.expiry)-new Date())/864e5<=3;
     return `<div class="list-row">
-      <div class="check ${expired?'empty':''}">${expired?'!':'✓'}</div>
+      <div class="row-check ${expired?'empty':''}">${expired?'!':'✓'}</div>
       <div class="info">
         <div class="name">${i.name}</div>
         <div class="meta">${i.qty||'—'}${i.expiry?' · '+i.expiry:''}${i.note?' · '+i.note:''}</div>
       </div>
       ${expired?'<span class="tag-mini danger">已过期</span>':near?'<span class="tag-mini warn">临期</span>':'<span class="tag-mini">'+i.category+'</span>'}
-      <div class="actions">
+      <div class="row-actions">
         <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
         <button class="act-btn" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
       </div>
@@ -635,53 +604,55 @@ function renderIngredients(){
   }).join('')+`</div>`;
 }
 
+/* ===== 宠物列表 ===== */
 function renderPets(){
   const d=getData();
   let items=d.pets;
   if(petFilter!=='all')items=items.filter(i=>i.category===petFilter);
   const el=document.getElementById('pet-list');
-  if(!items.length){el.innerHTML='<div class="empty-state"><span class="icon">🐾</span>还没有宠物用品</div>';return}
+  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('pet')"><span class="ec-icon">${ICONS.paw}</span><p>还没有宠物用品哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
   el.innerHTML=`<div class="list-card">`+items.map(i=>`<div class="list-row">
-    <div class="check empty"></div>
+    <span class="row-ic">${ICONS.paw}</span>
     <div class="info">
       <div class="name">${i.name}</div>
       <div class="meta">${i.qty||'—'}${i.note?' · '+i.note:''}</div>
     </div>
     <span class="tag-mini">${i.category}</span>
-    <div class="actions">
+    <div class="row-actions">
       <button class="act-btn" onclick="openModal('pet','${i.id}')">✎</button>
       <button class="act-btn" onclick="deleteItem('pet','${i.id}')">🗑</button>
     </div>
   </div>`).join('')+`</div>`;
 }
 
+/* ===== 食谱列表 ===== */
 function renderRecipes(){
   const d=getData();
   let items=d.recipes;
   if(recFilter!=='all')items=items.filter(i=>i.category===recFilter);
   const el=document.getElementById('recipe-list');
-  if(!items.length){el.innerHTML='<div class="empty-state"><span class="icon">📖</span>还没有食谱</div>';return}
-  el.innerHTML=items.map(i=>`<div class="item-card" style="margin-bottom:12px">
+  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.book}</span><p>还没有收藏食谱呢 ~</p><span class="ec-hint">点击添加</span></div>`;return}
+  el.innerHTML=items.map(i=>`<div class="item-card">
     <div class="item-head">
       <div class="item-info">
-        <div class="item-icon" style="background:#FF2D55">📖</div>
+        <span class="item-icon">${ICONS.book}</span>
         <div>
           <div class="name">${i.name}</div>
           <div class="meta">${i.category}${i.time?' · ⏱ '+i.time:''}</div>
         </div>
       </div>
-      <div class="actions">
+      <div class="row-actions">
         <button class="act-btn" onclick="openModal('recipe','${i.id}')">✎</button>
         <button class="act-btn" onclick="deleteItem('recipe','${i.id}')">🗑</button>
       </div>
     </div>
-    ${i.ingredients.length?`<div class="chart green"><div class="bar" style="height:10px"></div><div class="bar" style="height:18px"></div><div class="bar" style="height:24px"></div><div class="bar" style="height:30px"></div><div class="bar" style="height:20px"></div></div>`:''}
     ${i.ingredients.length?`<div style="font-size:12px;color:#8E8E93;margin:8px 0">🧾 ${i.ingredients.join('、')}</div>`:''}
-    ${i.steps?`<div style="font-size:13px;color:#1C1C1E;white-space:pre-line;padding-top:6px;border-top:1px solid #F2F2F7">${i.steps}</div>`:''}
-    ${i.note?`<div style="font-size:12px;color:#8E8E93;margin-top:6px">📌 ${i.note}</div>`:''}
+    ${i.steps?`<div class="detail-txt">${i.steps}</div>`:''}
+    ${i.note?`<div class="detail-meta">📌 ${i.note}</div>`:''}
   </div>`).join('');
 }
 
+function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes();renderStats();}
 renderAll();
 
 if ('serviceWorker' in navigator) {

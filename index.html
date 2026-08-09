@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .stat-card{background:#fff;border-radius:18px;padding:14px 16px;border:none;cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.06);outline:none;font-family:inherit}
 .stat-card:active{transform:scale(0.98)}
 .stat-top{display:flex;justify-content:space-between;align-items:center}
-.stat-icon{width:38px;height:38px;border-radius:12px;background:#F1EEFD;display:flex;align-items:center;justify-content:center;color:#8B7CF6}
+.stat-icon{width:38px;height:38px;border-radius:12px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0}
 .stat-icon svg{width:21px;height:21px}
 .stat-num{font-size:28px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px;line-height:1}
 .stat-label{font-size:12px;color:#8E8E93;margin-top:10px}
@@ -49,19 +49,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .progress-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer}
 .progress-card:active{transform:scale(0.98)}
 .pc-top{display:flex;align-items:center;gap:10px}
-.pc-ic{width:34px;height:34px;border-radius:10px;background:#F1EEFD;display:flex;align-items:center;justify-content:center;color:#8B7CF6}
+.pc-ic{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0}
 .pc-ic svg{width:19px;height:19px}
-.pc-pct{font-size:26px;font-weight:800;color:#6C5CE7;letter-spacing:-0.5px;margin-left:auto;line-height:1}
+.pc-pct{font-size:26px;font-weight:800;color:#1F9E83;letter-spacing:-0.5px;margin-left:auto;line-height:1}
 .pc-tag{font-size:13px;color:#8E8E93}
-.progress-track{height:8px;background:#F1EEFD;border-radius:4px;overflow:hidden;margin:12px 0}
-.progress-fill{height:100%;background:#8B7CF6;border-radius:4px;transition:width .5s ease;min-width:0}
+.progress-track{height:8px;background:#E3F7F1;border-radius:4px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:#35C6A0;border-radius:4px;transition:width .5s ease;min-width:0}
 .pc-bottom{display:flex;justify-content:space-between;font-size:12px;color:#8E8E93}
 
 /* ========= 内容卡片（有数据时） ========= */
 .list-card{background:#fff;border-radius:18px;padding:6px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden}
 .list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F5F5F7;cursor:pointer}
 .list-row:last-child{border-bottom:none}
-.row-ic{width:34px;height:34px;border-radius:10px;background:#F1EEFD;display:flex;align-items:center;justify-content:center;color:#8B7CF6;flex-shrink:0}
+.row-ic{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0;flex-shrink:0}
 .row-ic svg{width:19px;height:19px}
 .list-row .info{flex:1;min-width:0}
 .list-row .name{font-size:14px;color:#1C1C1E;font-weight:600}
@@ -72,7 +72,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 /* ========= 空状态卡片 ========= */
 .empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;display:flex;flex-direction:column;align-items:center}
 .empty-card:active{transform:scale(0.98)}
-.ec-icon{width:44px;height:44px;border-radius:14px;background:#F5F3FE;display:flex;align-items:center;justify-content:center;color:#C0B4F4;margin-bottom:10px}
+.ec-icon{width:44px;height:44px;border-radius:14px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#8FDCC6;margin-bottom:10px}
 .ec-icon svg{width:24px;height:24px}
 .empty-card p{font-size:13px;color:#A0A0A8}
 .ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px}
@@ -81,13 +81,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .filter-row{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:4px}
 .filter-row::-webkit-scrollbar{display:none}
 .filter-row .pill{padding:8px 16px;border-radius:18px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:none;outline:none;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.filter-row .pill.active{background:#8B7CF6;color:#fff}
+.filter-row .pill.active{background:#35C6A0;color:#fff}
 
 /* ========= 列表页项目卡 ========= */
 .item-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .item-info{display:flex;gap:10px;align-items:center}
-.item-icon{width:34px;height:34px;border-radius:10px;background:#F1EEFD;display:flex;align-items:center;justify-content:center;color:#8B7CF6;flex-shrink:0}
+.item-icon{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0;flex-shrink:0}
 .item-icon svg{width:19px;height:19px}
 .item-info .name{font-size:15px;font-weight:600;color:#1C1C1E}
 .item-info .meta{font-size:11px;color:#8E8E93;margin-top:1px}
@@ -100,7 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#F5F5F7}
 .mini-tag.warn{background:#FFF4E5;color:#FF9500}
 .mini-tag.danger{background:#FFEBEC;color:#FF3B30}
-.action-btn{padding:8px 16px;border-radius:10px;background:#8B7CF6;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
+.action-btn{padding:8px 16px;border-radius:10px;background:#35C6A0;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
 .detail-txt{font-size:13px;color:#1C1C1E;white-space:pre-line;padding-top:8px;border-top:1px solid #F5F5F7}
 .detail-meta{font-size:12px;color:#8E8E93;margin-top:6px}
 
@@ -111,13 +111,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#F5F5F7;color:#8E8E93;flex-shrink:0}
 .tag-mini.warn{background:#FFF4E5;color:#FF9500}
 .tag-mini.danger{background:#FFEBEC;color:#FF3B30}
-.row-check{width:22px;height:22px;border-radius:50%;background:#8B7CF6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
+.row-check{width:22px;height:22px;border-radius:50%;background:#35C6A0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
 .row-check.empty{background:#fff;border:2px solid #E5E5EA;color:#A0A0A8}
 
 /* ========= 统计页 ========= */
 .stat-big{background:#fff;border-radius:18px;padding:18px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06);display:flex;justify-content:space-between;align-items:center}
 .stat-big .lbl{font-size:13px;color:#8E8E93}
-.stat-big .num{font-size:30px;font-weight:800;color:#6C5CE7;letter-spacing:-0.5px}
+.stat-big .num{font-size:30px;font-weight:800;color:#1F9E83;letter-spacing:-0.5px}
 .stat-big .num span{font-size:13px;font-weight:400;color:#8E8E93;margin-left:4px}
 
 /* ========= Page ========= */
@@ -128,10 +128,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;outline:none;padding:9px 0 7px;border-radius:18px;color:#A5A5AD;font-size:10px;font-weight:500;font-family:inherit;transition:all .2s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:22px;height:22px}
-.nav-item.active{background:#F1EEFD;color:#6C5CE7}
+.nav-item.active{background:#E3F7F1;color:#1F9E83}
 
 /* ========= FAB ========= */
-.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8B7CF6,#6C5CE7);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(139,124,246,0.4);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
+.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 96px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#35C6A0,#1F9E83);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(53,198,160,0.4);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
 
 /* ========= Modal ========= */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-end;justify-content:center}
@@ -147,13 +147,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .form-actions{display:flex;gap:8px;margin-top:18px}
 .form-actions button{flex:1}
 .btn-cancel{padding:12px;border-radius:12px;background:#fff;color:#1C1C1E;border:none;font-size:15px;cursor:pointer}
-.btn-save{padding:12px;border-radius:12px;background:#8B7CF6;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
+.btn-save{padding:12px;border-radius:12px;background:#35C6A0;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
 .list-editor{background:#fff;border-radius:12px;padding:10px}
 .list-editor .ing-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:14px}
 .list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
 .list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
 .list-editor .ing-add input{flex:1;padding:8px 12px;border:none;border-radius:8px;background:#F5F5F7;font-size:13px;outline:none;color:#1C1C1E}
-.list-editor .ing-add button{padding:8px 14px;border-radius:8px;background:#8B7CF6;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
+.list-editor .ing-add button{padding:8px 14px;border-radius:8px;background:#35C6A0;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
 </style>
 </head>
 <body>
@@ -506,10 +506,10 @@ function renderHome(){
 
   // 2×2 统计网格（淡雅四色点缀）
   document.getElementById('home-stats-grid').innerHTML=
-    statCard('leaf','食材',ings.length,'ingredients','#5CB87E','#EAF6EF')+
+    statCard('leaf','食材',ings.length,'ingredients','#35C6A0','#E3F7F1')+
     statCard('paw','宠物用品',pets.length,'pets','#F0A35E','#FDF3E8')+
     statCard('book','食谱',recs.length,'recipes','#E8839A','#FCEEF2')+
-    statCard('clock','临期',expired.length+near.length,'ingredients','#8B7CF6','#F1EEFD');
+    statCard('clock','临期',expired.length+near.length,'ingredients','#2FB6A3','#E4F6F3');
 
   // 进度卡：食材新鲜度
   document.getElementById('home-progress').innerHTML=`
@@ -570,11 +570,11 @@ function renderStats(){
   document.getElementById('st-pet').textContent=d.pets.length;
   document.getElementById('st-rec').textContent=d.recipes.length;
   document.getElementById('st-warn').textContent=expired.length+near.length;
-  document.getElementById('st-ic-1').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#5CB87E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg>`;
+  document.getElementById('st-ic-1').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#35C6A0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg>`;
   document.getElementById('st-ic-2').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#F0A35E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="16" r="2"/><ellipse cx="12" cy="14.5" rx="3.2" ry="3.6"/></svg>`;
   document.getElementById('st-ic-3').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#E8839A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
-  document.getElementById('st-ic-4').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#8B7CF6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-  const icBg=['#EAF6EF','#FDF3E8','#FCEEF2','#F1EEFD'];
+  document.getElementById('st-ic-4').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#2FB6A3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  const icBg=['#E3F7F1','#FDF3E8','#FCEEF2','#E4F6F3'];
   ['st-ic-1','st-ic-2','st-ic-3','st-ic-4'].forEach((id,i)=>document.getElementById(id).style.background=icBg[i]);
   document.getElementById('ing-count').textContent=d.ingredients.length;
   document.getElementById('pet-count').textContent=d.pets.length;

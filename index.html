@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#F5F5F7">
 <meta name="apple-mobile-web-app-title" content="生活管家">
 <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
@@ -18,11 +18,11 @@
 <link rel="manifest" href="manifest.json">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#FFFFFF;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:128px}
-.app{max-width:420px;margin:0 auto;background:#FFFFFF;min-height:100vh;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:128px}
+.app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
 
 /* ========= Header（真实状态栏安全区 + 页面大标题） ========= */
-.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#FFFFFF}
+.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#F5F5F7}
 .hero-title{font-size:26px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px}
 .hero-sub{font-size:13px;color:#8E8E93;margin-top:3px}
 
@@ -34,7 +34,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .stat-card{background:#fff;border-radius:18px;padding:14px 16px;border:none;cursor:pointer;text-align:left;box-shadow:0 1px 3px rgba(0,0,0,0.06);outline:none;font-family:inherit}
 .stat-card:active{transform:scale(0.98)}
 .stat-top{display:flex;justify-content:space-between;align-items:center}
-.stat-icon{width:38px;height:38px;border-radius:12px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0}
+.stat-icon{width:38px;height:38px;border-radius:12px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500}
 .stat-icon svg{width:21px;height:21px}
 .stat-num{font-size:28px;font-weight:800;color:#1C1C1E;letter-spacing:-0.5px;line-height:1}
 .stat-label{font-size:12px;color:#8E8E93;margin-top:10px}
@@ -49,19 +49,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .progress-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer}
 .progress-card:active{transform:scale(0.98)}
 .pc-top{display:flex;align-items:center;gap:10px}
-.pc-ic{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0}
+.pc-ic{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500}
 .pc-ic svg{width:19px;height:19px}
-.pc-pct{font-size:26px;font-weight:800;color:#1F9E83;letter-spacing:-0.5px;margin-left:auto;line-height:1}
+.pc-pct{font-size:26px;font-weight:800;color:#E07B00;letter-spacing:-0.5px;margin-left:auto;line-height:1}
 .pc-tag{font-size:13px;color:#8E8E93}
-.progress-track{height:8px;background:#E3F7F1;border-radius:4px;overflow:hidden;margin:12px 0}
-.progress-fill{height:100%;background:#35C6A0;border-radius:4px;transition:width .5s ease;min-width:0}
+.progress-track{height:8px;background:#FFF4E5;border-radius:4px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:#FF9500;border-radius:4px;transition:width .5s ease;min-width:0}
 .pc-bottom{display:flex;justify-content:space-between;font-size:12px;color:#8E8E93}
 
 /* ========= 内容卡片（有数据时） ========= */
 .list-card{background:#fff;border-radius:18px;padding:6px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden}
 .list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F5F5F7;cursor:pointer}
 .list-row:last-child{border-bottom:none}
-.row-ic{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0;flex-shrink:0}
+.row-ic{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500;flex-shrink:0}
 .row-ic svg{width:19px;height:19px}
 .list-row .info{flex:1;min-width:0}
 .list-row .name{font-size:14px;color:#1C1C1E;font-weight:600}
@@ -72,7 +72,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 /* ========= 空状态卡片 ========= */
 .empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;display:flex;flex-direction:column;align-items:center}
 .empty-card:active{transform:scale(0.98)}
-.ec-icon{width:44px;height:44px;border-radius:14px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#8FDCC6;margin-bottom:10px}
+.ec-icon{width:44px;height:44px;border-radius:14px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#8FDCC6;margin-bottom:10px}
 .ec-icon svg{width:24px;height:24px}
 .empty-card p{font-size:13px;color:#A0A0A8}
 .ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px}
@@ -80,14 +80,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 /* ========= 列表页筛选胶囊 ========= */
 .filter-row{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:4px}
 .filter-row::-webkit-scrollbar{display:none}
-.filter-row .pill{padding:8px 16px;border-radius:18px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:none;outline:none;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
-.filter-row .pill.active{background:#35C6A0;color:#fff}
+.filter-row .pill{padding:8px 16px;border-radius:999px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #EDEDF0;outline:none;white-space:nowrap;box-shadow:none;transition:all .15s}
+.filter-row .pill.active{background:#FFF4E5;color:#E07B00;border-color:#FFD9A8;font-weight:600}
 
 /* ========= 列表页项目卡 ========= */
 .item-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
 .item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .item-info{display:flex;gap:10px;align-items:center}
-.item-icon{width:34px;height:34px;border-radius:10px;background:#E3F7F1;display:flex;align-items:center;justify-content:center;color:#35C6A0;flex-shrink:0}
+.item-icon{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500;flex-shrink:0}
 .item-icon svg{width:19px;height:19px}
 .item-info .name{font-size:15px;font-weight:600;color:#1C1C1E}
 .item-info .meta{font-size:11px;color:#8E8E93;margin-top:1px}
@@ -100,7 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#F5F5F7}
 .mini-tag.warn{background:#FFF4E5;color:#FF9500}
 .mini-tag.danger{background:#FFEBEC;color:#FF3B30}
-.action-btn{padding:8px 16px;border-radius:10px;background:#35C6A0;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
+.action-btn{padding:9px 20px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
 .detail-txt{font-size:13px;color:#1C1C1E;white-space:pre-line;padding-top:8px;border-top:1px solid #F5F5F7}
 .detail-meta{font-size:12px;color:#8E8E93;margin-top:6px}
 
@@ -108,10 +108,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .row-actions{display:flex;gap:2px}
 .act-btn{background:none;border:none;color:#C7C7CC;cursor:pointer;font-size:15px;padding:4px 6px}
 .act-btn:hover{color:#1C1C1E}
+.act-btn.del{color:#FF3B30}
+.act-btn.del:hover{color:#E02D22}
 .tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#F5F5F7;color:#8E8E93;flex-shrink:0}
 .tag-mini.warn{background:#FFF4E5;color:#FF9500}
 .tag-mini.danger{background:#FFEBEC;color:#FF3B30}
-.row-check{width:22px;height:22px;border-radius:50%;background:#35C6A0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
+.row-check{width:22px;height:22px;border-radius:50%;background:#FF9500;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
 .row-check.empty{background:#fff;border:2px solid #E5E5EA;color:#A0A0A8}
 
 /* ========= Page ========= */
@@ -122,10 +124,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);border-radius:clamp(16px, 4.6vw, 20px);color:#A5A5AD;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:all .2s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(24px, 6.6vw, 28px);height:clamp(24px, 6.6vw, 28px)}
-.nav-item.active{background:#E3F7F1;color:#1F9E83}
+.nav-item.active{background:#FFF4E5;color:#E07B00}
 
 /* ========= FAB ========= */
-.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 108px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#35C6A0,#1F9E83);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(53,198,160,0.4);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
+.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 108px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#FF9500,#E07B00);color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(255,149,0,0.35);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
 
 /* ========= Modal ========= */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-end;justify-content:center}
@@ -140,12 +142,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .form-group textarea{resize:vertical;min-height:60px}
 .form-actions{display:flex;gap:8px;margin-top:18px}
 .form-actions button{flex:1}
-.btn-cancel{padding:12px;border-radius:12px;background:#fff;color:#1C1C1E;border:none;font-size:15px;cursor:pointer}
-.btn-save{padding:12px;border-radius:12px;background:#35C6A0;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
+.btn-cancel{padding:12px;border-radius:999px;background:#fff;color:#1C1C1E;border:1px solid #EDEDF0;font-size:15px;cursor:pointer}
+.btn-save{padding:12px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
 /* ========= 自定义分类 chips ========= */
 .cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.cat-chip{padding:6px 14px;border-radius:16px;background:#F5F5F7;color:#1C1C1E;font-size:12px;cursor:pointer;border:none;outline:none;font-family:inherit;transition:all .15s}
-.cat-chip.active{background:#35C6A0;color:#fff}
+.cat-chip{padding:6px 14px;border-radius:999px;background:#fff;color:#1C1C1E;font-size:12px;cursor:pointer;border:1px solid #EDEDF0;outline:none;font-family:inherit;transition:all .15s}
+.cat-chip.active{background:#FFF4E5;color:#E07B00;border-color:#FFD9A8;font-weight:600}
 
 /* ========= 列表编辑器 ========= */
 .list-editor{background:#fff;border-radius:12px;padding:10px}
@@ -153,14 +155,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
 .list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
 .list-editor .ing-add input{flex:1;padding:8px 12px;border:none;border-radius:8px;background:#F5F5F7;font-size:13px;outline:none;color:#1C1C1E}
-.list-editor .ing-add button{padding:8px 14px;border-radius:8px;background:#35C6A0;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
+.list-editor .ing-add button{padding:8px 16px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
 
 /* ===== Switch 开关 ===== */
 .switch{position:relative;display:inline-block;width:48px;height:28px;margin-top:4px}
 .switch input{opacity:0;width:0;height:0}
 .switch .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#E5E5EA;border-radius:14px;transition:.2s}
 .switch .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
-.switch input:checked + .slider{background:#35C6A0}
+.switch input:checked + .slider{background:#FF9500}
 .switch input:checked + .slider:before{transform:translateX(20px)}
 
 /* ===== 版本 footer ===== */
@@ -168,13 +170,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 /* ===== 分类管理页 ===== */
 .cat-hero{padding-bottom:4px}
-.back-btn{display:inline-flex;align-items:center;gap:2px;background:none;border:none;color:#35C6A0;font-size:13px;font-weight:500;cursor:pointer;outline:none;padding:0;margin-bottom:8px;font-family:inherit}
+.back-btn{display:inline-flex;align-items:center;gap:2px;background:none;border:none;color:#FF9500;font-size:13px;font-weight:500;cursor:pointer;outline:none;padding:0;margin-bottom:8px;font-family:inherit}
 .back-btn svg{width:16px;height:16px}
 .add-cat-row{display:flex;gap:8px;margin-top:14px}
 .add-cat-row input{flex:1;padding:12px 14px;border:none;border-radius:12px;background:#F5F5F7;font-size:14px;color:#1C1C1E;outline:none;font-family:inherit}
-.add-cat-row .btn-save{padding:12px 22px;border-radius:12px;flex:0 0 auto}
+.add-cat-row .btn-save{padding:12px 22px;border-radius:999px;flex:0 0 auto}
 .cat-row-name{flex:1;min-width:0;font-size:14px;color:#1C1C1E;font-weight:500;text-align:left;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit}
-.cat-row-name:active{color:#35C6A0}
+.cat-row-name:active{color:#FF9500}
 </style>
 </head>
 <body>
@@ -261,7 +263,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.9</div>
+      <div class="hero-sub">生活管家 v8.9.10</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -273,13 +275,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       </div>
       <div class="list-card" style="margin-top:12px">
         <div class="list-row" onclick="goToPage('cats')">
-          <span class="row-ic" style="color:#35C6A0;background:#E3F7F1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+          <span class="row-ic" style="color:#FF9500;background:#FFF4E5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
           <div class="info"><div class="name">分类管理</div><div class="meta">自定义新增 / 重命名 / 删除分类</div></div>
           <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.9 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.10 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -423,7 +425,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.9';
+const VERSION = '8.9.10';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
@@ -668,7 +670,7 @@ function renderHome(){
 
   // 2×2 统计网格（淡雅四色点缀）
   document.getElementById('home-stats-grid').innerHTML=
-    statCard('leaf','食材库',ings.length,'ingredients','#35C6A0','#E3F7F1')+
+    statCard('leaf','食材库',ings.length,'ingredients','#FF9500','#FFF4E5')+
     statCard('paw','宠物用品',pets.length,'pets','#F0A35E','#FDF3E8')+
     statCard('book','食谱',recs.length,'recipes','#E8839A','#FCEEF2')+
     statCard('target','种草',wish.length,'stats','#2FB6A3','#E4F6F3');
@@ -688,7 +690,7 @@ function renderHome(){
       <div class="list-row" onclick="goToPage('recipes')">
         <span class="row-ic" style="color:#E8839A;background:#FCEEF2">${ICONS.book}</span>
         <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.time?' · '+r.time:''}</div></div>
-        <span class="tag-mini" style="color:#35C6A0;background:#E3F7F1">今日</span>
+        <span class="tag-mini" style="color:#FF9500;background:#FFF4E5">今日</span>
       </div>`).join('')+`</div>`
       :`<div class="empty-card" style="margin-top:10px" onclick="goToPage('recipes')"><span class="ec-icon">${ICONS.book}</span><p>今天还没选食谱哦 ~</p><span class="ec-hint">去食谱里勾选</span></div>`);
 
@@ -755,7 +757,7 @@ function renderCatsPage(){
       <button class="cat-row-name" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">${c}</button>
       <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
       <button class="act-btn" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">✎</button>
-      <button class="act-btn" onclick="removeCat('${catTab}','${c.replace(/'/g,"\\'")}')">🗑</button>
+      <button class="act-btn del" onclick="removeCat('${catTab}','${c.replace(/'/g,"\\'")}')">🗑</button>
     </div>`).join('')
     :`<div style="padding:24px;text-align:center;color:#C7C7CC;font-size:13px">还没有分类，下方添加一个吧</div>`;
 }
@@ -796,7 +798,7 @@ function renderLocsPage(){
       <button class="cat-row-name" onclick="renameLoc('${c.replace(/'/g,"\\'")}')">${c}</button>
       <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
       <button class="act-btn" onclick="renameLoc('${c.replace(/'/g,"\\'")}')">✎</button>
-      <button class="act-btn" onclick="removeLoc('${c.replace(/'/g,"\\'")}')">🗑</button>
+      <button class="act-btn del" onclick="removeLoc('${c.replace(/'/g,"\\'")}')">🗑</button>
     </div>`).join('')
     :`<div style="padding:24px;text-align:center;color:#C7C7CC;font-size:13px">还没有位置，下方添加一个吧</div>`;
 }
@@ -842,7 +844,7 @@ function renderIngredients(){
     <span class="tag-mini">${i.category}</span>
     <div class="row-actions">
       <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
-      <button class="act-btn" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
+      <button class="act-btn del" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
     </div>
   </div>`).join('')+`</div>`;
 }
@@ -863,7 +865,7 @@ function renderPets(){
     <span class="tag-mini">${i.category}</span>
     <div class="row-actions">
       <button class="act-btn" onclick="openModal('pet','${i.id}')">✎</button>
-      <button class="act-btn" onclick="deleteItem('pet','${i.id}')">🗑</button>
+      <button class="act-btn del" onclick="deleteItem('pet','${i.id}')">🗑</button>
     </div>
   </div>`).join('')+`</div>`;
 }
@@ -880,13 +882,13 @@ function renderRecipes(){
       <div class="item-info">
         <span class="item-icon">${ICONS.book}</span>
         <div>
-          <div class="name">${i.name}${i.recent?' <span style="font-size:10px;color:#35C6A0;background:#E3F7F1;padding:2px 6px;border-radius:6px">今日</span>':''}</div>
+          <div class="name">${i.name}${i.recent?' <span style="font-size:10px;color:#FF9500;background:#FFF4E5;padding:2px 6px;border-radius:6px">今日</span>':''}</div>
           <div class="meta">${i.category}${i.time?' · ⏱ '+i.time:''}</div>
         </div>
       </div>
       <div class="row-actions">
         <button class="act-btn" onclick="openModal('recipe','${i.id}')">✎</button>
-        <button class="act-btn" onclick="deleteItem('recipe','${i.id}')">🗑</button>
+        <button class="act-btn del" onclick="deleteItem('recipe','${i.id}')">🗑</button>
       </div>
     </div>
     ${i.ingredients&&i.ingredients.length?`<div style="font-size:12px;color:#8E8E93;margin:8px 0 4px">🧾 食材：${i.ingredients.join('、')}</div>`:''}
@@ -902,7 +904,7 @@ function renderRecipes(){
       <div class="info"><div class="name">${w.name}</div><div class="meta">${w.type||'未分类'}${w.note?' · '+w.note:''}</div></div>
       <div class="row-actions">
         <button class="act-btn" onclick="openModal('wish','${w.id}')">✎</button>
-        <button class="act-btn" onclick="deleteItem('wish','${w.id}')">🗑</button>
+        <button class="act-btn del" onclick="deleteItem('wish','${w.id}')">🗑</button>
       </div>
     </div>`).join('')+`</div>`
     :`<div class="empty-card" onclick="openModal('wish')"><span class="ec-icon">${ICONS.target}</span><p>还没有种草菜单哦 ~</p><span class="ec-hint">点击添加</span></div>`;

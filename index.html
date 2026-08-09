@@ -160,6 +160,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
 .list-editor .ing-add input{flex:1;padding:8px 12px;border:none;border-radius:8px;background:#F5F5F7;font-size:13px;outline:none;color:#1C1C1E}
 .list-editor .ing-add button{padding:8px 14px;border-radius:8px;background:#35C6A0;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
+
+/* ===== Switch 开关 ===== */
+.switch{position:relative;display:inline-block;width:48px;height:28px;margin-top:4px}
+.switch input{opacity:0;width:0;height:0}
+.switch .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#E5E5EA;border-radius:14px;transition:.2s}
+.switch .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.switch input:checked + .slider{background:#35C6A0}
+.switch input:checked + .slider:before{transform:translateX(20px)}
+
+/* ===== 版本 footer ===== */
+.version-footer{text-align:center;color:#C7C7CC;font-size:12px;padding:24px 0 8px}
 </style>
 </head>
 <body>
@@ -176,9 +187,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <!-- 2×2 统计网格 -->
       <div class="stat-grid" id="home-stats-grid"></div>
 
-      <!-- 区块 B：食材新鲜度（进度卡） -->
-      <button class="sec-head" onclick="goToPage('ingredients')">
-        <span class="sec-title">食材新鲜度</span>
+      <!-- 区块 B：今日食谱 -->
+      <button class="sec-head" onclick="goToPage('recipes')">
+        <span class="sec-title">今日食谱</span>
         <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
       <div id="home-progress"></div>
@@ -190,20 +201,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       </button>
       <div id="home-pets"></div>
 
-      <!-- 区块 D：我的食谱 -->
-      <button class="sec-head" onclick="goToPage('recipes')">
-        <span class="sec-title">我的食谱</span>
+      <!-- 区块 D：种草菜单 -->
+      <button class="sec-head" onclick="goToPage('stats')">
+        <span class="sec-title">种草菜单</span>
         <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
-      <div id="home-recipes"></div>
+      <div id="home-wishlist"></div>
     </div>
   </div>
 
   <!-- ========= Ingredients ========= -->
   <div id="page-ingredients" class="page">
     <div class="hero">
-      <div class="hero-title">食材管理</div>
-      <div class="hero-sub">共 <span id="ing-count">0</span> 件食材</div>
+      <div class="hero-title">食材库</div>
+      <div class="hero-sub">共 <span id="ing-count">0</span> 种会做的食材</div>
     </div>
     <div class="content">
       <div class="filter-row" id="ing-filters"></div>
@@ -235,11 +246,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     </div>
   </div>
 
-  <!-- ========= Stats（数据概览） ========= -->
+  <!-- ========= Settings（设置） ========= -->
   <div id="page-stats" class="page">
     <div class="hero">
-      <div class="hero-title">数据概览</div>
-      <div class="hero-sub">所有数据一目了然</div>
+      <div class="hero-title">设置</div>
+      <div class="hero-sub">生活管家 v8.9.5</div>
     </div>
     <div class="content">
       <div class="stat-big">
@@ -249,7 +260,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <div class="stat-grid">
         <div class="stat-card">
           <div class="stat-top"><span class="stat-icon" id="st-ic-1"></span><span class="stat-num" id="st-ing">0</span></div>
-          <div class="stat-label">食材</div>
+          <div class="stat-label">食材库</div>
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-icon" id="st-ic-2"></span><span class="stat-num" id="st-pet">0</span></div>
@@ -261,14 +272,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
         <div class="stat-card">
           <div class="stat-top"><span class="stat-icon" id="st-ic-4"></span><span class="stat-num" id="st-warn">0</span></div>
-          <div class="stat-label">临期食材</div>
+          <div class="stat-label">种草菜单</div>
         </div>
       </div>
+
+      <button class="sec-head" onclick="void 0">
+        <span class="sec-title">种草菜单</span>
+        <span class="sec-more">点 + 添加</span>
+      </button>
+      <div id="wish-manage"></div>
+
       <button class="sec-head" onclick="void 0">
         <span class="sec-title">分类管理</span>
         <span class="sec-more">点 × 删除</span>
       </button>
       <div id="cat-manage"></div>
+
+      <div class="version-footer">生活管家 v8.9.5 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -290,7 +310,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><span>食谱</span>
     </button>
     <button class="nav-item" data-page="stats">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span><span>数据</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span><span>设置</span>
     </button>
   </nav>
 
@@ -307,9 +327,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
             <input type="text" id="ing-category" placeholder="选择下方分类，或输入新的">
             <div class="cat-chips" id="ing-cat-chips"></div>
           </div>
-          <div class="form-group"><label>数量</label><input type="text" id="ing-qty" placeholder="如 500g / 2个" required></div>
-          <div class="form-group"><label>过期日期</label><input type="date" id="ing-expiry"></div>
-          <div class="form-group"><label>备注</label><input type="text" id="ing-note"></div>
+          <div class="form-group"><label>备注</label><input type="text" id="ing-note" placeholder="如：会做、常做"></div>
         </div>
 
         <div id="fields-pet" style="display:none">
@@ -329,7 +347,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
             <div class="cat-chips" id="rec-cat-chips"></div>
           </div>
           <div class="form-group"><label>烹饪时长</label><input type="text" id="rec-time" placeholder="如 15分钟"></div>
-          <div class="form-group"><label>食材清单</label>
+          <div class="form-group"><label>所需食材</label>
             <div class="list-editor" id="rec-ingredients-editor">
               <div class="ing-add">
                 <input type="text" id="rec-ing-input" placeholder="输入食材后回车">
@@ -337,8 +355,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
               </div>
             </div>
           </div>
+          <div class="form-group"><label>配料</label>
+            <div class="list-editor" id="rec-seasonings-editor">
+              <div class="ing-add">
+                <input type="text" id="rec-seas-input" placeholder="如 盐、生抽、料酒">
+                <button type="button" onclick="addSeasItem()">添加</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group"><label>加入今日食谱</label>
+            <label class="switch"><input type="checkbox" id="rec-recent"><span class="slider"></span></label>
+          </div>
           <div class="form-group"><label>烹饪步骤</label><textarea id="rec-steps" rows="3" placeholder="1. ..."></textarea></div>
           <div class="form-group"><label>备注</label><input type="text" id="rec-note"></div>
+        </div>
+
+        <div id="fields-wishlist" style="display:none">
+          <div class="form-group"><label>菜名</label><input type="text" id="wish-name" placeholder="想尝试的菜" required></div>
+          <div class="form-group"><label>类型</label><input type="text" id="wish-type" placeholder="如 中餐 / 甜品 / 餐厅打卡"></div>
+          <div class="form-group"><label>备注</label><input type="text" id="wish-note" placeholder="为什么种草？"></div>
         </div>
 
         <div class="form-actions">
@@ -352,6 +387,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
+const VERSION = '8.9.5';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
@@ -359,14 +395,15 @@ const DEFAULT_CATS = {
 };
 function getData(){
   try{
-    const d=JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[]};
+    const d=JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[],wishlist:[]};
+    d.wishlist=d.wishlist||[];
     d.cats={
       ingredients:(d.cats&&d.cats.ingredients)||DEFAULT_CATS.ingredients.slice(),
       pets:(d.cats&&d.cats.pets)||DEFAULT_CATS.pets.slice(),
       recipes:(d.cats&&d.cats.recipes)||DEFAULT_CATS.recipes.slice()
     };
     return d;
-  }catch{return{ingredients:[],pets:[],recipes:[],cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
+  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
 }
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
 
@@ -394,7 +431,8 @@ function goToPage(p){
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>goToPage(b.dataset.page)));
 
 function quickAdd(){
-  if(currentPage==='home'||currentPage==='stats') openModal('ingredient');
+  if(currentPage==='stats') openModal('wish');
+  else if(currentPage==='home') openModal('ingredient');
   else openModal(currentPage==='ingredients'?'ingredient':currentPage==='pets'?'pet':'recipe');
 }
 
@@ -425,23 +463,29 @@ function openModal(type,id){
   document.getElementById('fields-ingredient').style.display=type==='ingredient'?'':'none';
   document.getElementById('fields-pet').style.display=type==='pet'?'':'none';
   document.getElementById('fields-recipe').style.display=type==='recipe'?'':'none';
-  const t={ingredient:'食材',pet:'宠物用品',recipe:'食谱'};
+  document.getElementById('fields-wishlist').style.display=type==='wish'?'':'none';
+  const t={ingredient:'食材',pet:'宠物用品',recipe:'食谱',wish:'种草菜单'};
   document.getElementById('modal-title').textContent=(editId?'编辑':'添加')+t[type];
   document.getElementById('modal-form').reset();
   document.querySelectorAll('#rec-ingredients-editor .ing-row').forEach(e=>e.remove());
+  document.querySelectorAll('#rec-seasonings-editor .ing-row').forEach(e=>e.remove());
   if(editId){
-    const d=getData(); let arr=type==='ingredient'?d.ingredients:type==='pet'?d.pets:d.recipes;
+    const d=getData();
+    let arr=type==='ingredient'?d.ingredients:type==='pet'?d.pets:type==='recipe'?d.recipes:d.wishlist;
     const it=arr.find(i=>i.id===editId); if(it){
       if(type==='ingredient'){
-        ing_name.value=it.name||''; ing_category.value=it.category||'';
-        ing_qty.value=it.qty||''; ing_expiry.value=it.expiry||''; ing_note.value=it.note||'';
+        ing_name.value=it.name||''; ing_category.value=it.category||''; ing_note.value=it.note||'';
       } else if(type==='pet'){
         pet_name.value=it.name||''; pet_category.value=it.category||'';
         pet_qty.value=it.qty||''; pet_note.value=it.note||'';
-      } else {
+      } else if(type==='recipe'){
         rec_name.value=it.name||''; rec_category.value=it.category||'';
         rec_time.value=it.time||''; rec_steps.value=it.steps||''; rec_note.value=it.note||'';
+        rec_recent.checked=!!it.recent;
         (it.ingredients||[]).forEach(v=>addIngItem(v));
+        (it.seasonings||[]).forEach(v=>addSeasItem(v));
+      } else {
+        wish_name.value=it.name||''; wish_type.value=it.type||''; wish_note.value=it.note||'';
       }
     }
   }
@@ -491,13 +535,33 @@ document.getElementById('rec-ing-input').addEventListener('keydown',function(e){
   }
 });
 
+function addSeasItem(text){
+  const ed=document.getElementById('rec-seasonings-editor');
+  const addLine=ed.querySelector('.ing-add');
+  const row=document.createElement('div');
+  row.className='ing-row';
+  row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+(text||'')+'</span>';
+  if(text) ed.insertBefore(row,addLine);
+}
+document.getElementById('rec-seas-input').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&this.value.trim()){
+    e.preventDefault();
+    const ed=document.getElementById('rec-seasonings-editor');
+    const addLine=ed.querySelector('.ing-add');
+    const row=document.createElement('div');
+    row.className='ing-row';
+    row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+this.value.trim()+'</span>';
+    ed.insertBefore(row,addLine); this.value='';
+  }
+});
+
 function saveForm(){
   const d=getData(); let item;
   const uid=()=>'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
   if(modalMode==='ingredient'){
     const n=ing_name.value.trim(); if(!n){alert('请输入名称');return}
     const cat=ing_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,category:cat,qty:ing_qty.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,category:cat,note:ing_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.ingredients.findIndex(x=>x.id===editId);if(i>-1)d.ingredients[i]=item}
     else d.ingredients.unshift(item);
   } else if(modalMode==='pet'){
@@ -509,15 +573,23 @@ function saveForm(){
   } else if(modalMode==='recipe'){
     const n=rec_name.value.trim(); if(!n){alert('请输入名称');return}
     const cat=rec_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    const ings=[];
+    const ings=[],seas=[];
     document.querySelectorAll('#rec-ingredients-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())ings.push(el.textContent.trim())});
-    item={id:editId||uid(),name:n,category:cat,time:rec_time.value.trim(),ingredients:ings,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
+    document.querySelectorAll('#rec-seasonings-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())seas.push(el.textContent.trim())});
+    item={id:editId||uid(),name:n,category:cat,time:rec_time.value.trim(),ingredients:ings,seasonings:seas,recent:rec_recent.checked,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.recipes.findIndex(x=>x.id===editId);if(i>-1)d.recipes[i]=item}
     else d.recipes.unshift(item);
+  } else if(modalMode==='wish'){
+    const n=wish_name.value.trim(); if(!n){alert('请输入菜名');return}
+    item={id:editId||uid(),name:n,type:wish_type.value.trim(),note:wish_note.value.trim(),createdAt:Date.now()};
+    if(editId){const i=d.wishlist.findIndex(x=>x.id===editId);if(i>-1)d.wishlist[i]=item}
+    else d.wishlist.unshift(item);
   }
-  // 新分类自动收录
-  const ck=modalMode==='ingredient'?'ingredients':modalMode==='pet'?'pets':'recipes';
-  if(!d.cats[ck].includes(item.category)){d.cats[ck].push(item.category)}
+  // 新分类自动收录（种草菜单不参与）
+  if(modalMode!=='wish'){
+    const ck=modalMode==='ingredient'?'ingredients':modalMode==='pet'?'pets':'recipes';
+    if(!d.cats[ck].includes(item.category)){d.cats[ck].push(item.category)}
+  }
   saveData(d); closeModal(); renderAll();
 }
 
@@ -526,38 +598,43 @@ function deleteItem(type,id){
   const d=getData();
   if(type==='ingredient')d.ingredients=d.ingredients.filter(x=>x.id!==id);
   else if(type==='pet')d.pets=d.pets.filter(x=>x.id!==id);
-  else d.recipes=d.recipes.filter(x=>x.id!==id);
+  else if(type==='recipe')d.recipes=d.recipes.filter(x=>x.id!==id);
+  else d.wishlist=d.wishlist.filter(x=>x.id!==id);
   saveData(d); renderAll();
 }
 
-/* ===== 首页渲染（2×2 统计 + 进度卡 + 空状态/内容卡） ===== */
+/* ===== 首页渲染（2×2 统计 + 今日食谱进度卡 + 内容/空状态卡） ===== */
 function renderHome(){
   const d=getData();
-  const ings=d.ingredients, pets=d.pets, recs=d.recipes;
-  const now=new Date();
-  const expired=ings.filter(i=>i.expiry&&new Date(i.expiry)<now);
-  const near=ings.filter(i=>i.expiry&&new Date(i.expiry)>=now&&(new Date(i.expiry)-now)/864e5<=3);
-  const usable=ings.length-expired.length;
-  const pct=ings.length?Math.round(usable/ings.length*100):0;
+  const ings=d.ingredients, pets=d.pets, recs=d.recipes, wish=d.wishlist;
+  const recentRecs=recs.filter(r=>r.recent);
+  const pct=recs.length?Math.round(recentRecs.length/recs.length*100):0;
 
   // 2×2 统计网格（淡雅四色点缀）
   document.getElementById('home-stats-grid').innerHTML=
-    statCard('leaf','食材',ings.length,'ingredients','#35C6A0','#E3F7F1')+
+    statCard('leaf','食材库',ings.length,'ingredients','#35C6A0','#E3F7F1')+
     statCard('paw','宠物用品',pets.length,'pets','#F0A35E','#FDF3E8')+
     statCard('book','食谱',recs.length,'recipes','#E8839A','#FCEEF2')+
-    statCard('clock','临期',expired.length+near.length,'ingredients','#2FB6A3','#E4F6F3');
+    statCard('target','种草',wish.length,'stats','#2FB6A3','#E4F6F3');
 
-  // 进度卡：食材新鲜度
-  document.getElementById('home-progress').innerHTML=`
-    <div class="progress-card" onclick="goToPage('ingredients')">
+  // 区块 B：今日食谱（进度卡 + 已选列表）
+  document.getElementById('home-progress').innerHTML=
+    `<div class="progress-card" onclick="goToPage('recipes')">
       <div class="pc-top">
-        <span class="pc-ic">${ICONS.leaf}</span>
-        <span class="pc-tag">食材新鲜度</span>
+        <span class="pc-ic">${ICONS.book}</span>
+        <span class="pc-tag">今日食谱</span>
         <span class="pc-pct">${pct}%</span>
       </div>
       <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-      <div class="pc-bottom"><span>可用 ${usable} 件</span><span>临期 ${expired.length+near.length} 件</span></div>
-    </div>`;
+      <div class="pc-bottom"><span>已选 ${recentRecs.length} 道</span><span>共 ${recs.length} 道</span></div>
+    </div>`+
+    (recentRecs.length?`<div class="list-card" style="margin-top:10px">`+recentRecs.slice(0,3).map(r=>`
+      <div class="list-row" onclick="goToPage('recipes')">
+        <span class="row-ic" style="color:#E8839A;background:#FCEEF2">${ICONS.book}</span>
+        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.time?' · '+r.time:''}</div></div>
+        <span class="tag-mini" style="color:#35C6A0;background:#E3F7F1">今日</span>
+      </div>`).join('')+`</div>`
+      :`<div class="empty-card" style="margin-top:10px" onclick="goToPage('recipes')"><span class="ec-icon">${ICONS.book}</span><p>今天还没选食谱哦 ~</p><span class="ec-hint">去食谱里勾选</span></div>`);
 
   // 宠物用品（有数据显示最近，无数据空状态卡）
   document.getElementById('home-pets').innerHTML=pets.length?
@@ -569,15 +646,15 @@ function renderHome(){
       </div>`).join('')+`</div>`
     :emptyCard('paw','还没有宠物用品哦 ~','pet');
 
-  // 我的食谱
-  document.getElementById('home-recipes').innerHTML=recs.length?
-    `<div class="list-card">`+recs.slice(0,2).map(r=>`
-      <div class="list-row" onclick="goToPage('recipes')">
-        <span class="row-ic" style="color:#E8839A;background:#FCEEF2">${ICONS.book}</span>
-        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.time?' · '+r.time:''}</div></div>
+  // 区块 D：种草菜单
+  document.getElementById('home-wishlist').innerHTML=wish.length?
+    `<div class="list-card">`+wish.slice(0,2).map(w=>`
+      <div class="list-row" onclick="goToPage('stats')">
+        <span class="row-ic" style="color:#2FB6A3;background:#E4F6F3">${ICONS.target}</span>
+        <div class="info"><div class="name">${w.name}</div><div class="meta">${w.type||'未分类'}${w.note?' · '+w.note:''}</div></div>
         <span class="chev">${ICONS.chev}</span>
       </div>`).join('')+`</div>`
-    :emptyCard('book','还没有收藏食谱呢 ~','recipe');
+    :emptyCard('target','还没有种草菜单哦 ~','wish');
 }
 
 function statCard(icon,label,num,page,c,bg){
@@ -595,28 +672,36 @@ function emptyCard(icon,text,type){
   </div>`;
 }
 
-/* ===== 统计页 ===== */
-function renderStats(){
+/* ===== 设置页 ===== */
+function renderSettings(){
   const d=getData();
-  const now=new Date();
-  const expired=d.ingredients.filter(i=>i.expiry&&new Date(i.expiry)<now);
-  const near=d.ingredients.filter(i=>i.expiry&&new Date(i.expiry)>=now&&(new Date(i.expiry)-now)/864e5<=3);
-  document.getElementById('st-total').textContent=d.ingredients.length+d.pets.length+d.recipes.length;
+  document.getElementById('st-total').textContent=d.ingredients.length+d.pets.length+d.recipes.length+d.wishlist.length;
   document.getElementById('st-ing').textContent=d.ingredients.length;
   document.getElementById('st-pet').textContent=d.pets.length;
   document.getElementById('st-rec').textContent=d.recipes.length;
-  document.getElementById('st-warn').textContent=expired.length+near.length;
+  document.getElementById('st-warn').textContent=d.wishlist.length;
   document.getElementById('st-ic-1').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#35C6A0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg>`;
   document.getElementById('st-ic-2').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#F0A35E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="16" r="2"/><ellipse cx="12" cy="14.5" rx="3.2" ry="3.6"/></svg>`;
   document.getElementById('st-ic-3').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#E8839A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`;
-  document.getElementById('st-ic-4').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#2FB6A3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+  document.getElementById('st-ic-4').innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="#2FB6A3" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`;
   const icBg=['#E3F7F1','#FDF3E8','#FCEEF2','#E4F6F3'];
   ['st-ic-1','st-ic-2','st-ic-3','st-ic-4'].forEach((id,i)=>document.getElementById(id).style.background=icBg[i]);
   document.getElementById('ing-count').textContent=d.ingredients.length;
   document.getElementById('pet-count').textContent=d.pets.length;
   document.getElementById('rec-count').textContent=d.recipes.length;
+  // 种草菜单管理
+  document.getElementById('wish-manage').innerHTML=d.wishlist.length?
+    `<div class="list-card">`+d.wishlist.map(w=>`<div class="list-row">
+      <span class="row-ic" style="color:#2FB6A3;background:#E4F6F3">${ICONS.target}</span>
+      <div class="info"><div class="name">${w.name}</div><div class="meta">${w.type||'未分类'}${w.note?' · '+w.note:''}</div></div>
+      <div class="row-actions">
+        <button class="act-btn" onclick="openModal('wish','${w.id}')">✎</button>
+        <button class="act-btn" onclick="deleteItem('wish','${w.id}')">🗑</button>
+      </div>
+    </div>`).join('')+`</div>`
+    :`<div class="empty-card" onclick="openModal('wish')"><span class="ec-icon">${ICONS.target}</span><p>还没有种草菜单哦 ~</p><span class="ec-hint">点击添加</span></div>`;
   // 分类管理（可删除）
-  const catLabels={ingredients:'🥬 食材分类',pets:'🐾 宠物分类',recipes:'📖 食谱分类'};
+  const catLabels={ingredients:'🥬 食材库分类',pets:'🐾 宠物分类',recipes:'📖 食谱分类'};
   document.getElementById('cat-manage').innerHTML=Object.keys(catLabels).map(k=>`
     <div class="list-card" style="margin-bottom:12px">
       <div style="font-size:13px;font-weight:600;color:#1C1C1E;padding:12px 0 2px">${catLabels[k]}</div>
@@ -631,29 +716,25 @@ function removeCat(type,cat){
   saveData(d); renderAll();
 }
 
-/* ===== 食材列表 ===== */
+/* ===== 食材库列表 ===== */
 function renderIngredients(){
   const d=getData();
   let items=d.ingredients;
   if(ingFilter!=='all')items=items.filter(i=>i.category===ingFilter);
   const el=document.getElementById('ingredient-list');
-  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.leaf}</span><p>还没有食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
-  el.innerHTML=`<div class="list-card">`+items.map(i=>{
-    const expired=i.expiry&&new Date(i.expiry)<new Date();
-    const near=i.expiry&&!expired&&(new Date(i.expiry)-new Date())/864e5<=3;
-    return `<div class="list-row">
-      <div class="row-check ${expired?'empty':''}">${expired?'!':'✓'}</div>
-      <div class="info">
-        <div class="name">${i.name}</div>
-        <div class="meta">${i.qty||'—'}${i.expiry?' · '+i.expiry:''}${i.note?' · '+i.note:''}</div>
-      </div>
-      ${expired?'<span class="tag-mini danger">已过期</span>':near?'<span class="tag-mini warn">临期</span>':'<span class="tag-mini">'+i.category+'</span>'}
-      <div class="row-actions">
-        <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
-        <button class="act-btn" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
-      </div>
-    </div>`;
-  }).join('')+`</div>`;
+  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.leaf}</span><p>还没有记录会做的食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
+  el.innerHTML=`<div class="list-card">`+items.map(i=>`<div class="list-row">
+    <span class="row-ic">${ICONS.leaf}</span>
+    <div class="info">
+      <div class="name">${i.name}</div>
+      <div class="meta">${i.note||'吃过 · 会做'}</div>
+    </div>
+    <span class="tag-mini">${i.category}</span>
+    <div class="row-actions">
+      <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
+      <button class="act-btn" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
+    </div>
+  </div>`).join('')+`</div>`;
 }
 
 /* ===== 宠物列表 ===== */
@@ -683,13 +764,13 @@ function renderRecipes(){
   let items=d.recipes;
   if(recFilter!=='all')items=items.filter(i=>i.category===recFilter);
   const el=document.getElementById('recipe-list');
-  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.book}</span><p>还没有收藏食谱呢 ~</p><span class="ec-hint">点击添加</span></div>`;return}
+  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.book}</span><p>还没有记录食谱哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
   el.innerHTML=items.map(i=>`<div class="item-card">
     <div class="item-head">
       <div class="item-info">
         <span class="item-icon">${ICONS.book}</span>
         <div>
-          <div class="name">${i.name}</div>
+          <div class="name">${i.name}${i.recent?' <span style="font-size:10px;color:#35C6A0;background:#E3F7F1;padding:2px 6px;border-radius:6px">今日</span>':''}</div>
           <div class="meta">${i.category}${i.time?' · ⏱ '+i.time:''}</div>
         </div>
       </div>
@@ -698,13 +779,14 @@ function renderRecipes(){
         <button class="act-btn" onclick="deleteItem('recipe','${i.id}')">🗑</button>
       </div>
     </div>
-    ${i.ingredients.length?`<div style="font-size:12px;color:#8E8E93;margin:8px 0">🧾 ${i.ingredients.join('、')}</div>`:''}
+    ${i.ingredients&&i.ingredients.length?`<div style="font-size:12px;color:#8E8E93;margin:8px 0 4px">🧾 食材：${i.ingredients.join('、')}</div>`:''}
+    ${i.seasonings&&i.seasonings.length?`<div style="font-size:12px;color:#8E8E93;margin:4px 0">🧂 配料：${i.seasonings.join('、')}</div>`:''}
     ${i.steps?`<div class="detail-txt">${i.steps}</div>`:''}
     ${i.note?`<div class="detail-meta">📌 ${i.note}</div>`:''}
   </div>`).join('');
 }
 
-function renderAll(){renderFilters('ingredients');renderFilters('pets');renderFilters('recipes');renderHome();renderIngredients();renderPets();renderRecipes();renderStats();}
+function renderAll(){renderFilters('ingredients');renderFilters('pets');renderFilters('recipes');renderHome();renderIngredients();renderPets();renderRecipes();renderSettings();}
 renderAll();
 
 if ('serviceWorker' in navigator) {

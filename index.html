@@ -191,6 +191,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .picker-item:active{background:#F8F8FA}
 .picker-item .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:#FFF4E5;color:#E07B00;font-size:13px;font-weight:600}
 .picker-item .more{margin-left:auto;background:none;border:none;color:#C7C7CC;font-size:18px;cursor:pointer;padding:4px 10px;line-height:1}
+.sub-btn{background:#F2F2F7;border:none;color:#E07B00;font-size:11px;padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;margin-left:auto}
+.picker-back{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;color:#FF9500;font-size:14px;font-weight:600;cursor:pointer;border-bottom:1px solid #F2F2F7;margin-bottom:4px}
+.sub-row{display:flex;align-items:center;gap:10px;padding:10px 4px 10px 16px;border-bottom:1px solid #F2F2F7}
+.sub-row .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:#FFF4E5;color:#E07B00;font-size:12px;font-weight:600}
+.sub-row .use-count{font-size:11px;color:#A0A0A8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-add{background:none;border:none;color:#FF9500;font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px;font-family:inherit}
 .picker-create{padding:12px;text-align:center;color:#FF9500;font-size:14px;font-weight:600;cursor:pointer;border-top:1px solid #F2F2F7;margin-top:8px}
 .picker-nomatch{padding:24px;text-align:center;color:#C7C7CC;font-size:13px}
 
@@ -289,7 +295,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.15</div>
+      <div class="hero-sub">生活管家 v8.9.16</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -307,7 +313,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.15 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.16 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -387,8 +393,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
             <input name="field" type="hidden" id="ing-status">
             <button type="button" class="picker-field" onclick="openPicker('statuses','ing-status')"><span id="ing-status-label">点击选择状态</span><span class="chev">›</span></button>
           </div>
-          <div class="form-group"><label>分类</label>
+          <div class="form-group"><label>分类（可再选二级）</label>
             <input name="field" type="hidden" id="ing-category">
+            <input name="field" type="hidden" id="ing-subcategory">
             <button type="button" class="picker-field" onclick="openPicker('ingredients','ing-category')"><span id="ing-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
           <div class="form-group"><label>存储位置</label>
@@ -413,8 +420,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-pet" style="display:none">
           <div class="form-group"><label>名称</label><input name="field" autocomplete="off" type="text" id="pet-title" required></div>
-          <div class="form-group"><label>分类</label>
+          <div class="form-group"><label>分类（可再选二级）</label>
             <input name="field" type="hidden" id="pet-category">
+            <input name="field" type="hidden" id="pet-subcategory">
             <button type="button" class="picker-field" onclick="openPicker('pets','pet-category')"><span id="pet-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
           <div class="form-group"><label>数量</label><input name="field" autocomplete="off" type="text" id="pet-qty" required></div>
@@ -423,8 +431,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-recipe" style="display:none">
           <div class="form-group"><label>食谱名称</label><input name="field" autocomplete="off" type="text" id="rec-title" required></div>
-          <div class="form-group"><label>分类</label>
+          <div class="form-group"><label>分类（可再选二级）</label>
             <input name="field" type="hidden" id="rec-category">
+            <input name="field" type="hidden" id="rec-subcategory">
             <button type="button" class="picker-field" onclick="openPicker('recipes','rec-category')"><span id="rec-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
           <div class="form-group"><label>烹饪时长</label><input name="field" autocomplete="off" type="text" id="rec-time" placeholder="如 15分钟"></div>
@@ -485,7 +494,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.15';
+const VERSION = '8.9.16';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
@@ -501,13 +510,17 @@ function getData(){
     d.locations=d.locations||DEFAULT_LOCS.slice();
     d.statuses=d.statuses||DEFAULT_STATUSES.slice();
     d.units=d.units||DEFAULT_UNITS.slice();
+    d.subcats=d.subcats||{ingredients:{},pets:{},recipes:{}};
+    if(!d.subcats.ingredients)d.subcats.ingredients={};
+    if(!d.subcats.pets)d.subcats.pets={};
+    if(!d.subcats.recipes)d.subcats.recipes={};
     d.cats={
       ingredients:(d.cats&&d.cats.ingredients)||DEFAULT_CATS.ingredients.slice(),
       pets:(d.cats&&d.cats.pets)||DEFAULT_CATS.pets.slice(),
       recipes:(d.cats&&d.cats.recipes)||DEFAULT_CATS.recipes.slice()
     };
     return d;
-  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],locations:DEFAULT_LOCS.slice(),statuses:DEFAULT_STATUSES.slice(),units:DEFAULT_UNITS.slice(),cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
+  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],locations:DEFAULT_LOCS.slice(),statuses:DEFAULT_STATUSES.slice(),units:DEFAULT_UNITS.slice(),subcats:{ingredients:{},pets:{},recipes:{}},cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
 }
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
 
@@ -579,14 +592,17 @@ function openModal(type,id){
     const it=arr.find(i=>i.id===editId); if(it){
       if(type==='ingredient'){
         ing_title.value=it.name||''; ing_category.value=it.category||''; ing_note.value=it.note||'';
+        ing_subcategory.value=it.subcategory||'';
         ing_status.value=it.status||''; ing_location.value=it.location||''; ing_unit.value=it.unit||'';
         ing_qty.value=it.qty||''; ing_stock.value=it.stock||''; ing_indate.value=it.inDate||'';
         ing_shelf.value=it.shelfLife||''; ing_expiry.value=it.expiry||'';
       } else if(type==='pet'){
         pet_title.value=it.name||''; pet_category.value=it.category||'';
+        pet_subcategory.value=it.subcategory||'';
         pet_qty.value=it.qty||''; pet_note.value=it.note||'';
       } else if(type==='recipe'){
         rec_title.value=it.name||''; rec_category.value=it.category||'';
+        rec_subcategory.value=it.subcategory||'';
         rec_time.value=it.time||''; rec_steps.value=it.steps||''; rec_note.value=it.note||'';
         rec_recent.checked=!!it.recent;
         (it.ingredients||[]).forEach(v=>addIngItem(v));
@@ -602,27 +618,35 @@ function openModal(type,id){
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');modalMode=null;editId=null}
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
 
-/* ===== Bottom Sheet Picker（底部上滑选择器） ===== */
-let pickerKey=null, pickerInput=null;
+/* ===== Bottom Sheet Picker（底部上滑选择器，支持二级分类） ===== */
+let pickerKey=null, pickerInput=null, pickerLevel=0, pickerParent=null;
 const PICKER_TITLES={statuses:'选择状态',ingredients:'选择分类',locations:'选择存储位置',units:'选择单位',pets:'选择分类',recipes:'选择分类'};
 const PICKER_GROUPS={statuses:'已有状态',ingredients:'已有分类',locations:'已有位置',units:'已有单位',pets:'已有分类',recipes:'已有分类'};
+function isCatKey(){return pickerKey==='ingredients'||pickerKey==='pets'||pickerKey==='recipes'}
 function pickerArray(d){
   if(pickerKey==='statuses')return d.statuses;
   if(pickerKey==='units')return d.units;
   if(pickerKey==='locations')return d.locations;
+  if(pickerLevel===1&&pickerParent&&d.subcats[pickerKey][pickerParent])return d.subcats[pickerKey][pickerParent];
   return d.cats[pickerKey];
 }
+function subInputId(){return pickerInput?pickerInput.id.replace('category','subcategory'):null}
 function setPickerLabels(){
   ['ing-status','ing-category','ing-location','ing-unit','pet-category','rec-category'].forEach(function(id){
     const input=document.getElementById(id), label=document.getElementById(id+'-label');
     if(!input||!label)return;
     const placeholders={'ing-status':'点击选择状态','ing-category':'点击选择分类','ing-location':'点击选择位置','ing-unit':'点击选择单位','pet-category':'点击选择分类','rec-category':'点击选择分类'};
-    label.textContent=input.value||placeholders[id];
+    if(id.indexOf('category')>-1){
+      const sub=document.getElementById(id.replace('category','subcategory'));
+      label.textContent=(input.value||placeholders[id])+(sub&&sub.value?' / '+sub.value:'');
+    }else{
+      label.textContent=input.value||placeholders[id];
+    }
     label.classList.toggle('empty',!input.value);
   });
 }
 function openPicker(key,inputId){
-  pickerKey=key; pickerInput=document.getElementById(inputId);
+  pickerKey=key; pickerInput=document.getElementById(inputId); pickerLevel=0; pickerParent=null;
   document.getElementById('picker-title').textContent=PICKER_TITLES[key]||'选择';
   document.getElementById('picker-group').textContent=PICKER_GROUPS[key]||'已有选项';
   document.getElementById('picker-input').value='';
@@ -631,7 +655,7 @@ function openPicker(key,inputId){
   document.getElementById('picker-overlay').classList.add('open');
   setTimeout(function(){document.getElementById('picker-input').focus()},250);
 }
-function closePicker(){document.getElementById('picker-overlay').classList.remove('open');pickerKey=null;pickerInput=null}
+function closePicker(){document.getElementById('picker-overlay').classList.remove('open');pickerKey=null;pickerInput=null;pickerLevel=0;pickerParent=null}
 document.getElementById('picker-overlay').addEventListener('click',function(e){if(e.target===this)closePicker()});
 function renderPicker(){
   if(!pickerKey)return;
@@ -640,15 +664,31 @@ function renderPicker(){
   const all=pickerArray(d)||[];
   const items=q?all.filter(v=>v.toLowerCase().includes(q.toLowerCase())):all;
   const listEl=document.getElementById('picker-list');
-  listEl.innerHTML=items.length?items.map(v=>
-    `<div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
-      <span class="tag">${v}</span>
-      <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
-    </div>`).join('')
-    :'<div class="picker-nomatch">无匹配项</div>';
+  let backRow='';
+  if(isCatKey()&&pickerLevel===1){
+    backRow=`<div class="picker-back" onclick="pickerLevel=0;pickerParent=null;document.getElementById('picker-input').value='';renderPicker()"><span>‹ ${pickerParent||''}</span><span style="color:#8E8E93;font-weight:400;font-size:12px">选择二级分类</span></div>`;
+  }
+  let rows='';
+  if(isCatKey()&&pickerLevel===0){
+    rows=items.map(v=>{
+      const subs=d.subcats[pickerKey][v]||[];
+      return `<div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
+        <span class="tag">${v}</span>
+        ${subs.length?`<button class="sub-btn" onclick="event.stopPropagation();pickerLevel=1;pickerParent='${v.replace(/'/g,"\\'")}';document.getElementById('picker-input').value='';renderPicker()">${subs.length} 子 ›</button>`:''}
+        <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
+      </div>`;
+    }).join('');
+  }else{
+    rows=items.map(v=>`
+      <div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
+        <span class="tag">${v}</span>
+        <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
+      </div>`).join('');
+  }
+  listEl.innerHTML=backRow+(rows||'<div class="picker-nomatch">无匹配项</div>');
   const createEl=document.getElementById('picker-create');
   if(q&&!items.some(v=>v.toLowerCase()===q.toLowerCase())){
-    document.getElementById('picker-create-text').textContent=q;
+    document.getElementById('picker-create-text').textContent=q+(isCatKey()&&pickerLevel===1&&pickerParent?('（加入「'+pickerParent+'」）'):'');
     createEl.style.display='block';
   }else{
     createEl.style.display='none';
@@ -659,9 +699,25 @@ document.getElementById('picker-input').addEventListener('keydown',function(e){
   if(e.key==='Enter'){e.preventDefault();pickerCreate();}
 });
 function pickSelect(v){
+  const d=getData();
+  if(isCatKey()&&pickerLevel===0){
+    const subs=d.subcats[pickerKey][v]||[];
+    if(subs.length){pickerLevel=1;pickerParent=v;document.getElementById('picker-input').value='';renderPicker();return}
+    pickerInput.value=v;
+    const sub=document.getElementById(subInputId());
+    if(sub)sub.value='';
+    setPickerLabels();closePicker();renderAll();
+    return;
+  }
+  if(isCatKey()&&pickerLevel===1){
+    pickerInput.value=pickerParent||'';
+    const sub=document.getElementById(subInputId());
+    if(sub)sub.value=v;
+    setPickerLabels();closePicker();renderAll();
+    return;
+  }
   pickerInput.value=v;
-  setPickerLabels();
-  closePicker();
+  setPickerLabels();closePicker();renderAll();
 }
 function pickerCreate(){
   const v=document.getElementById('picker-input').value.trim();
@@ -669,9 +725,16 @@ function pickerCreate(){
   const d=getData();
   const arr=pickerArray(d);
   if(!arr.includes(v)){arr.push(v);saveData(d);}
-  pickerInput.value=v;
-  setPickerLabels();
-  closePicker(); renderAll();
+  if(isCatKey()&&pickerLevel===1){
+    pickerInput.value=pickerParent||'';
+    const sub=document.getElementById(subInputId());
+    if(sub)sub.value=v;
+  }else{
+    pickerInput.value=v;
+    const sub=document.getElementById(subInputId());
+    if(sub&&pickerLevel===0)sub.value='';
+  }
+  setPickerLabels();closePicker();renderAll();
 }
 function pickEdit(v){
   const newName=prompt('输入新名称（留空 = 删除「'+v+'」）',v);
@@ -683,13 +746,21 @@ function pickEdit(v){
     if(arr.includes(name)&&name!==v){alert('该选项已存在');return}
     const idx=arr.indexOf(v);
     if(idx>-1)arr[idx]=name;
-    // 同步更新关联项目
-    const field=pickerKey==='statuses'?'status':pickerKey==='units'?'unit':pickerKey==='locations'?'location':'category';
-    const itemKey=(pickerKey==='statuses'||pickerKey==='units'||pickerKey==='locations')?'ingredients':pickerKey;
-    d[itemKey].forEach(function(i){if(i[field]===v)i[field]=name});
+    if(isCatKey()){
+      if(pickerLevel===1){
+        d[pickerKey].forEach(function(i){if(i.category===pickerParent&&i.subcategory===v)i.subcategory=name});
+      }else{
+        d[pickerKey].forEach(function(i){if(i.category===v)i.category=name});
+        if(d.subcats[pickerKey][v]){d.subcats[pickerKey][name]=d.subcats[pickerKey][v];delete d.subcats[pickerKey][v];}
+      }
+    }else{
+      const field=pickerKey==='statuses'?'status':pickerKey==='units'?'unit':'location';
+      d.ingredients.forEach(function(i){if(i[field]===v)i[field]=name});
+    }
   }else{
     const idx=arr.indexOf(v);
     if(idx>-1)arr.splice(idx,1);
+    if(isCatKey()&&pickerLevel===0&&d.subcats[pickerKey][v])delete d.subcats[pickerKey][v];
   }
   saveData(d); renderPicker(); renderAll();
 }
@@ -751,13 +822,13 @@ function saveForm(){
   if(modalMode==='ingredient'){
     const n=ing_title.value.trim(); if(!n){alert('请输入名称');return}
     const cat=ing_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,status:ing_status.value.trim(),category:cat,location:ing_location.value.trim(),unit:ing_unit.value.trim(),qty:ing_qty.value.trim(),stock:ing_stock.value.trim(),inDate:ing_indate.value,shelfLife:ing_shelf.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,status:ing_status.value.trim(),category:cat,subcategory:ing_subcategory.value.trim(),location:ing_location.value.trim(),unit:ing_unit.value.trim(),qty:ing_qty.value.trim(),stock:ing_stock.value.trim(),inDate:ing_indate.value,shelfLife:ing_shelf.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.ingredients.findIndex(x=>x.id===editId);if(i>-1)d.ingredients[i]=item}
     else d.ingredients.unshift(item);
   } else if(modalMode==='pet'){
     const n=pet_title.value.trim(); if(!n){alert('请输入名称');return}
     const cat=pet_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,category:cat,qty:pet_qty.value.trim(),note:pet_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,category:cat,subcategory:pet_subcategory.value.trim(),qty:pet_qty.value.trim(),note:pet_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.pets.findIndex(x=>x.id===editId);if(i>-1)d.pets[i]=item}
     else d.pets.unshift(item);
   } else if(modalMode==='recipe'){
@@ -766,7 +837,7 @@ function saveForm(){
     const ings=[],seas=[];
     document.querySelectorAll('#rec-ingredients-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())ings.push(el.textContent.trim())});
     document.querySelectorAll('#rec-seasonings-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())seas.push(el.textContent.trim())});
-    item={id:editId||uid(),name:n,category:cat,time:rec_time.value.trim(),ingredients:ings,seasonings:seas,recent:rec_recent.checked,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,category:cat,subcategory:rec_subcategory.value.trim(),time:rec_time.value.trim(),ingredients:ings,seasonings:seas,recent:rec_recent.checked,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.recipes.findIndex(x=>x.id===editId);if(i>-1)d.recipes[i]=item}
     else d.recipes.unshift(item);
   } else if(modalMode==='wish'){
@@ -827,7 +898,7 @@ function renderHome(){
     (recentRecs.length?`<div class="list-card" style="margin-top:10px">`+recentRecs.slice(0,3).map(r=>`
       <div class="list-row" onclick="goToPage('recipes')">
         <span class="row-ic" style="color:#E8839A;background:#FCEEF2">${ICONS.book}</span>
-        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.time?' · '+r.time:''}</div></div>
+        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.subcategory?'/'+r.subcategory:''}${r.time?' · '+r.time:''}</div></div>
         <span class="tag-mini" style="color:#FF9500;background:#FFF4E5">今日</span>
       </div>`).join('')+`</div>`
       :`<div class="empty-card" style="margin-top:10px" onclick="goToPage('recipes')"><span class="ec-icon">${ICONS.book}</span><p>今天还没选食谱哦 ~</p><span class="ec-hint">去食谱里勾选</span></div>`);
@@ -837,7 +908,7 @@ function renderHome(){
     `<div class="list-card">`+pets.slice(0,2).map(p=>`
       <div class="list-row" onclick="goToPage('pets')">
         <span class="row-ic" style="color:#F0A35E;background:#FDF3E8">${ICONS.paw}</span>
-        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category} · ${p.qty||'—'}</div></div>
+        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category}${p.subcategory?'/'+p.subcategory:''} · ${p.qty||'—'}</div></div>
         <span class="chev">${ICONS.chev}</span>
       </div>`).join('')+`</div>`
     :emptyCard('paw','还没有宠物用品哦 ~','pet');
@@ -876,8 +947,9 @@ function renderSettings(){
   document.getElementById('rec-count').textContent=d.recipes.length;
 }
 
-/* ===== 分类管理页（新增/重命名/删除） ===== */
+/* ===== 分类管理页（一级 + 二级） ===== */
 let catTab='ingredients';
+let catExpanded={};
 document.getElementById('cat-tabs').addEventListener('click',function(e){
   const pill=e.target.closest('.pill'); if(!pill)return;
   this.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
@@ -891,13 +963,58 @@ function renderCatsPage(){
   const items=catTab==='ingredients'?d.ingredients:catTab==='pets'?d.pets:d.recipes;
   const useCount=c=>items.filter(i=>i.category===c).length;
   document.getElementById('cat-list').innerHTML=cats.length?
-    cats.map(c=>`<div class="list-row">
-      <button class="cat-row-name" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">${c}</button>
-      <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
-      <button class="act-btn" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">✎</button>
-      <button class="act-btn del" onclick="removeCat('${catTab}','${c.replace(/'/g,"\\'")}')">🗑</button>
-    </div>`).join('')
+    cats.map(c=>{
+      const subs=d.subcats[catTab][c]||[];
+      const expanded=catExpanded[catTab+'_'+c];
+      return `<div class="list-row">
+        <button class="cat-row-name" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">${c}</button>
+        <button class="sub-btn" onclick="event.stopPropagation();toggleSubcats('${catTab}','${c.replace(/'/g,"\\'")}')">${subs.length?subs.length+' 子':'子'} ${expanded?'▼':'▶'}</button>
+        <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
+        <button class="act-btn" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">✎</button>
+        <button class="act-btn del" onclick="removeCat('${catTab}','${c.replace(/'/g,"\\'")}')">🗑</button>
+      </div>`+
+      (expanded?(subs.map(s=>`<div class="sub-row">
+        <span class="tag">${s}</span>
+        <span class="use-count">${items.filter(i=>i.category===c&&i.subcategory===s).length} 项</span>
+        <button class="act-btn" onclick="renameSubcat('${catTab}','${c.replace(/'/g,"\\'")}','${s.replace(/'/g,"\\'")}')">✎</button>
+        <button class="act-btn del" onclick="removeSubcat('${catTab}','${c.replace(/'/g,"\\'")}','${s.replace(/'/g,"\\'")}')">🗑</button>
+      </div>`).join('')+`<div class="sub-row" style="border-bottom:none"><button class="sub-add" onclick="addSubcat('${catTab}','${c.replace(/'/g,"\\'")}')">+ 添加二级分类</button></div>`):'')
+    }).join('')
     :`<div style="padding:24px;text-align:center;color:#C7C7CC;font-size:13px">还没有分类，下方添加一个吧</div>`;
+}
+function toggleSubcats(type,parent){
+  const k=type+'_'+parent;
+  catExpanded[k]=!catExpanded[k];
+  renderCatsPage();
+}
+function addSubcat(type,parent){
+  const name=prompt('输入二级分类名称（添加到「'+parent+'」）','');
+  if(!name||!name.trim())return;
+  const v=name.trim();
+  const d=getData();
+  if(!d.subcats[type][parent])d.subcats[type][parent]=[];
+  if(d.subcats[type][parent].includes(v)){alert('该二级分类已存在');return}
+  d.subcats[type][parent].push(v);
+  saveData(d); renderCatsPage(); renderAll();
+}
+function renameSubcat(type,parent,oldName){
+  const newName=prompt('输入新的二级分类名称',oldName);
+  if(!newName||!newName.trim())return;
+  const name=newName.trim();
+  const d=getData();
+  const arr=d.subcats[type][parent]||[];
+  if(arr.includes(name)&&name!==oldName){alert('该二级分类已存在');return}
+  const idx=arr.indexOf(oldName);
+  if(idx>-1)arr[idx]=name;
+  const items=type==='ingredients'?d.ingredients:type==='pets'?d.pets:d.recipes;
+  items.forEach(i=>{if(i.category===parent&&i.subcategory===oldName)i.subcategory=name});
+  saveData(d); renderCatsPage(); renderAll();
+}
+function removeSubcat(type,parent,sub){
+  if(!confirm(`删除二级分类「${sub}」？已有项目不受影响。`))return;
+  const d=getData();
+  d.subcats[type][parent]=(d.subcats[type][parent]||[]).filter(s=>s!==sub);
+  saveData(d); renderCatsPage(); renderAll();
 }
 function addCat(){
   const input=document.getElementById('new-cat-input');
@@ -918,12 +1035,15 @@ function renameCat(type,oldName){
   // 同步更新该分类下所有项目的分类名
   const items=type==='ingredients'?d.ingredients:type==='pets'?d.pets:d.recipes;
   items.forEach(i=>{if(i.category===oldName)i.category=name});
+  // 同步二级分类键
+  if(d.subcats[type][oldName]){d.subcats[type][name]=d.subcats[type][oldName];delete d.subcats[type][oldName];}
   saveData(d); renderCatsPage(); renderAll();
 }
 function removeCat(type,cat){
   if(!confirm(`删除分类「${cat}」？已有项目不受影响，只是不再出现在筛选中。`))return;
   const d=getData();
   d.cats[type]=d.cats[type].filter(c=>c!==cat);
+  delete d.subcats[type][cat];
   saveData(d); renderCatsPage(); renderAll();
 }
 
@@ -976,7 +1096,7 @@ function renderIngredients(){
   el.innerHTML=`<div class="list-card">`+items.map(i=>{
     const metaParts=[
       i.status?'「'+i.status+'」':'',
-      i.category,
+      i.category+(i.subcategory?'/'+i.subcategory:''),
       i.location?'📍 '+i.location:'',
       i.qty?(i.qty+(i.unit||'')):'',
       i.stock?'剩'+i.stock+(i.unit||''):'',
@@ -1010,7 +1130,7 @@ function renderPets(){
       <div class="name">${i.name}</div>
       <div class="meta">${i.qty||'—'}${i.note?' · '+i.note:''}</div>
     </div>
-    <span class="tag-mini">${i.category}</span>
+    <span class="tag-mini">${i.category}${i.subcategory?'/'+i.subcategory:''}</span>
     <div class="row-actions">
       <button class="act-btn" onclick="openModal('pet','${i.id}')">✎</button>
       <button class="act-btn del" onclick="deleteItem('pet','${i.id}')">🗑</button>
@@ -1031,7 +1151,7 @@ function renderRecipes(){
         <span class="item-icon">${ICONS.book}</span>
         <div>
           <div class="name">${i.name}${i.recent?' <span style="font-size:10px;color:#FF9500;background:#FFF4E5;padding:2px 6px;border-radius:6px">今日</span>':''}</div>
-          <div class="meta">${i.category}${i.time?' · ⏱ '+i.time:''}</div>
+          <div class="meta">${i.category}${i.subcategory?'/'+i.subcategory:''}${i.time?' · ⏱ '+i.time:''}</div>
         </div>
       </div>
       <div class="row-actions">

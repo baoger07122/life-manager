@@ -140,6 +140,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .form-group label{display:block;font-size:12px;color:#8E8E93;margin-bottom:4px;font-weight:500}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;border:none;border-radius:12px;background:#fff;font-size:15px;color:#1C1C1E;outline:none;font-family:inherit}
 .form-group textarea{resize:vertical;min-height:60px}
+.form-row{display:flex;gap:10px}
+.form-row .form-group{flex:1;min-width:0}
 .form-actions{display:flex;gap:8px;margin-top:18px}
 .form-actions button{flex:1}
 .btn-cancel{padding:12px;border-radius:999px;background:#fff;color:#1C1C1E;border:1px solid #EDEDF0;font-size:15px;cursor:pointer}
@@ -357,14 +359,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-ingredient">
           <div class="form-group"><label>名称</label><input autocomplete="off" type="text" id="ing-name" required></div>
-          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input autocomplete="off" type="text" id="ing-category" placeholder="选择下方分类，或输入新的">
+          <div class="form-group"><label>状态（点选或输入新状态）</label>
+            <input autocomplete="off" type="text" id="ing-status" placeholder="如 在库、临期、用完">
+            <div class="cat-chips" id="ing-status-chips"></div>
+          </div>
+          <div class="form-group"><label>分类（点选或输入新分类）</label>
+            <input autocomplete="off" type="text" id="ing-category" placeholder="如 蔬菜、干货">
             <div class="cat-chips" id="ing-cat-chips"></div>
           </div>
-          <div class="form-group"><label>位置（点选或直接输入新位置）</label>
+          <div class="form-group"><label>存储位置（点选或输入新位置）</label>
             <input autocomplete="off" type="text" id="ing-location" placeholder="如 冰箱、常温柜">
             <div class="cat-chips" id="ing-loc-chips"></div>
           </div>
+          <div class="form-group"><label>单位（点选或输入新单位）</label>
+            <input autocomplete="off" type="text" id="ing-unit" placeholder="如 斤、个、袋">
+            <div class="cat-chips" id="ing-unit-chips"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>数量</label><input autocomplete="off" type="text" id="ing-qty" placeholder="如 2"></div>
+            <div class="form-group"><label>库存</label><input autocomplete="off" type="text" id="ing-stock" placeholder="当前剩余"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>入库日期</label><input autocomplete="off" type="date" id="ing-indate" onchange="calcExpiry()"></div>
+            <div class="form-group"><label>保质期天数</label><input autocomplete="off" type="number" id="ing-shelf" placeholder="如 7" onchange="calcExpiry()"></div>
+          </div>
+          <div class="form-group"><label>过期日期（填入库+保质期自动计算）</label><input autocomplete="off" type="date" id="ing-expiry"></div>
           <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="ing-note" placeholder="如：会做、常做"></div>
         </div>
 
@@ -425,25 +444,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.10';
+const VERSION = '8.9.11';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
   recipes: ['家常菜','汤羹','主食','甜品','饮品','烘焙','其他']
 };
 const DEFAULT_LOCS = ['冰箱','冷藏','冷冻','常温柜','其他'];
+const DEFAULT_STATUSES = ['在库','临期','用完'];
+const DEFAULT_UNITS = ['个','斤','克','千克','袋','盒','瓶','包'];
 function getData(){
   try{
     const d=JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[],wishlist:[]};
     d.wishlist=d.wishlist||[];
     d.locations=d.locations||DEFAULT_LOCS.slice();
+    d.statuses=d.statuses||DEFAULT_STATUSES.slice();
+    d.units=d.units||DEFAULT_UNITS.slice();
     d.cats={
       ingredients:(d.cats&&d.cats.ingredients)||DEFAULT_CATS.ingredients.slice(),
       pets:(d.cats&&d.cats.pets)||DEFAULT_CATS.pets.slice(),
       recipes:(d.cats&&d.cats.recipes)||DEFAULT_CATS.recipes.slice()
     };
     return d;
-  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],locations:DEFAULT_LOCS.slice(),cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
+  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],locations:DEFAULT_LOCS.slice(),statuses:DEFAULT_STATUSES.slice(),units:DEFAULT_UNITS.slice(),cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
 }
 function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
 
@@ -515,7 +538,9 @@ function openModal(type,id){
     const it=arr.find(i=>i.id===editId); if(it){
       if(type==='ingredient'){
         ing_name.value=it.name||''; ing_category.value=it.category||''; ing_note.value=it.note||'';
-        ing_location.value=it.location||'';
+        ing_status.value=it.status||''; ing_location.value=it.location||''; ing_unit.value=it.unit||'';
+        ing_qty.value=it.qty||''; ing_stock.value=it.stock||''; ing_indate.value=it.inDate||'';
+        ing_shelf.value=it.shelfLife||''; ing_expiry.value=it.expiry||'';
       } else if(type==='pet'){
         pet_name.value=it.name||''; pet_category.value=it.category||'';
         pet_qty.value=it.qty||''; pet_note.value=it.note||'';
@@ -532,6 +557,8 @@ function openModal(type,id){
   }
   renderCatChips(type);
   renderLocChips();
+  renderStatusChips();
+  renderUnitChips();
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');modalMode=null;editId=null}
@@ -569,6 +596,45 @@ function renderLocChips(){
 function pickLoc(loc){
   document.getElementById('ing-location').value=loc;
   renderLocChips();
+}
+
+/* ===== 状态 chips（食材库） ===== */
+function renderStatusChips(){
+  const el=document.getElementById('ing-status-chips'); if(!el)return;
+  const d=getData();
+  const cur=document.getElementById('ing-status').value.trim();
+  el.innerHTML=d.statuses.map(c=>
+    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickStatus('${c.replace(/'/g,"\\'")}')">${c}</button>`
+  ).join('');
+}
+function pickStatus(s){
+  document.getElementById('ing-status').value=s;
+  renderStatusChips();
+}
+
+/* ===== 单位 chips（食材库） ===== */
+function renderUnitChips(){
+  const el=document.getElementById('ing-unit-chips'); if(!el)return;
+  const d=getData();
+  const cur=document.getElementById('ing-unit').value.trim();
+  el.innerHTML=d.units.map(c=>
+    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickUnit('${c.replace(/'/g,"\\'")}')">${c}</button>`
+  ).join('');
+}
+function pickUnit(u){
+  document.getElementById('ing-unit').value=u;
+  renderUnitChips();
+}
+
+/* ===== 过期日期自动计算（入库日期 + 保质期天数） ===== */
+function calcExpiry(){
+  const inDate=document.getElementById('ing-indate').value;
+  const shelf=parseInt(document.getElementById('ing-shelf').value);
+  if(inDate&&shelf>0){
+    const d=new Date(inDate);
+    d.setDate(d.getDate()+shelf);
+    document.getElementById('ing-expiry').value=d.toISOString().slice(0,10);
+  }
 }
 
 function addIngItem(text){
@@ -617,7 +683,7 @@ function saveForm(){
   if(modalMode==='ingredient'){
     const n=ing_name.value.trim(); if(!n){alert('请输入名称');return}
     const cat=ing_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,category:cat,location:ing_location.value.trim(),note:ing_note.value.trim(),createdAt:Date.now()};
+    item={id:editId||uid(),name:n,status:ing_status.value.trim(),category:cat,location:ing_location.value.trim(),unit:ing_unit.value.trim(),qty:ing_qty.value.trim(),stock:ing_stock.value.trim(),inDate:ing_indate.value,shelfLife:ing_shelf.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
     if(editId){const i=d.ingredients.findIndex(x=>x.id===editId);if(i>-1)d.ingredients[i]=item}
     else d.ingredients.unshift(item);
   } else if(modalMode==='pet'){
@@ -646,8 +712,12 @@ function saveForm(){
     const ck=modalMode==='ingredient'?'ingredients':modalMode==='pet'?'pets':'recipes';
     if(!d.cats[ck].includes(item.category)){d.cats[ck].push(item.category)}
   }
-  // 新位置自动收录
-  if(modalMode==='ingredient'&&item.location&&!d.locations.includes(item.location)){d.locations.push(item.location)}
+  // 新位置/状态/单位自动收录
+  if(modalMode==='ingredient'){
+    if(item.location&&!d.locations.includes(item.location)){d.locations.push(item.location)}
+    if(item.status&&!d.statuses.includes(item.status)){d.statuses.push(item.status)}
+    if(item.unit&&!d.units.includes(item.unit)){d.units.push(item.unit)}
+  }
   saveData(d); closeModal(); renderAll();
 }
 
@@ -835,18 +905,28 @@ function renderIngredients(){
   if(ingFilter!=='all')items=items.filter(i=>i.category===ingFilter);
   const el=document.getElementById('ingredient-list');
   if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.leaf}</span><p>还没有记录会做的食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
-  el.innerHTML=`<div class="list-card">`+items.map(i=>`<div class="list-row">
+  el.innerHTML=`<div class="list-card">`+items.map(i=>{
+    const metaParts=[
+      i.status?'「'+i.status+'」':'',
+      i.category,
+      i.location?'📍 '+i.location:'',
+      i.qty?(i.qty+(i.unit||'')):'',
+      i.stock?'剩'+i.stock+(i.unit||''):'',
+      i.expiry?'⏰ '+i.expiry.slice(5):''
+    ].filter(Boolean).join(' · ');
+    return `<div class="list-row">
     <span class="row-ic">${ICONS.leaf}</span>
     <div class="info">
       <div class="name">${i.name}</div>
-      <div class="meta">${i.location?'📍 '+i.location+(i.note?' · '+i.note:''):(i.note||'吃过 · 会做')}</div>
+      <div class="meta">${metaParts||'吃过 · 会做'}</div>
     </div>
-    <span class="tag-mini">${i.category}</span>
+    ${i.status?'<span class="tag-mini" style="color:#E07B00;background:#FFF4E5">'+i.status+'</span>':'<span class="tag-mini">'+i.category+'</span>'}
     <div class="row-actions">
       <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
       <button class="act-btn del" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
     </div>
-  </div>`).join('')+`</div>`;
+  </div>`;
+  }).join('')+`</div>`;
 }
 
 /* ===== 宠物列表 ===== */

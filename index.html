@@ -118,7 +118,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 .page{display:none}.page.active{display:block}
 
 /* ========= 底部悬浮胶囊导航（5 Tab，随屏宽自适应） ========= */
-.bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 8px 28px rgba(0,0,0,0.10);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
+.bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.97);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 8px 28px rgba(0,0,0,0.10);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);border-radius:clamp(16px, 4.6vw, 20px);color:#A5A5AD;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:all .2s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(24px, 6.6vw, 28px);height:clamp(24px, 6.6vw, 28px)}
@@ -261,7 +261,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.7</div>
+      <div class="hero-sub">生活管家 v8.9.8</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -272,7 +272,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.7 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.8 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -293,7 +293,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       </div>
       <div class="list-card" id="cat-list"></div>
       <div class="add-cat-row">
-        <input type="text" id="new-cat-input" placeholder="输入新分类名称">
+        <input autocomplete="off" type="text" id="new-cat-input" placeholder="输入新分类名称">
         <button class="btn-save" onclick="addCat()">添加</button>
       </div>
     </div>
@@ -326,38 +326,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     <div class="modal">
       <div class="modal-handle"></div>
       <div class="modal-title" id="modal-title"></div>
-      <form id="modal-form" onsubmit="return false;">
+      <form id="modal-form" onsubmit="return false;" autocomplete="off">
 
         <div id="fields-ingredient">
-          <div class="form-group"><label>名称</label><input type="text" id="ing-name" required></div>
+          <div class="form-group"><label>名称</label><input autocomplete="off" type="text" id="ing-name" required></div>
           <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input type="text" id="ing-category" placeholder="选择下方分类，或输入新的">
+            <input autocomplete="off" type="text" id="ing-category" placeholder="选择下方分类，或输入新的">
             <div class="cat-chips" id="ing-cat-chips"></div>
           </div>
-          <div class="form-group"><label>备注</label><input type="text" id="ing-note" placeholder="如：会做、常做"></div>
+          <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="ing-note" placeholder="如：会做、常做"></div>
         </div>
 
         <div id="fields-pet" style="display:none">
-          <div class="form-group"><label>名称</label><input type="text" id="pet-name" required></div>
+          <div class="form-group"><label>名称</label><input autocomplete="off" type="text" id="pet-name" required></div>
           <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input type="text" id="pet-category" placeholder="选择下方分类，或输入新的">
+            <input autocomplete="off" type="text" id="pet-category" placeholder="选择下方分类，或输入新的">
             <div class="cat-chips" id="pet-cat-chips"></div>
           </div>
-          <div class="form-group"><label>数量</label><input type="text" id="pet-qty" required></div>
-          <div class="form-group"><label>备注</label><input type="text" id="pet-note"></div>
+          <div class="form-group"><label>数量</label><input autocomplete="off" type="text" id="pet-qty" required></div>
+          <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="pet-note"></div>
         </div>
 
         <div id="fields-recipe" style="display:none">
-          <div class="form-group"><label>食谱名称</label><input type="text" id="rec-name" required></div>
+          <div class="form-group"><label>食谱名称</label><input autocomplete="off" type="text" id="rec-name" required></div>
           <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input type="text" id="rec-category" placeholder="选择下方分类，或输入新的">
+            <input autocomplete="off" type="text" id="rec-category" placeholder="选择下方分类，或输入新的">
             <div class="cat-chips" id="rec-cat-chips"></div>
           </div>
-          <div class="form-group"><label>烹饪时长</label><input type="text" id="rec-time" placeholder="如 15分钟"></div>
+          <div class="form-group"><label>烹饪时长</label><input autocomplete="off" type="text" id="rec-time" placeholder="如 15分钟"></div>
           <div class="form-group"><label>所需食材</label>
             <div class="list-editor" id="rec-ingredients-editor">
               <div class="ing-add">
-                <input type="text" id="rec-ing-input" placeholder="输入食材后回车">
+                <input autocomplete="off" type="text" id="rec-ing-input" placeholder="输入食材后回车">
                 <button type="button" onclick="addIngItem()">添加</button>
               </div>
             </div>
@@ -365,22 +365,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
           <div class="form-group"><label>配料</label>
             <div class="list-editor" id="rec-seasonings-editor">
               <div class="ing-add">
-                <input type="text" id="rec-seas-input" placeholder="如 盐、生抽、料酒">
+                <input autocomplete="off" type="text" id="rec-seas-input" placeholder="如 盐、生抽、料酒">
                 <button type="button" onclick="addSeasItem()">添加</button>
               </div>
             </div>
           </div>
           <div class="form-group"><label>加入今日食谱</label>
-            <label class="switch"><input type="checkbox" id="rec-recent"><span class="slider"></span></label>
+            <label class="switch"><input autocomplete="off" type="checkbox" id="rec-recent"><span class="slider"></span></label>
           </div>
-          <div class="form-group"><label>烹饪步骤</label><textarea id="rec-steps" rows="3" placeholder="1. ..."></textarea></div>
-          <div class="form-group"><label>备注</label><input type="text" id="rec-note"></div>
+          <div class="form-group"><label>烹饪步骤</label><textarea autocomplete="off" id="rec-steps" rows="3" placeholder="1. ..."></textarea></div>
+          <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="rec-note"></div>
         </div>
 
         <div id="fields-wishlist" style="display:none">
-          <div class="form-group"><label>菜名</label><input type="text" id="wish-name" placeholder="想尝试的菜" required></div>
-          <div class="form-group"><label>类型</label><input type="text" id="wish-type" placeholder="如 中餐 / 甜品 / 餐厅打卡"></div>
-          <div class="form-group"><label>备注</label><input type="text" id="wish-note" placeholder="为什么种草？"></div>
+          <div class="form-group"><label>菜名</label><input autocomplete="off" type="text" id="wish-name" placeholder="想尝试的菜" required></div>
+          <div class="form-group"><label>类型</label><input autocomplete="off" type="text" id="wish-type" placeholder="如 中餐 / 甜品 / 餐厅打卡"></div>
+          <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="wish-note" placeholder="为什么种草？"></div>
         </div>
 
         <div class="form-actions">
@@ -394,7 +394,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.7';
+const VERSION = '8.9.8';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],

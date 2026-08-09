@@ -170,6 +170,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 /* ===== 版本 footer ===== */
 .version-footer{text-align:center;color:#C7C7CC;font-size:12px;padding:24px 0 8px}
 
+/* ===== 选择器字段（弹窗内，点击唤起 Bottom Sheet） ===== */
+.picker-field{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border:none;border-radius:12px;background:#fff;font-size:14px;color:#1C1C1E;cursor:pointer;outline:none;font-family:inherit;text-align:left}
+.picker-field .chev{color:#C7C7CC;font-size:16px}
+.picker-field .empty{color:#A0A0A8}
+
+/* ===== Bottom Sheet Picker（底部上滑选择器） ===== */
+.picker-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:120;align-items:flex-end;justify-content:center}
+.picker-overlay.open{display:flex}
+.picker-sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:420px;max-height:78vh;display:flex;flex-direction:column;padding:10px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);animation:slideUp .25s ease}
+.picker-title{font-size:17px;font-weight:700;color:#1C1C1E;text-align:center;margin:2px 0 12px}
+.picker-search{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:#F2F2F7;margin-bottom:12px}
+.picker-search svg{width:16px;height:16px;color:#A0A0A8;flex-shrink:0}
+.picker-search input{flex:1;border:none;background:none;outline:none;font-size:14px;color:#1C1C1E}
+.picker-group{font-size:12px;color:#8E8E93;margin-bottom:8px;padding:0 4px}
+.picker-list{overflow-y:auto;flex:1;min-height:120px}
+.picker-item{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid #F2F2F7;cursor:pointer}
+.picker-item:last-child{border-bottom:none}
+.picker-item:active{background:#F8F8FA}
+.picker-item .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:#FFF4E5;color:#E07B00;font-size:13px;font-weight:600}
+.picker-item .more{margin-left:auto;background:none;border:none;color:#C7C7CC;font-size:18px;cursor:pointer;padding:4px 10px;line-height:1}
+.picker-create{padding:12px;text-align:center;color:#FF9500;font-size:14px;font-weight:600;cursor:pointer;border-top:1px solid #F2F2F7;margin-top:8px}
+.picker-nomatch{padding:24px;text-align:center;color:#C7C7CC;font-size:13px}
+
 /* ===== 分类管理页 ===== */
 .cat-hero{padding-bottom:4px}
 .back-btn{display:inline-flex;align-items:center;gap:2px;background:none;border:none;color:#FF9500;font-size:13px;font-weight:500;cursor:pointer;outline:none;padding:0;margin-bottom:8px;font-family:inherit}
@@ -265,7 +288,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.11</div>
+      <div class="hero-sub">生活管家 v8.9.12</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -283,7 +306,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.11 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.12 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -359,21 +382,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-ingredient">
           <div class="form-group"><label>名称</label><input autocomplete="off" type="text" id="ing-name" required></div>
-          <div class="form-group"><label>状态（点选或输入新状态）</label>
-            <input autocomplete="off" type="text" id="ing-status" placeholder="如 在库、临期、用完">
-            <div class="cat-chips" id="ing-status-chips"></div>
+          <div class="form-group"><label>状态</label>
+            <input type="hidden" id="ing-status">
+            <button type="button" class="picker-field" onclick="openPicker('statuses','ing-status')"><span id="ing-status-label">点击选择状态</span><span class="chev">›</span></button>
           </div>
-          <div class="form-group"><label>分类（点选或输入新分类）</label>
-            <input autocomplete="off" type="text" id="ing-category" placeholder="如 蔬菜、干货">
-            <div class="cat-chips" id="ing-cat-chips"></div>
+          <div class="form-group"><label>分类</label>
+            <input type="hidden" id="ing-category">
+            <button type="button" class="picker-field" onclick="openPicker('ingredients','ing-category')"><span id="ing-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
-          <div class="form-group"><label>存储位置（点选或输入新位置）</label>
-            <input autocomplete="off" type="text" id="ing-location" placeholder="如 冰箱、常温柜">
-            <div class="cat-chips" id="ing-loc-chips"></div>
+          <div class="form-group"><label>存储位置</label>
+            <input type="hidden" id="ing-location">
+            <button type="button" class="picker-field" onclick="openPicker('locations','ing-location')"><span id="ing-location-label">点击选择位置</span><span class="chev">›</span></button>
           </div>
-          <div class="form-group"><label>单位（点选或输入新单位）</label>
-            <input autocomplete="off" type="text" id="ing-unit" placeholder="如 斤、个、袋">
-            <div class="cat-chips" id="ing-unit-chips"></div>
+          <div class="form-group"><label>单位</label>
+            <input type="hidden" id="ing-unit">
+            <button type="button" class="picker-field" onclick="openPicker('units','ing-unit')"><span id="ing-unit-label">点击选择单位</span><span class="chev">›</span></button>
           </div>
           <div class="form-row">
             <div class="form-group"><label>数量</label><input autocomplete="off" type="text" id="ing-qty" placeholder="如 2"></div>
@@ -389,9 +412,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-pet" style="display:none">
           <div class="form-group"><label>名称</label><input autocomplete="off" type="text" id="pet-name" required></div>
-          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input autocomplete="off" type="text" id="pet-category" placeholder="选择下方分类，或输入新的">
-            <div class="cat-chips" id="pet-cat-chips"></div>
+          <div class="form-group"><label>分类</label>
+            <input type="hidden" id="pet-category">
+            <button type="button" class="picker-field" onclick="openPicker('pets','pet-category')"><span id="pet-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
           <div class="form-group"><label>数量</label><input autocomplete="off" type="text" id="pet-qty" required></div>
           <div class="form-group"><label>备注</label><input autocomplete="off" type="text" id="pet-note"></div>
@@ -399,9 +422,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
         <div id="fields-recipe" style="display:none">
           <div class="form-group"><label>食谱名称</label><input autocomplete="off" type="text" id="rec-name" required></div>
-          <div class="form-group"><label>分类（点选或直接输入新分类）</label>
-            <input autocomplete="off" type="text" id="rec-category" placeholder="选择下方分类，或输入新的">
-            <div class="cat-chips" id="rec-cat-chips"></div>
+          <div class="form-group"><label>分类</label>
+            <input type="hidden" id="rec-category">
+            <button type="button" class="picker-field" onclick="openPicker('recipes','rec-category')"><span id="rec-category-label">点击选择分类</span><span class="chev">›</span></button>
           </div>
           <div class="form-group"><label>烹饪时长</label><input autocomplete="off" type="text" id="rec-time" placeholder="如 15分钟"></div>
           <div class="form-group"><label>所需食材</label>
@@ -440,11 +463,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
       </form>
     </div>
   </div>
+
+  <!-- Bottom Sheet Picker（底部上滑选择器） -->
+  <div class="picker-overlay" id="picker-overlay">
+    <div class="picker-sheet">
+      <div class="modal-handle"></div>
+      <div class="picker-title" id="picker-title">选择</div>
+      <div class="picker-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="picker-input" placeholder="搜索或输入新建..." autocomplete="off">
+      </div>
+      <div class="picker-group" id="picker-group">已有选项</div>
+      <div class="picker-list" id="picker-list"></div>
+      <div class="picker-create" id="picker-create" style="display:none" onclick="pickerCreate()">
+        创建「<b id="picker-create-text"></b>」
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.11';
+const VERSION = '8.9.12';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
@@ -555,75 +595,102 @@ function openModal(type,id){
       }
     }
   }
-  renderCatChips(type);
-  renderLocChips();
-  renderStatusChips();
-  renderUnitChips();
+  setPickerLabels();
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');modalMode=null;editId=null}
 document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
 
-/* ===== 自定义分类：弹窗 chips ===== */
-const CAT_MAP={
-  ingredient:{key:'ingredients',input:'ing-category',chips:'ing-cat-chips'},
-  pet:{key:'pets',input:'pet-category',chips:'pet-cat-chips'},
-  recipe:{key:'recipes',input:'rec-category',chips:'rec-cat-chips'}
-};
-function renderCatChips(type){
-  const m=CAT_MAP[type]; if(!m)return;
+/* ===== Bottom Sheet Picker（底部上滑选择器） ===== */
+let pickerKey=null, pickerInput=null;
+const PICKER_TITLES={statuses:'选择状态',ingredients:'选择分类',locations:'选择存储位置',units:'选择单位',pets:'选择分类',recipes:'选择分类'};
+const PICKER_GROUPS={statuses:'已有状态',ingredients:'已有分类',locations:'已有位置',units:'已有单位',pets:'已有分类',recipes:'已有分类'};
+function pickerArray(d){
+  if(pickerKey==='statuses')return d.statuses;
+  if(pickerKey==='units')return d.units;
+  if(pickerKey==='locations')return d.locations;
+  return d.cats[pickerKey];
+}
+function setPickerLabels(){
+  ['ing-status','ing-category','ing-location','ing-unit','pet-category','rec-category'].forEach(function(id){
+    const input=document.getElementById(id), label=document.getElementById(id+'-label');
+    if(!input||!label)return;
+    const placeholders={'ing-status':'点击选择状态','ing-category':'点击选择分类','ing-location':'点击选择位置','ing-unit':'点击选择单位','pet-category':'点击选择分类','rec-category':'点击选择分类'};
+    label.textContent=input.value||placeholders[id];
+    label.classList.toggle('empty',!input.value);
+  });
+}
+function openPicker(key,inputId){
+  pickerKey=key; pickerInput=document.getElementById(inputId);
+  document.getElementById('picker-title').textContent=PICKER_TITLES[key]||'选择';
+  document.getElementById('picker-group').textContent=PICKER_GROUPS[key]||'已有选项';
+  document.getElementById('picker-input').value='';
+  document.getElementById('picker-create').style.display='none';
+  renderPicker();
+  document.getElementById('picker-overlay').classList.add('open');
+  setTimeout(function(){document.getElementById('picker-input').focus()},250);
+}
+function closePicker(){document.getElementById('picker-overlay').classList.remove('open');pickerKey=null;pickerInput=null}
+document.getElementById('picker-overlay').addEventListener('click',function(e){if(e.target===this)closePicker()});
+function renderPicker(){
+  if(!pickerKey)return;
   const d=getData();
-  const cur=document.getElementById(m.input).value.trim();
-  document.getElementById(m.chips).innerHTML=d.cats[m.key].map(c=>
-    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickCat('${type}','${c.replace(/'/g,"\\'")}')">${c}</button>`
-  ).join('');
+  const q=document.getElementById('picker-input').value.trim();
+  const all=pickerArray(d)||[];
+  const items=q?all.filter(v=>v.toLowerCase().includes(q.toLowerCase())):all;
+  const listEl=document.getElementById('picker-list');
+  listEl.innerHTML=items.length?items.map(v=>
+    `<div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
+      <span class="tag">${v}</span>
+      <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
+    </div>`).join('')
+    :'<div class="picker-nomatch">无匹配项</div>';
+  const createEl=document.getElementById('picker-create');
+  if(q&&!items.some(v=>v.toLowerCase()===q.toLowerCase())){
+    document.getElementById('picker-create-text').textContent=q;
+    createEl.style.display='block';
+  }else{
+    createEl.style.display='none';
+  }
 }
-function pickCat(type,cat){
-  const m=CAT_MAP[type];
-  document.getElementById(m.input).value=cat;
-  renderCatChips(type);
+document.getElementById('picker-input').addEventListener('input',renderPicker);
+document.getElementById('picker-input').addEventListener('keydown',function(e){
+  if(e.key==='Enter'){e.preventDefault();pickerCreate();}
+});
+function pickSelect(v){
+  pickerInput.value=v;
+  setPickerLabels();
+  closePicker();
 }
-
-/* ===== 位置 chips（食材库） ===== */
-function renderLocChips(){
-  const el=document.getElementById('ing-loc-chips'); if(!el)return;
+function pickerCreate(){
+  const v=document.getElementById('picker-input').value.trim();
+  if(!v)return;
   const d=getData();
-  const cur=document.getElementById('ing-location').value.trim();
-  el.innerHTML=d.locations.map(c=>
-    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickLoc('${c.replace(/'/g,"\\'")}')">${c}</button>`
-  ).join('');
+  const arr=pickerArray(d);
+  if(!arr.includes(v)){arr.push(v);saveData(d);}
+  pickerInput.value=v;
+  setPickerLabels();
+  closePicker(); renderAll();
 }
-function pickLoc(loc){
-  document.getElementById('ing-location').value=loc;
-  renderLocChips();
-}
-
-/* ===== 状态 chips（食材库） ===== */
-function renderStatusChips(){
-  const el=document.getElementById('ing-status-chips'); if(!el)return;
+function pickEdit(v){
+  const newName=prompt('输入新名称（留空 = 删除「'+v+'」）',v);
+  if(newName===null)return;
+  const name=newName.trim();
   const d=getData();
-  const cur=document.getElementById('ing-status').value.trim();
-  el.innerHTML=d.statuses.map(c=>
-    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickStatus('${c.replace(/'/g,"\\'")}')">${c}</button>`
-  ).join('');
-}
-function pickStatus(s){
-  document.getElementById('ing-status').value=s;
-  renderStatusChips();
-}
-
-/* ===== 单位 chips（食材库） ===== */
-function renderUnitChips(){
-  const el=document.getElementById('ing-unit-chips'); if(!el)return;
-  const d=getData();
-  const cur=document.getElementById('ing-unit').value.trim();
-  el.innerHTML=d.units.map(c=>
-    `<button type="button" class="cat-chip${cur===c?' active':''}" onclick="pickUnit('${c.replace(/'/g,"\\'")}')">${c}</button>`
-  ).join('');
-}
-function pickUnit(u){
-  document.getElementById('ing-unit').value=u;
-  renderUnitChips();
+  const arr=pickerArray(d);
+  if(name){
+    if(arr.includes(name)&&name!==v){alert('该选项已存在');return}
+    const idx=arr.indexOf(v);
+    if(idx>-1)arr[idx]=name;
+    // 同步更新关联项目
+    const field=pickerKey==='statuses'?'status':pickerKey==='units'?'unit':pickerKey==='locations'?'location':'category';
+    const itemKey=(pickerKey==='statuses'||pickerKey==='units'||pickerKey==='locations')?'ingredients':pickerKey;
+    d[itemKey].forEach(function(i){if(i[field]===v)i[field]=name});
+  }else{
+    const idx=arr.indexOf(v);
+    if(idx>-1)arr.splice(idx,1);
+  }
+  saveData(d); renderPicker(); renderAll();
 }
 
 /* ===== 过期日期自动计算（入库日期 + 保质期天数） ===== */

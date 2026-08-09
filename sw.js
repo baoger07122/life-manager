@@ -1,11 +1,12 @@
 // 生活管家 Service Worker - network-first + 核心资源预缓存
-const CACHE_NAME = 'life-manager-v3.2';
+const CACHE_NAME = 'life-manager-v3.3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
+  '/icons/maskable-512.png',
   '/icons/apple-touch-icon.png',
   '/icons/favicon.ico'
 ];

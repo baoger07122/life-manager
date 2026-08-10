@@ -296,7 +296,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.19</div>
+      <div class="hero-sub">生活管家 v8.9.20</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -314,7 +314,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.19 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.20 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -496,7 +496,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.19';
+const VERSION = '8.9.20';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],
@@ -539,6 +539,9 @@ const ICONS = {
 let modalMode=null, editId=null;
 let currentPage='home';
 let ingFilter='all', petFilter='all', recFilter='all';
+
+/* ===== 表单字段元素绑定（saveForm/openModal 使用裸标识符） ===== */
+const ing_title=document.getElementById('ing-title'), ing_status=document.getElementById('ing-status'), ing_category=document.getElementById('ing-category'), ing_subcategory=document.getElementById('ing-subcategory'), ing_location=document.getElementById('ing-location'), ing_unit=document.getElementById('ing-unit'), ing_qty=document.getElementById('ing-qty'), ing_stock=document.getElementById('ing-stock'), ing_indate=document.getElementById('ing-indate'), ing_shelf=document.getElementById('ing-shelf'), ing_expiry=document.getElementById('ing-expiry'), ing_note=document.getElementById('ing-note'), pet_title=document.getElementById('pet-title'), pet_category=document.getElementById('pet-category'), pet_subcategory=document.getElementById('pet-subcategory'), pet_qty=document.getElementById('pet-qty'), pet_note=document.getElementById('pet-note'), rec_title=document.getElementById('rec-title'), rec_category=document.getElementById('rec-category'), rec_subcategory=document.getElementById('rec-subcategory'), rec_time=document.getElementById('rec-time'), rec_steps=document.getElementById('rec-steps'), rec_note=document.getElementById('rec-note'), rec_recent=document.getElementById('rec-recent'), wish_title=document.getElementById('wish-title'), wish_type=document.getElementById('wish-type'), wish_note=document.getElementById('wish-note');
 
 function goToPage(p){
   currentPage=p;

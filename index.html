@@ -3,366 +3,275 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>生活管家</title>
+<title>个人管家</title>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#FFFFFF">
-<meta name="apple-mobile-web-app-title" content="生活管家">
-<link rel="icon" type="image/x-icon" href="icons/favicon.ico">
-<link rel="icon" type="image/png" sizes="32x32" href="icons/icon-32.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F5F5F7">
+<meta name="apple-mobile-web-app-title" content="个人管家">
 <style>
 html{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC","Helvetica Neue",sans-serif;background:#FFFFFF;color:#1C1C1E;line-height:1.5;min-height:100vh;padding-bottom:128px}
-.app{max-width:420px;margin:0 auto;background:#FFFFFF;min-height:100vh;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1D1D1F;line-height:1.5;min-height:100vh;padding-bottom:128px}
+.app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
 
-/* ========= Header（真实状态栏安全区 + 页面大标题） ========= */
-.hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#FFFFFF}
-.hero-title{font-size:26px;font-weight:600;color:#1C1C1E;letter-spacing:-0.5px}
+/* ========= 状态栏 ========= */
+.status-bar{height:calc(env(safe-area-inset-top, 0px) + 44px);display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px calc(env(safe-area-inset-top, 0px) > 0 ? 8px : 18px);color:#1D1D1F}
+.status-bar .time{font-size:15px;font-weight:600;letter-spacing:0.2px}
+.status-icons{display:flex;align-items:center;gap:7px}
+.status-icons svg{display:block}
+
+/* ========= Hero 标题 ========= */
+.hero{padding:calc(env(safe-area-inset-top, 0px) + 16px) 20px 6px;background:#F5F5F7}
+.hero-title{font-size:28px;font-weight:600;color:#1D1D1F;letter-spacing:-0.5px}
 .hero-sub{font-size:13px;color:#8E8E93;margin-top:3px}
 
 /* ========= Content ========= */
 .content{padding:12px 16px 24px}
 
-/* ========= 2×2 统计网格 ========= */
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
-.stat-card{background:#1D1D1F;border-radius:18px;padding:14px 16px;border:none;cursor:pointer;text-align:left;box-shadow:none;outline:none;font-family:inherit}
-.stat-card:active{transform:scale(0.98)}
-.stat-top{display:flex;justify-content:space-between;align-items:center}
-.stat-icon{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;color:#FF9F0A}
-.stat-icon svg{width:21px;height:21px}
-.stat-num{font-size:26px;font-weight:600;color:#FFFFFF;letter-spacing:-0.5px;line-height:1}
-.stat-label{font-size:12px;color:#A1A1A6;margin-top:10px}
+/* ========= 今日概览深色卡（Page1 设计稿核心） ========= */
+.overview-card{background:#272729;border-radius:18px;padding:16px;margin-bottom:20px}
+.ov-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ov-title{font-size:17px;font-weight:600;color:#FFFFFF}
+.ov-more{font-size:13px;color:#CCCCCC}
+.ov-stats{display:flex;gap:10px}
+.stat-block{flex:1;background:#363638;border-radius:12px;padding:12px;min-height:88px;display:flex;flex-direction:column;justify-content:space-between}
+.stat-block .ic{width:20px;height:20px;color:#2997FF}
+.stat-block .num{font-size:22px;font-weight:600;color:#FFFFFF;letter-spacing:-0.3px;margin-top:8px}
+.stat-block .lbl{font-size:12px;color:#CCCCCC}
 
-/* ========= 区块标题 + 查看更多 ========= */
-.sec-head{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:none;cursor:pointer;outline:none;padding:16px 2px 10px;font-family:inherit}
-.sec-title{font-size:17px;font-weight:600;color:#1C1C1E;letter-spacing:-0.2px}
-.sec-more{display:flex;align-items:center;gap:2px;font-size:12px;color:#A0A0A8}
+/* ========= 区块标题 ========= */
+.sec-head{display:flex;justify-content:space-between;align-items:center;background:none;border:none;width:100%;padding:0;cursor:pointer;margin-bottom:10px;outline:none;font-family:inherit}
+.sec-title{font-size:17px;font-weight:600;color:#1D1D1F;letter-spacing:-0.2px}
+.sec-more{display:flex;align-items:center;gap:2px;font-size:13px;color:#0066CC}
 .sec-more svg{width:14px;height:14px}
 
-/* ========= 进度卡片 ========= */
-.progress-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer}
-.progress-card:active{transform:scale(0.98)}
-.pc-top{display:flex;align-items:center;gap:10px}
-.pc-ic{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500}
-.pc-ic svg{width:19px;height:19px}
-.pc-pct{font-size:24px;font-weight:600;color:#FF9500;letter-spacing:-0.5px;margin-left:auto;line-height:1}
-.pc-tag{font-size:13px;color:#8E8E93}
-.progress-track{height:8px;background:#FFF4E5;border-radius:4px;overflow:hidden;margin:12px 0}
-.progress-fill{height:100%;background:#FF9500;border-radius:4px;transition:width .5s ease;min-width:0}
-.pc-bottom{display:flex;justify-content:space-between;font-size:12px;color:#8E8E93}
+/* ========= 白卡片 ========= */
+.card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
+.list-card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
 
-/* ========= 内容卡片（有数据时） ========= */
-.list-card{background:#fff;border-radius:18px;padding:6px 16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);overflow:hidden}
-.list-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #F5F5F7;cursor:pointer}
-.list-row:last-child{border-bottom:none}
-.row-ic{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500;flex-shrink:0}
-.row-ic svg{width:19px;height:19px}
-.list-row .info{flex:1;min-width:0}
-.list-row .name{font-size:14px;color:#1C1C1E;font-weight:600}
-.list-row .meta{font-size:11px;color:#8E8E93;margin-top:2px}
-.list-row .chev{color:#C7C7CC}
-.list-row .chev svg{width:16px;height:16px}
+/* ========= 临期食材卡 ========= */
+.expiry-row{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.expiry-row+.expiry-row{border-top:1px solid #F2F2F7}
+.expiry-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.expiry-icon svg{width:20px;height:20px}
+.expiry-info{flex:1;min-width:0}
+.expiry-name{font-size:15px;font-weight:600;color:#1D1D1F}
+.expiry-meta{font-size:12px;color:#7A7A7A;margin-top:1px}
+.expiry-tag{flex-shrink:0;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#FFF2EC;color:#E5531A}
 
-/* ========= 空状态卡片 ========= */
-.empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer;display:flex;flex-direction:column;align-items:center}
-.empty-card:active{transform:scale(0.98)}
-.ec-icon{width:44px;height:44px;border-radius:14px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9F0A;margin-bottom:10px}
+/* ========= 食谱横排卡 ========= */
+.recipe-row{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.recipe-row::-webkit-scrollbar{display:none}
+.recipe-card{width:158px;flex-shrink:0;background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
+.recipe-card .thumb{width:100%;height:90px;background:linear-gradient(135deg,#E8F0FB,#D5E5F7);display:flex;align-items:center;justify-content:center;color:#0066CC}
+.recipe-card .thumb svg{width:32px;height:32px}
+.recipe-card .info{padding:10px}
+.recipe-name{font-size:14px;font-weight:600;color:#1D1D1F}
+.recipe-meta{font-size:11px;color:#7A7A7A;margin-top:3px}
+
+/* ========= 空状态 ========= */
+.empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer}
+.ec-icon{width:44px;height:44px;border-radius:14px;background:#EAF2FC;display:flex;align-items:center;justify-content:center;color:#2997FF;margin:0 auto 10px}
 .ec-icon svg{width:24px;height:24px}
 .empty-card p{font-size:13px;color:#A0A0A8}
-.ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px}
+.ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px;display:block}
 
-/* ========= 列表页筛选胶囊 ========= */
-.filter-row{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:4px}
-.filter-row::-webkit-scrollbar{display:none}
-.filter-row .pill{padding:8px 16px;border-radius:999px;background:#fff;color:#1C1C1E;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #EDEDF0;outline:none;white-space:nowrap;box-shadow:none;transition:all .15s}
-.filter-row .pill.active{background:#FF9500;color:#FFFFFF;border-color:#FF9500;font-weight:600}
+/* ========= 食材库：搜索框 + chips + 分组列表 ========= */
+.search-bar{display:flex;align-items:center;gap:8px;background:#E9E9EC;border-radius:12px;padding:0 14px;height:44px;margin-bottom:12px}
+.search-bar svg{width:18px;height:18px;color:#7A7A7A;flex-shrink:0}
+.search-bar input{flex:1;border:none;outline:none;background:none;font-size:15px;color:#1D1D1F;font-family:inherit}
+.search-bar input::placeholder{color:#8E8E93}
+.chip-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin-bottom:16px}
+.chip-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;height:32px;padding:0 14px;border-radius:16px;font-size:13px;display:flex;align-items:center;background:#fff;color:#1D1D1F;border:1px solid transparent;cursor:pointer;outline:none;font-family:inherit}
+.chip.active{background:#0066CC;color:#fff;font-weight:600}
+.group-title{display:flex;justify-content:space-between;align-items:center;margin:16px 0 8px}
+.group-title .gname{font-size:14px;font-weight:600}
+.group-title .gname.warn{color:#E5531A}
+.group-title .gmore{font-size:12px;color:#7A7A7A}
+.ing-row{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.ing-row+.ing-row{border-top:1px solid #F2F2F7}
+.ing-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.ing-icon svg{width:22px;height:22px}
+.ing-info{flex:1;min-width:0}
+.ing-name{font-size:15px;font-weight:600;color:#1D1D1F}
+.ing-meta{font-size:12px;color:#7A7A7A;margin-top:1px}
+.ing-tag{flex-shrink:0;padding:4px 9px;border-radius:11px;font-size:11px;font-weight:600;background:#FFF2EC;color:#E5531A}
 
-/* ========= 列表页项目卡 ========= */
-.item-card{background:#fff;border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
-.item-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
-.item-info{display:flex;gap:10px;align-items:center}
-.item-icon{width:34px;height:34px;border-radius:10px;background:#FFF4E5;display:flex;align-items:center;justify-content:center;color:#FF9500;flex-shrink:0}
-.item-icon svg{width:19px;height:19px}
-.item-info .name{font-size:15px;font-weight:600;color:#1C1C1E}
-.item-info .meta{font-size:11px;color:#8E8E93;margin-top:1px}
-.item-right{text-align:right}
-.item-right .big{font-size:16px;font-weight:700;color:#1C1C1E}
-.item-right .big span{font-size:11px;font-weight:400;color:#8E8E93;margin-left:2px}
-.item-right .sub{font-size:11px;color:#8E8E93;margin-top:2px}
-.item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-.tags{display:flex;gap:6px;flex-wrap:wrap}
-.mini-tag{font-size:10px;color:#8E8E93;padding:3px 8px;border-radius:6px;background:#FFFFFF}
-.mini-tag.warn{background:#FFF4E5;color:#FF9500}
-.mini-tag.danger{background:#FFEBEC;color:#FF3B30}
-.action-btn{padding:9px 20px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;outline:none}
-.detail-txt{font-size:13px;color:#1C1C1E;white-space:pre-line;padding-top:8px;border-top:1px solid #F5F5F7}
-.detail-meta{font-size:12px;color:#8E8E93;margin-top:6px}
+/* ========= 宠物：大卡片 + 今日待办 ========= */
+.pet-card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.pet-avatar{width:72px;height:72px;border-radius:36px;background:#E8F0FB;display:flex;align-items:center;justify-content:center;color:#0066CC;flex-shrink:0;overflow:hidden}
+.pet-avatar svg{width:36px;height:36px}
+.pet-info{flex:1;min-width:0}
+.pet-name-row{display:flex;align-items:center;justify-content:space-between}
+.pet-name{font-size:18px;font-weight:600;color:#1D1D1F}
+.pet-status{font-size:11px;font-weight:600;padding:4px 8px;border-radius:10px}
+.pet-status.ok{background:#EDF7F1;color:#33995F}
+.pet-status.warn{background:#FFF2EC;color:#E5531A}
+.pet-meta{font-size:13px;color:#7A7A7A;margin-top:4px}
+.pet-meta2{font-size:12px;color:#7A7A7A;margin-top:2px}
+.todo-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.todo-title{font-size:17px;font-weight:600;color:#1D1D1F}
+.todo-count{font-size:13px;color:#7A7A7A}
+.todo-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.todo-icon{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.todo-icon svg{width:18px;height:18px}
+.todo-info{flex:1;min-width:0}
+.todo-name{font-size:14px;font-weight:600;color:#1D1D1F}
+.todo-meta{font-size:11px;color:#7A7A7A;margin-top:1px}
+.todo-dot{width:22px;height:22px;border-radius:50%;border:1.5px solid #CCCCCC;flex-shrink:0}
 
-/* ========= 列表行（带操作） ========= */
-.row-actions{display:flex;gap:2px}
-.act-btn{background:none;border:none;color:#C7C7CC;cursor:pointer;font-size:15px;padding:4px 6px}
-.act-btn:hover{color:#1C1C1E}
-.act-btn.del{color:#FF3B30}
-.act-btn.del:hover{color:#E02D22}
-.tag-mini{padding:3px 8px;border-radius:6px;font-size:10px;background:#FFFFFF;color:#8E8E93;flex-shrink:0}
-.tag-mini.warn{background:#FFF4E5;color:#FF9500}
-.tag-mini.danger{background:#FFEBEC;color:#FF3B30}
-.row-check{width:22px;height:22px;border-radius:50%;background:#FF9500;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;flex-shrink:0}
-.row-check.empty{background:#fff;border:2px solid #E5E5EA;color:#A0A0A8}
+/* ========= 食谱 2×2 网格 ========= */
+.recipe-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.recipe-grid .recipe-card{width:auto}
+.recipe-grid .thumb{height:120px}
+.recipe-grid .recipe-name{font-size:15px}
 
-/* ========= Page ========= */
-.page{display:none}.page.active{display:block}
+/* ========= 头部行（标题+加号） ========= */
+.head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.head-row .hero-title{margin:0}
+.add-btn{width:36px;height:36px;border-radius:18px;background:#0066CC;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none}
+.add-btn svg{width:18px;height:18px}
 
-/* ========= 底部悬浮胶囊导航（5 Tab，弹性指示器动画） ========= */
+/* ========= 底部悬浮胶囊导航（4 Tab，蓝色激活） ========= */
 .bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.98);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 12px 36px rgba(0,0,0,0.14);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
-.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:#FF9F0A;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
+.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/4);background:#0066CC;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);position:relative;z-index:1;color:#1C1C1E;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:color .25s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(24px, 6.6vw, 28px);height:clamp(24px, 6.6vw, 28px)}
 .nav-item.active{color:#FFFFFF}
 
-/* ========= FAB ========= */
-.fab{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + 108px);right:50%;transform:translateX(calc(50vw - 36px));max-width:calc(420px - 36px);width:56px;height:56px;border-radius:50%;background:#FF9500;color:#fff;border:none;font-size:26px;cursor:pointer;box-shadow:0 6px 16px rgba(255,149,0,0.35);z-index:40;display:flex;align-items:center;justify-content:center;outline:none}
+/* ========= Page 切换 ========= */
+.page{display:none}.page.active{display:block}
 
 /* ========= Modal ========= */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-end;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal{background:#F2F2F7;border-radius:18px 18px 0 0;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;padding:8px 16px 24px;animation:slideUp .25s ease}
-@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-.modal-handle{width:36px;height:4px;background:#D1D1D6;border-radius:2px;margin:0 auto 14px}
-.modal-title{font-size:20px;font-weight:700;color:#1C1C1E;text-align:center;margin-bottom:16px;letter-spacing:-0.3px}
-.form-group{margin-bottom:10px}
-.form-group label{display:block;font-size:12px;color:#8E8E93;margin-bottom:4px;font-weight:500}
-.form-group input,.form-group textarea,.form-group select{width:100%;padding:12px 14px;border:none;border-radius:12px;background:#fff;font-size:16px;color:#1C1C1E;outline:none;font-family:inherit}
-.form-group textarea{resize:vertical;min-height:60px}
-.form-row{display:flex;gap:10px}
-.form-row .form-group{flex:1;min-width:0}
-.form-actions{display:flex;gap:8px;margin-top:18px}
-.form-actions button{flex:1}
-.btn-cancel{padding:12px;border-radius:999px;background:#fff;color:#1C1C1E;border:1px solid #EDEDF0;font-size:15px;cursor:pointer}
-.btn-save{padding:12px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer}
-/* ========= 自定义分类 chips ========= */
-.cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-.cat-chip{padding:6px 14px;border-radius:999px;background:#fff;color:#1C1C1E;font-size:12px;cursor:pointer;border:1px solid #EDEDF0;outline:none;font-family:inherit;transition:all .15s}
-.cat-chip.active{background:#FF9500;color:#FFFFFF;border-color:#FF9500;font-weight:600}
-
-/* ========= 列表编辑器 ========= */
-.list-editor{background:#fff;border-radius:12px;padding:10px}
-.list-editor .ing-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:14px}
-.list-editor .ing-row .x{color:#FF3B30;cursor:pointer;font-size:16px;width:20px;text-align:center}
-.list-editor .ing-add{display:flex;gap:6px;margin-top:6px}
-.list-editor .ing-add input{flex:1;padding:8px 12px;border:1px solid #E5E5EA;border-radius:8px;background:#F2F2F7;font-size:14px;outline:none;color:#1C1C1E}
-.list-editor .ing-add button{padding:8px 16px;border-radius:999px;background:#FF9500;color:#fff;border:none;font-size:12px;font-weight:500;cursor:pointer}
-
-/* ===== Switch 开关 ===== */
-.switch{position:relative;display:inline-block;width:48px;height:28px;margin-top:4px}
-.switch input{opacity:0;width:0;height:0}
-.switch .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#E5E5EA;border-radius:14px;transition:.2s}
-.switch .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
-.switch input:checked + .slider{background:#FF9500}
-.switch input:checked + .slider:before{transform:translateX(20px)}
-
-/* ===== 版本 footer ===== */
-.version-footer{text-align:center;color:#C7C7CC;font-size:12px;padding:24px 0 8px}
-
-/* ===== 选择器字段（弹窗内，点击唤起 Bottom Sheet） ===== */
-.picker-field{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;border:none;border-radius:12px;background:#fff;font-size:15px;color:#1C1C1E;cursor:pointer;outline:none;font-family:inherit;text-align:left}
-.picker-field .chev{color:#C7C7CC;font-size:16px}
-.picker-field .empty{color:#A0A0A8}
-
-/* ===== Bottom Sheet Picker（底部上滑选择器） ===== */
-.picker-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:120;align-items:flex-end;justify-content:center}
-.picker-overlay.open{display:flex}
-.picker-sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:420px;max-height:78vh;display:flex;flex-direction:column;padding:10px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);animation:slideUp .25s ease}
-.picker-title{font-size:17px;font-weight:700;color:#1C1C1E;text-align:center;margin:2px 0 12px}
-.picker-search{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:#F2F2F7;margin-bottom:12px}
-.picker-search svg{width:16px;height:16px;color:#A0A0A8;flex-shrink:0}
-.picker-search input{flex:1;border:none;background:none;outline:none;font-size:15px;color:#1C1C1E}
-.picker-group{font-size:12px;color:#8E8E93;margin-bottom:8px;padding:0 4px}
-.picker-list{overflow-y:auto;flex:1;min-height:120px}
-.picker-item{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid #F2F2F7;cursor:pointer}
-.picker-item:last-child{border-bottom:none}
-.picker-item:active{background:#F8F8FA}
-.picker-item .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:#FFF4E5;color:#FF9500;font-size:13px;font-weight:600}
-.picker-item .more{margin-left:auto;background:none;border:none;color:#C7C7CC;font-size:18px;cursor:pointer;padding:4px 10px;line-height:1}
-.sub-btn{background:#F2F2F7;border:none;color:#FF9500;font-size:11px;padding:5px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;margin-left:auto}
-.picker-back{display:flex;justify-content:space-between;align-items:center;padding:10px 4px;color:#FF9500;font-size:14px;font-weight:600;cursor:pointer;border-bottom:1px solid #F2F2F7;margin-bottom:4px}
-.sub-row{display:flex;align-items:center;gap:10px;padding:10px 4px 10px 16px;border-bottom:1px solid #F2F2F7}
-.sub-row .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:#FFF4E5;color:#FF9500;font-size:12px;font-weight:600}
-.sub-row .use-count{font-size:11px;color:#A0A0A8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sub-add{background:none;border:none;color:#FF9500;font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px;font-family:inherit}
-.picker-create{padding:12px;text-align:center;color:#FF9500;font-size:14px;font-weight:600;cursor:pointer;border-top:1px solid #F2F2F7;margin-top:8px}
-.picker-nomatch{padding:24px;text-align:center;color:#C7C7CC;font-size:13px}
-
-/* ===== 分类管理页 ===== */
-.cat-hero{padding-bottom:4px}
-.back-btn{display:inline-flex;align-items:center;gap:2px;background:none;border:none;color:#FF9500;font-size:13px;font-weight:500;cursor:pointer;outline:none;padding:0;margin-bottom:8px;font-family:inherit}
-.back-btn svg{width:16px;height:16px}
-.add-cat-row{display:flex;gap:8px;margin-top:14px}
-.add-cat-row input{flex:1;padding:12px 14px;border:1px solid #E5E5EA;border-radius:12px;background:#F2F2F7;font-size:15px;color:#1C1C1E;outline:none;font-family:inherit}
-.add-cat-row .btn-save{padding:12px 22px;border-radius:999px;flex:0 0 auto}
-.cat-row-name{flex:1;min-width:0;font-size:14px;color:#1C1C1E;font-weight:500;text-align:left;background:none;border:none;cursor:pointer;padding:4px 0;font-family:inherit}
-.cat-row-name:active{color:#FF9500}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;display:none;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.modal-sheet{width:100%;max-width:420px;background:#fff;border-radius:22px 22px 0 0;padding:24px 20px calc(env(safe-area-inset-bottom,0px)+24px);animation:slideUp .28s cubic-bezier(.32,.72,0,1)}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-size:18px;font-weight:600;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;color:#8E8E93;margin-bottom:6px;font-weight:500}
+.form-group input,.form-group select{width:100%;height:44px;border:1px solid #E5E5EA;border-radius:12px;padding:0 14px;font-size:15px;outline:none;font-family:inherit;background:#F9F9FB}
+.form-group input:focus,.form-group select:focus{border-color:#0066CC}
+.btn-save{width:100%;height:48px;border-radius:999px;background:#0066CC;color:#fff;border:none;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;outline:none}
+.btn-cancel{width:100%;height:44px;border-radius:999px;background:#F2F2F7;color:#1D1D1F;border:none;font-size:14px;cursor:pointer;margin-top:8px;outline:none}
 </style>
 </head>
 <body>
-
 <div class="app">
 
-  <!-- ========= Home（概览） ========= -->
-  <div id="page-home" class="page active">
+  <!-- 状态栏（静态：9:41 + 信号） -->
+  <div class="status-bar">
+    <span class="time">9:41</span>
+    <span class="status-icons">
+      <svg width="17" height="11" viewBox="0 0 17 11" fill="none"><rect x="0" y="7" width="3" height="4" rx="0.5" fill="#1D1D1F"/><rect x="4.5" y="5" width="3" height="6" rx="0.5" fill="#1D1D1F"/><rect x="9" y="3" width="3" height="8" rx="0.5" fill="#1D1D1F"/><rect x="13.5" y="0" width="3" height="11" rx="0.5" fill="#1D1D1F" opacity="0.35"/></svg>
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><path d="M8 10c.83 0 1.5-.67 1.5-1.5S8.83 7 8 7s-1.5.67-1.5 1.5S7.17 10 8 10z" fill="#1D1D1F"/><path d="M4 6.5c1.1-1.1 2.5-1.7 4-1.7s2.9.6 4 1.7" stroke="#1D1D1F" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 4c1.9-1.9 4.1-3 6.5-3s4.6 1.1 6.5 3" stroke="#1D1D1F" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3" stroke="#1D1D1F" stroke-opacity="0.4"/><rect x="2" y="2" width="15" height="8" rx="1.5" fill="#1D1D1F"/><path d="M23 4v4c1.1-.3 1.1-3.7 0-4z" fill="#1D1D1F" fill-opacity="0.4"/></svg>
+    </span>
+  </div>
+
+  <!-- ============ 01 首页 ============ -->
+  <div class="page active" id="page-home">
     <div class="hero">
-      <div class="hero-title">生活管家</div>
-      <div class="hero-sub">记录你的每日生活</div>
+      <div class="hero-title">我的生活</div>
+      <div class="hero-sub" id="home-date">8月10日 星期一 · 晴 26°</div>
     </div>
     <div class="content">
-      <!-- 2×2 统计网格 -->
-      <div class="stat-grid" id="home-stats-grid"></div>
+      <div class="overview-card">
+        <div class="ov-head"><span class="ov-title">今日概览</span><span class="ov-more">全部 ›</span></div>
+        <div class="ov-stats" id="home-stats">
+          <div class="stat-block">
+            <span class="ic" id="stat-ic-0"></span>
+            <span class="num" id="stat-num-0">24</span>
+            <span class="lbl" id="stat-lbl-0">库存食材</span>
+          </div>
+          <div class="stat-block">
+            <span class="ic" id="stat-ic-1"></span>
+            <span class="num" id="stat-num-1">2</span>
+            <span class="lbl" id="stat-lbl-1">宠物待喂</span>
+          </div>
+          <div class="stat-block">
+            <span class="ic" id="stat-ic-2"></span>
+            <span class="num" id="stat-num-2">18</span>
+            <span class="lbl" id="stat-lbl-2">收藏食谱</span>
+          </div>
+        </div>
+      </div>
 
-      <!-- 区块 B：今日食谱 -->
-      <button class="sec-head" onclick="goToPage('recipes')">
-        <span class="sec-title">今日食谱</span>
-        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      <button class="sec-head" onclick="goToPage('ingredients')">
+        <span class="sec-title">临期食材</span>
+        <span class="sec-more">查看全部 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
-      <div id="home-progress"></div>
+      <div class="card" id="home-expiry"></div>
 
-      <!-- 区块 C：宠物用品 -->
-      <button class="sec-head" onclick="goToPage('pets')">
-        <span class="sec-title">宠物用品</span>
-        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+      <button class="sec-head" style="margin-top:20px" onclick="goToPage('recipes')">
+        <span class="sec-title">今日推荐食谱</span>
+        <span class="sec-more">查看全部 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
       </button>
-      <div id="home-pets"></div>
-
-      <!-- 区块 D：种草菜单 -->
-      <button class="sec-head" onclick="goToPage('stats')">
-        <span class="sec-title">种草菜单</span>
-        <span class="sec-more">查看更多 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-      </button>
-      <div id="home-wishlist"></div>
+      <div class="recipe-row" id="home-recipes"></div>
     </div>
   </div>
 
-  <!-- ========= Ingredients ========= -->
-  <div id="page-ingredients" class="page">
+  <!-- ============ 02 食材库 ============ -->
+  <div class="page" id="page-ingredients">
     <div class="hero">
-      <div class="hero-title">食材库</div>
-      <div class="hero-sub">共 <span id="ing-count">0</span> 种会做的食材</div>
+      <div class="head-row">
+        <div class="hero-title">食材库</div>
+        <button class="add-btn" onclick="openModal('ingredient')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="ing-search" placeholder="搜索食材" oninput="renderIngredients()">
+      </div>
     </div>
-    <div class="content">
-      <div class="filter-row" id="ing-filters"></div>
-      <div id="ingredient-list"></div>
+    <div class="content" style="padding-top:0">
+      <div class="chip-row" id="ing-chips"></div>
+      <div id="ing-list"></div>
     </div>
   </div>
 
-  <!-- ========= Pets ========= -->
-  <div id="page-pets" class="page">
+  <!-- ============ 03 宠物 ============ -->
+  <div class="page" id="page-pets">
     <div class="hero">
-      <div class="hero-title">宠物用品</div>
-      <div class="hero-sub">共 <span id="pet-count">0</span> 件用品</div>
+      <div class="head-row">
+        <div class="hero-title">我的宠物</div>
+        <button class="add-btn" onclick="openModal('pet')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
     </div>
-    <div class="content">
-      <div class="filter-row" id="pet-filters"></div>
+    <div class="content" style="padding-top:0">
       <div id="pet-list"></div>
+      <div class="todo-head">
+        <span class="todo-title">今日待办</span>
+        <span class="todo-count" id="todo-count">3 项</span>
+      </div>
+      <div id="pet-todos"></div>
     </div>
   </div>
 
-  <!-- ========= Recipes ========= -->
-  <div id="page-recipes" class="page">
+  <!-- ============ 04 食谱 ============ -->
+  <div class="page" id="page-recipes">
     <div class="hero">
-      <div class="hero-title">我的食谱</div>
-      <div class="hero-sub">共 <span id="rec-count">0</span> 道食谱</div>
+      <div class="head-row">
+        <div class="hero-title">食谱</div>
+        <button class="add-btn" onclick="openModal('recipe')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+      </div>
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+        <input id="rec-search" placeholder="搜索食谱" oninput="renderRecipes()">
+      </div>
     </div>
-    <div class="content">
-      <div class="filter-row" id="rec-filters"></div>
-      <div id="recipe-list"></div>
-
-      <!-- 种草菜单（放食谱页） -->
-      <button class="sec-head" onclick="openModal('wish')">
-        <span class="sec-title">种草菜单</span>
-        <span class="sec-more">点 + 添加 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-      </button>
-      <div id="recipe-wishlist"></div>
+    <div class="content" style="padding-top:0">
+      <div class="chip-row" id="rec-chips"></div>
+      <div class="recipe-grid" id="rec-grid"></div>
     </div>
   </div>
 
-  <!-- ========= Settings（设置） ========= -->
-  <div id="page-stats" class="page">
-    <div class="hero">
-      <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.22</div>
-    </div>
-    <div class="content">
-      <div class="list-card">
-        <div class="list-row" onclick="goToPage('locs')">
-          <span class="row-ic" style="color:#AF52DE;background:#F1EBFB"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
-          <div class="info"><div class="name">位置管理</div><div class="meta">食材存放位置 · 新增 / 重命名 / 删除</div></div>
-          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-        </div>
-      </div>
-      <div class="list-card" style="margin-top:12px">
-        <div class="list-row" onclick="goToPage('cats')">
-          <span class="row-ic" style="color:#FF9500;background:#FFF4E5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
-          <div class="info"><div class="name">分类管理</div><div class="meta">自定义新增 / 重命名 / 删除分类</div></div>
-          <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-        </div>
-      </div>
-
-      <div class="version-footer">生活管家 v8.9.22 · 数据保存在本机</div>
-    </div>
-  </div>
-
-  <!-- ========= 位置管理页 ========= -->
-  <div id="page-locs" class="page">
-    <div class="hero cat-hero">
-      <button class="back-btn" onclick="goToPage('stats')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>返回
-      </button>
-      <div class="hero-title">位置管理</div>
-      <div class="hero-sub">食材存放位置 · 新增 / 重命名 / 删除</div>
-    </div>
-    <div class="content">
-      <div class="list-card" id="loc-list"></div>
-      <div class="add-cat-row">
-        <input name="field" autocomplete="off" type="text" id="new-loc-input" placeholder="输入新位置，如 冰箱、抽屉">
-        <button class="btn-save" onclick="addLoc()">添加</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========= 分类管理页 ========= -->
-  <div id="page-cats" class="page">
-    <div class="hero cat-hero">
-      <button class="back-btn" onclick="goToPage('stats')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>返回
-      </button>
-      <div class="hero-title">分类管理</div>
-      <div class="hero-sub">新增 / 重命名 / 删除分类</div>
-    </div>
-    <div class="content">
-      <div class="filter-row" id="cat-tabs">
-        <button class="pill active" data-type="ingredients">食材库</button>
-        <button class="pill" data-type="pets">宠物</button>
-        <button class="pill" data-type="recipes">食谱</button>
-      </div>
-      <div class="list-card" id="cat-list"></div>
-      <div class="add-cat-row">
-        <input name="field" autocomplete="off" type="text" id="new-cat-input" placeholder="输入新分类名称">
-        <button class="btn-save" onclick="addCat()">添加</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FAB -->
-  <button class="fab" onclick="quickAdd()">+</button>
-
-  <!-- Bottom Nav（悬浮胶囊 5 Tab + 弹性指示器） -->
+  <!-- ============ 底部导航（4 Tab） ============ -->
   <nav class="bottom-nav">
     <div class="nav-indicator" id="nav-indicator"></div>
     <button class="nav-item active" data-page="home">
@@ -377,844 +286,184 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
     <button class="nav-item" data-page="recipes">
       <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v6.5c0 1.4 1 2.4 2.2 2.4H9c1.2 0 2.2-1 2.2-2.4V2.5"/><path d="M7 2.5V21"/><path d="M5.5 6h3"/><path d="M21 2.5v5.5c0 2.2-1.5 3.4-3 3.4s-3-1.2-3-3.4V2.5"/><path d="M18 11.4V21"/></svg></span><span>食谱</span>
     </button>
-    <button class="nav-item" data-page="stats">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 21V13"/><path d="M10 21V8"/><path d="M16.5 21V3.5"/><path d="M3.5 21h17"/><circle cx="16.5" cy="6" r="1.6" fill="currentColor" stroke="none"/></svg></span><span>设置</span>
-    </button>
   </nav>
 
-  <!-- Modal -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <div class="modal-title" id="modal-title"></div>
-      <form id="modal-form" onsubmit="return false;" autocomplete="off">
-
-        <div id="fields-ingredient">
-          <div class="form-group"><label>名称</label><input name="field" autocomplete="off" type="text" id="ing-title" required></div>
-          <div class="form-group"><label>状态</label>
-            <input name="field" type="hidden" id="ing-status">
-            <button type="button" class="picker-field" onclick="openPicker('statuses','ing-status')"><span id="ing-status-label">点击选择状态</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-group"><label>分类（可再选二级）</label>
-            <input name="field" type="hidden" id="ing-category">
-            <input name="field" type="hidden" id="ing-subcategory">
-            <button type="button" class="picker-field" onclick="openPicker('ingredients','ing-category')"><span id="ing-category-label">点击选择分类</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-group"><label>存储位置</label>
-            <input name="field" type="hidden" id="ing-location">
-            <button type="button" class="picker-field" onclick="openPicker('locations','ing-location')"><span id="ing-location-label">点击选择位置</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-group"><label>单位</label>
-            <input name="field" type="hidden" id="ing-unit">
-            <button type="button" class="picker-field" onclick="openPicker('units','ing-unit')"><span id="ing-unit-label">点击选择单位</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>数量</label><input name="field" autocomplete="off" type="text" id="ing-qty" placeholder="如 2"></div>
-            <div class="form-group"><label>库存</label><input name="field" autocomplete="off" type="text" id="ing-stock" placeholder="当前剩余"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>入库日期</label><input name="field" autocomplete="off" type="date" id="ing-indate" onchange="calcExpiry()"></div>
-            <div class="form-group"><label>保质期天数</label><input name="field" autocomplete="off" type="number" id="ing-shelf" placeholder="如 7" onchange="calcExpiry()"></div>
-          </div>
-          <div class="form-group"><label>过期日期（填入库+保质期自动计算）</label><input name="field" autocomplete="off" type="date" id="ing-expiry"></div>
-          <div class="form-group"><label>备注</label><input name="field" autocomplete="off" type="text" id="ing-note" placeholder="如：会做、常做"></div>
-        </div>
-
-        <div id="fields-pet" style="display:none">
-          <div class="form-group"><label>名称</label><input name="field" autocomplete="off" type="text" id="pet-title" required></div>
-          <div class="form-group"><label>分类（可再选二级）</label>
-            <input name="field" type="hidden" id="pet-category">
-            <input name="field" type="hidden" id="pet-subcategory">
-            <button type="button" class="picker-field" onclick="openPicker('pets','pet-category')"><span id="pet-category-label">点击选择分类</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-group"><label>数量</label><input name="field" autocomplete="off" type="text" id="pet-qty" required></div>
-          <div class="form-group"><label>备注</label><input name="field" autocomplete="off" type="text" id="pet-note"></div>
-        </div>
-
-        <div id="fields-recipe" style="display:none">
-          <div class="form-group"><label>食谱名称</label><input name="field" autocomplete="off" type="text" id="rec-title" required></div>
-          <div class="form-group"><label>分类（可再选二级）</label>
-            <input name="field" type="hidden" id="rec-category">
-            <input name="field" type="hidden" id="rec-subcategory">
-            <button type="button" class="picker-field" onclick="openPicker('recipes','rec-category')"><span id="rec-category-label">点击选择分类</span><span class="chev">›</span></button>
-          </div>
-          <div class="form-group"><label>烹饪时长</label><input name="field" autocomplete="off" type="text" id="rec-time" placeholder="如 15分钟"></div>
-          <div class="form-group"><label>所需食材</label>
-            <div class="list-editor" id="rec-ingredients-editor">
-              <div class="ing-add">
-                <input name="field" autocomplete="off" type="text" id="rec-ing-input" placeholder="输入食材后回车">
-                <button type="button" onclick="addIngItem()">添加</button>
-              </div>
-            </div>
-          </div>
-          <div class="form-group"><label>配料</label>
-            <div class="list-editor" id="rec-seasonings-editor">
-              <div class="ing-add">
-                <input name="field" autocomplete="off" type="text" id="rec-seas-input" placeholder="如 盐、生抽、料酒">
-                <button type="button" onclick="addSeasItem()">添加</button>
-              </div>
-            </div>
-          </div>
-          <div class="form-group"><label>加入今日食谱</label>
-            <label class="switch"><input name="field" autocomplete="off" type="checkbox" id="rec-recent"><span class="slider"></span></label>
-          </div>
-          <div class="form-group"><label>烹饪步骤</label><textarea name="field" autocomplete="off" id="rec-steps" rows="3" placeholder="1. ..."></textarea></div>
-          <div class="form-group"><label>备注</label><input name="field" autocomplete="off" type="text" id="rec-note"></div>
-        </div>
-
-        <div id="fields-wishlist" style="display:none">
-          <div class="form-group"><label>菜名</label><input name="field" autocomplete="off" type="text" id="wish-title" placeholder="想尝试的菜" required></div>
-          <div class="form-group"><label>类型</label><input name="field" autocomplete="off" type="text" id="wish-type" placeholder="如 中餐 / 甜品 / 餐厅打卡"></div>
-          <div class="form-group"><label>备注</label><input name="field" autocomplete="off" type="text" id="wish-note" placeholder="为什么种草？"></div>
-        </div>
-
-        <div class="form-actions">
-          <button type="button" class="btn-cancel" onclick="closeModal()">取消</button>
-          <button type="button" class="btn-save" onclick="saveForm()">保存</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Bottom Sheet Picker（底部上滑选择器） -->
-  <div class="picker-overlay" id="picker-overlay">
-    <div class="picker-sheet">
-      <div class="modal-handle"></div>
-      <div class="picker-title" id="picker-title">选择</div>
-      <div class="picker-search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input name="field" type="text" id="picker-input" placeholder="搜索或输入新建..." autocomplete="off">
-      </div>
-      <div class="picker-group" id="picker-group">已有选项</div>
-      <div class="picker-list" id="picker-list"></div>
-      <div class="picker-create" id="picker-create" style="display:none" onclick="pickerCreate()">
-        创建「<b id="picker-create-text"></b>」
-      </div>
+  <!-- ============ Modal ============ -->
+  <div class="modal" id="modal">
+    <div class="modal-sheet">
+      <div class="modal-title" id="modal-title">添加</div>
+      <div id="modal-form"></div>
     </div>
   </div>
 </div>
 
 <script>
-const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.22';
-const DEFAULT_CATS = {
-  ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
-  pets: ['食品','玩具','清洁','医疗','窝具','其他'],
-  recipes: ['家常菜','汤羹','主食','甜品','饮品','烘焙','其他']
+/* ============ 数据（localStorage，与生活管家同构） ============ */
+const KEY='life-manager-v5';
+const DEFAULT_DATA={
+  ingredients:[
+    {id:1,name:'鲜牛奶',qty:'500ml',loc:'冷藏',exp:'2026-08-12'},
+    {id:2,name:'土鸡蛋',qty:'8 枚',loc:'冷藏',exp:'2026-08-15'},
+    {id:3,name:'番茄',qty:'4 颗',loc:'室温',exp:'2026-08-20'},
+    {id:4,name:'胡萝卜',qty:'3 根',loc:'冷藏',exp:'2026-08-20'},
+    {id:5,name:'鸡胸肉',qty:'500g',loc:'冷冻',exp:'2026-09-01'}
+  ],
+  pets:[
+    {id:1,name:'布丁',cat:'金毛犬',gender:'公',age:'3岁',weight:'28.5kg',health:'健康'},
+    {id:2,name:'咪咪',cat:'英短',gender:'母',age:'2岁',weight:'4.2kg',health:'待喂食'}
+  ],
+  recipes:[
+    {id:1,name:'番茄炖牛腩',time:'60分钟',tag:'中辣',fav:true},
+    {id:2,name:'鸡胸肉沙拉',time:'20分钟',tag:'低卡',fav:false},
+    {id:3,name:'番茄蛋汤',time:'15分钟',tag:'简单',fav:true},
+    {id:4,name:'鸡肉拌饭',time:'30分钟',tag:'宠物友好',fav:false}
+  ]
 };
-const DEFAULT_LOCS = ['冰箱','冷藏','冷冻','常温柜','其他'];
-const DEFAULT_STATUSES = ['在库','临期','用完'];
-const DEFAULT_UNITS = ['个','斤','克','千克','袋','盒','瓶','包'];
-function getData(){
-  try{
-    const d=JSON.parse(localStorage.getItem(STORE_KEY))||{ingredients:[],pets:[],recipes:[],wishlist:[]};
-    d.wishlist=d.wishlist||[];
-    d.locations=d.locations||DEFAULT_LOCS.slice();
-    d.statuses=d.statuses||DEFAULT_STATUSES.slice();
-    d.units=d.units||DEFAULT_UNITS.slice();
-    d.subcats=d.subcats||{ingredients:{},pets:{},recipes:{}};
-    if(!d.subcats.ingredients)d.subcats.ingredients={};
-    if(!d.subcats.pets)d.subcats.pets={};
-    if(!d.subcats.recipes)d.subcats.recipes={};
-    d.cats={
-      ingredients:(d.cats&&d.cats.ingredients)||DEFAULT_CATS.ingredients.slice(),
-      pets:(d.cats&&d.cats.pets)||DEFAULT_CATS.pets.slice(),
-      recipes:(d.cats&&d.cats.recipes)||DEFAULT_CATS.recipes.slice()
-    };
-    return d;
-  }catch{return{ingredients:[],pets:[],recipes:[],wishlist:[],locations:DEFAULT_LOCS.slice(),statuses:DEFAULT_STATUSES.slice(),units:DEFAULT_UNITS.slice(),subcats:{ingredients:{},pets:{},recipes:{}},cats:{ingredients:DEFAULT_CATS.ingredients.slice(),pets:DEFAULT_CATS.pets.slice(),recipes:DEFAULT_CATS.recipes.slice()}}}
-}
-function saveData(d){localStorage.setItem(STORE_KEY,JSON.stringify(d))}
+function getData(){try{return JSON.parse(localStorage.getItem(KEY))||JSON.parse(JSON.stringify(DEFAULT_DATA))}catch(e){return JSON.parse(JSON.stringify(DEFAULT_DATA))}}
+function saveData(d){localStorage.setItem(KEY,JSON.stringify(d))}
+if(!localStorage.getItem(KEY))saveData(JSON.parse(JSON.stringify(DEFAULT_DATA)));
 
-/* ===== 灰色线条图标（feather 风格） ===== */
-const ICONS = {
-  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V5"/><path d="M12 5c5 .5 7 4.5 5 7.5C15 15.5 10 14.5 7 11.5 4.5 9 7 5.5 12 5z"/></svg>',
-  paw:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="10" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="6" cy="16" r="2"/><circle cx="18" cy="16" r="2"/><ellipse cx="12" cy="14.5" rx="3.2" ry="3.6"/></svg>',
-  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
-  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
-  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+/* ============ 图标 ============ */
+const ICONS={
+  flame:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 0-6 5.5-6 11 0 3.31 2.69 6 6 6s6-2.69 6-6c0-3.5-3.5-6.5-6-11z"/><path d="M12 20c-1.66 0-3-1.34-3-3 0-1.5 1.2-2.3 2-3.5.8 1.2 2 2 2 3.5 0 1.66-1.34 3-3 3z"/></svg>',
+  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0 0 0-10 7-14 7 4 7 14 7 14"/><path d="M5 19c4-4 8-8 13-12"/></svg>',
+  pantry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7-2.8-7-6.6C5 9 8 6 12 6s7 3 7 7.4c0 3.8-2.5 6.6-7 6.6z"/><path d="M12 6.2C12 4.6 10.8 3.6 9.5 3.4c-.2.9-.1 2.2.9 3"/><path d="M12 6.2c0-1.6 1.2-2.6 2.5-2.8.2.9.1 2.2-.9 3"/><path d="M12 6.2V4.8"/><path d="M9 14.5a2.8 2.8 0 0 0 2.6 2.6"/></svg>',
+  pets:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5c-4.8 0-8.5-3-8.5-7 0-5 3.4-9.5 8.5-9.5s8.5 4.5 8.5 9.5c0 4-3.7 7-8.5 7z"/><path d="M8.8 3.5L6.5 4.8"/><path d="M15.2 3.5l2.3 1.3"/><circle cx="9.2" cy="12.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.8" cy="12.8" r="0.9" fill="currentColor" stroke="none"/><path d="M9.8 16.3c1.3 1 3.1 1 4.4 0"/><path d="M7.5 12.2l-2.2-.8"/><path d="M16.5 12.2l2.2-.8"/></svg>',
+  recipes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v6.5c0 1.4 1 2.4 2.2 2.4H9c1.2 0 2.2-1 2.2-2.4V2.5"/><path d="M7 2.5V21"/><path d="M5.5 6h3"/><path d="M21 2.5v5.5c0 2.2-1.5 3.4-3 3.4s-3-1.2-3-3.4V2.5"/><path d="M18 11.4V21"/></svg>',
+  bowl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16c0 4.42-3.58 8-8 8s-8-3.58-8-8z"/><path d="M4 12c0-4.42 3.58-8 8-8s8 3.58 8 8"/></svg>',
+  droplet:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c0 0-6 7.5-6 12a6 6 0 0 0 12 0c0-4.5-6-12-6-12z"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 1.5"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 20c0 0-8-5.5-8-10.5C4 6.97 5.97 5 8.5 5c1.5 0 2.7.7 3.5 1.8C12.8 5.7 14 5 15.5 5 18.03 5 20 6.97 20 9.5c0 5-8 10.5-8 10.5z"/></svg>'
 };
 
-let modalMode=null, editId=null;
-let currentPage='home';
-let ingFilter='all', petFilter='all', recFilter='all';
-
-/* ===== 表单字段元素绑定（saveForm/openModal 使用裸标识符） ===== */
-const ing_title=document.getElementById('ing-title'), ing_status=document.getElementById('ing-status'), ing_category=document.getElementById('ing-category'), ing_subcategory=document.getElementById('ing-subcategory'), ing_location=document.getElementById('ing-location'), ing_unit=document.getElementById('ing-unit'), ing_qty=document.getElementById('ing-qty'), ing_stock=document.getElementById('ing-stock'), ing_indate=document.getElementById('ing-indate'), ing_shelf=document.getElementById('ing-shelf'), ing_expiry=document.getElementById('ing-expiry'), ing_note=document.getElementById('ing-note'), pet_title=document.getElementById('pet-title'), pet_category=document.getElementById('pet-category'), pet_subcategory=document.getElementById('pet-subcategory'), pet_qty=document.getElementById('pet-qty'), pet_note=document.getElementById('pet-note'), rec_title=document.getElementById('rec-title'), rec_category=document.getElementById('rec-category'), rec_subcategory=document.getElementById('rec-subcategory'), rec_time=document.getElementById('rec-time'), rec_steps=document.getElementById('rec-steps'), rec_note=document.getElementById('rec-note'), rec_recent=document.getElementById('rec-recent'), wish_title=document.getElementById('wish-title'), wish_type=document.getElementById('wish-type'), wish_note=document.getElementById('wish-note');
-
-function goToPage(p){
-  currentPage=p;
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active', el.dataset.page===p));
-  const navIndex=['home','ingredients','pets','recipes','stats'].indexOf(p);
-  if(navIndex>-1)moveIndicator(navIndex);
-  renderAll();
-}
-let lastNavIndex=-1, navAnimTimer=null;
-function moveIndicator(index, first){
-  const ind=document.getElementById('nav-indicator');
-  if(!ind)return;
-  if(first){ind.style.transition='none';ind.style.transform='translateX(0) scaleX(1)';lastNavIndex=index;return}
-  if(index===lastNavIndex)return;
-  lastNavIndex=index;
-  const pct=index*100;
-  // 阶段1：拉伸（向目标方向变长）
-  ind.style.transition='transform .22s cubic-bezier(.4,0,.2,1)';
-  ind.style.transform=`translateX(${pct}%) scaleX(1.28)`;
-  // 阶段2：弹性回缩到目标宽度（带过冲阻尼）
-  clearTimeout(navAnimTimer);
-  navAnimTimer=setTimeout(function(){
-    ind.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1)';
-    ind.style.transform=`translateX(${pct}%) scaleX(1)`;
-  },220);
-}
-document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>goToPage(b.dataset.page)));
-
-function quickAdd(){
-  if(currentPage==='stats') openModal('wish');
-  else if(currentPage==='home') openModal('ingredient');
-  else openModal(currentPage==='ingredients'?'ingredient':currentPage==='pets'?'pet':'recipe');
-}
-
-/* ===== 自定义分类：动态筛选胶囊 + 事件委托 ===== */
-function renderFilters(type){
-  const d=getData();
-  const cats=d.cats[type];
-  const el=document.getElementById(type==='ingredients'?'ing-filters':type==='pets'?'pet-filters':'rec-filters');
-  const cur=type==='ingredients'?ingFilter:type==='pets'?petFilter:recFilter;
-  el.innerHTML='<button class="pill'+(cur==='all'?' active':'')+'" data-cat="all">全部</button>'+
-    cats.map(c=>`<button class="pill${cur===c?' active':''}" data-cat="${c}">${c}</button>`).join('');
-}
-document.addEventListener('click',function(e){
-  const pill=e.target.closest('.pill');
-  if(!pill)return;
-  const row=pill.closest('.filter-row');
-  if(!row)return;
-  row.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
-  pill.classList.add('active');
-  const cat=pill.dataset.cat;
-  if(row.id==='ing-filters'){ingFilter=cat;renderIngredients();}
-  else if(row.id==='pet-filters'){petFilter=cat;renderPets();}
-  else if(row.id==='rec-filters'){recFilter=cat;renderRecipes();}
-});
-
-function openModal(type,id){
-  modalMode=type; editId=id||null;
-  document.getElementById('fields-ingredient').style.display=type==='ingredient'?'':'none';
-  document.getElementById('fields-pet').style.display=type==='pet'?'':'none';
-  document.getElementById('fields-recipe').style.display=type==='recipe'?'':'none';
-  document.getElementById('fields-wishlist').style.display=type==='wish'?'':'none';
-  const t={ingredient:'食材',pet:'宠物用品',recipe:'食谱',wish:'种草菜单'};
-  document.getElementById('modal-title').textContent=(editId?'编辑':'添加')+t[type];
-  document.getElementById('modal-form').reset();
-  document.querySelectorAll('#rec-ingredients-editor .ing-row').forEach(e=>e.remove());
-  document.querySelectorAll('#rec-seasonings-editor .ing-row').forEach(e=>e.remove());
-  if(editId){
-    const d=getData();
-    let arr=type==='ingredient'?d.ingredients:type==='pet'?d.pets:type==='recipe'?d.recipes:d.wishlist;
-    const it=arr.find(i=>i.id===editId); if(it){
-      if(type==='ingredient'){
-        ing_title.value=it.name||''; ing_category.value=it.category||''; ing_note.value=it.note||'';
-        ing_subcategory.value=it.subcategory||'';
-        ing_status.value=it.status||''; ing_location.value=it.location||''; ing_unit.value=it.unit||'';
-        ing_qty.value=it.qty||''; ing_stock.value=it.stock||''; ing_indate.value=it.inDate||'';
-        ing_shelf.value=it.shelfLife||''; ing_expiry.value=it.expiry||'';
-      } else if(type==='pet'){
-        pet_title.value=it.name||''; pet_category.value=it.category||'';
-        pet_subcategory.value=it.subcategory||'';
-        pet_qty.value=it.qty||''; pet_note.value=it.note||'';
-      } else if(type==='recipe'){
-        rec_title.value=it.name||''; rec_category.value=it.category||'';
-        rec_subcategory.value=it.subcategory||'';
-        rec_time.value=it.time||''; rec_steps.value=it.steps||''; rec_note.value=it.note||'';
-        rec_recent.checked=!!it.recent;
-        (it.ingredients||[]).forEach(v=>addIngItem(v));
-        (it.seasonings||[]).forEach(v=>addSeasItem(v));
-      } else {
-        wish_title.value=it.name||''; wish_type.value=it.type||''; wish_note.value=it.note||'';
-      }
-    }
-  }
-  setPickerLabels();
-  document.getElementById('modal-overlay').classList.add('open');
-}
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open');modalMode=null;editId=null}
-document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal()});
-
-/* ===== Bottom Sheet Picker（底部上滑选择器，支持二级分类） ===== */
-let pickerKey=null, pickerInput=null, pickerLevel=0, pickerParent=null;
-const PICKER_TITLES={statuses:'选择状态',ingredients:'选择分类',locations:'选择存储位置',units:'选择单位',pets:'选择分类',recipes:'选择分类'};
-const PICKER_GROUPS={statuses:'已有状态',ingredients:'已有分类',locations:'已有位置',units:'已有单位',pets:'已有分类',recipes:'已有分类'};
-function isCatKey(){return pickerKey==='ingredients'||pickerKey==='pets'||pickerKey==='recipes'}
-function pickerArray(d){
-  if(pickerKey==='statuses')return d.statuses;
-  if(pickerKey==='units')return d.units;
-  if(pickerKey==='locations')return d.locations;
-  if(pickerLevel===1&&pickerParent&&d.subcats[pickerKey][pickerParent])return d.subcats[pickerKey][pickerParent];
-  return d.cats[pickerKey];
-}
-function subInputId(){return pickerInput?pickerInput.id.replace('category','subcategory'):null}
-function setPickerLabels(){
-  ['ing-status','ing-category','ing-location','ing-unit','pet-category','rec-category'].forEach(function(id){
-    const input=document.getElementById(id), label=document.getElementById(id+'-label');
-    if(!input||!label)return;
-    const placeholders={'ing-status':'点击选择状态','ing-category':'点击选择分类','ing-location':'点击选择位置','ing-unit':'点击选择单位','pet-category':'点击选择分类','rec-category':'点击选择分类'};
-    if(id.indexOf('category')>-1){
-      const sub=document.getElementById(id.replace('category','subcategory'));
-      label.textContent=(input.value||placeholders[id])+(sub&&sub.value?' / '+sub.value:'');
-    }else{
-      label.textContent=input.value||placeholders[id];
-    }
-    label.classList.toggle('empty',!input.value);
-  });
-}
-function openPicker(key,inputId){
-  pickerKey=key; pickerInput=document.getElementById(inputId); pickerLevel=0; pickerParent=null;
-  document.getElementById('picker-title').textContent=PICKER_TITLES[key]||'选择';
-  document.getElementById('picker-group').textContent=PICKER_GROUPS[key]||'已有选项';
-  document.getElementById('picker-input').value='';
-  document.getElementById('picker-create').style.display='none';
-  renderPicker();
-  document.getElementById('picker-overlay').classList.add('open');
-  setTimeout(function(){document.getElementById('picker-input').focus()},250);
-}
-function closePicker(){document.getElementById('picker-overlay').classList.remove('open');pickerKey=null;pickerInput=null;pickerLevel=0;pickerParent=null}
-document.getElementById('picker-overlay').addEventListener('click',function(e){if(e.target===this)closePicker()});
-function renderPicker(){
-  if(!pickerKey)return;
-  const d=getData();
-  const q=document.getElementById('picker-input').value.trim();
-  const all=pickerArray(d)||[];
-  const items=q?all.filter(v=>v.toLowerCase().includes(q.toLowerCase())):all;
-  const listEl=document.getElementById('picker-list');
-  let backRow='';
-  if(isCatKey()&&pickerLevel===1){
-    backRow=`<div class="picker-back" onclick="pickerLevel=0;pickerParent=null;document.getElementById('picker-input').value='';renderPicker()"><span>‹ ${pickerParent||''}</span><span style="color:#8E8E93;font-weight:400;font-size:12px">选择二级分类</span></div>`;
-  }
-  let rows='';
-  if(isCatKey()&&pickerLevel===0){
-    rows=items.map(v=>{
-      const subs=d.subcats[pickerKey][v]||[];
-      return `<div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
-        <span class="tag">${v}</span>
-        ${subs.length?`<button class="sub-btn" onclick="event.stopPropagation();pickerLevel=1;pickerParent='${v.replace(/'/g,"\\'")}';document.getElementById('picker-input').value='';renderPicker()">${subs.length} 子 ›</button>`:''}
-        <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
-      </div>`;
-    }).join('');
-  }else{
-    rows=items.map(v=>`
-      <div class="picker-item" onclick="pickSelect('${v.replace(/'/g,"\\'")}')">
-        <span class="tag">${v}</span>
-        <button class="more" onclick="event.stopPropagation();pickEdit('${v.replace(/'/g,"\\'")}')">⋯</button>
-      </div>`).join('');
-  }
-  listEl.innerHTML=backRow+(rows||'<div class="picker-nomatch">无匹配项</div>');
-  const createEl=document.getElementById('picker-create');
-  if(q&&!items.some(v=>v.toLowerCase()===q.toLowerCase())){
-    document.getElementById('picker-create-text').textContent=q+(isCatKey()&&pickerLevel===1&&pickerParent?('（加入「'+pickerParent+'」）'):'');
-    createEl.style.display='block';
-  }else{
-    createEl.style.display='none';
-  }
-}
-document.getElementById('picker-input').addEventListener('input',renderPicker);
-document.getElementById('picker-input').addEventListener('keydown',function(e){
-  if(e.key==='Enter'){e.preventDefault();pickerCreate();}
-});
-function pickSelect(v){
-  const d=getData();
-  if(isCatKey()&&pickerLevel===0){
-    const subs=d.subcats[pickerKey][v]||[];
-    if(subs.length){pickerLevel=1;pickerParent=v;document.getElementById('picker-input').value='';renderPicker();return}
-    pickerInput.value=v;
-    const sub=document.getElementById(subInputId());
-    if(sub)sub.value='';
-    setPickerLabels();closePicker();renderAll();
-    return;
-  }
-  if(isCatKey()&&pickerLevel===1){
-    pickerInput.value=pickerParent||'';
-    const sub=document.getElementById(subInputId());
-    if(sub)sub.value=v;
-    setPickerLabels();closePicker();renderAll();
-    return;
-  }
-  pickerInput.value=v;
-  setPickerLabels();closePicker();renderAll();
-}
-function pickerCreate(){
-  const v=document.getElementById('picker-input').value.trim();
-  if(!v)return;
-  const d=getData();
-  const arr=pickerArray(d);
-  if(!arr.includes(v)){arr.push(v);saveData(d);}
-  if(isCatKey()&&pickerLevel===1){
-    pickerInput.value=pickerParent||'';
-    const sub=document.getElementById(subInputId());
-    if(sub)sub.value=v;
-  }else{
-    pickerInput.value=v;
-    const sub=document.getElementById(subInputId());
-    if(sub&&pickerLevel===0)sub.value='';
-  }
-  setPickerLabels();closePicker();renderAll();
-}
-function pickEdit(v){
-  const newName=prompt('输入新名称（留空 = 删除「'+v+'」）',v);
-  if(newName===null)return;
-  const name=newName.trim();
-  const d=getData();
-  const arr=pickerArray(d);
-  if(name){
-    if(arr.includes(name)&&name!==v){alert('该选项已存在');return}
-    const idx=arr.indexOf(v);
-    if(idx>-1)arr[idx]=name;
-    if(isCatKey()){
-      if(pickerLevel===1){
-        d[pickerKey].forEach(function(i){if(i.category===pickerParent&&i.subcategory===v)i.subcategory=name});
-      }else{
-        d[pickerKey].forEach(function(i){if(i.category===v)i.category=name});
-        if(d.subcats[pickerKey][v]){d.subcats[pickerKey][name]=d.subcats[pickerKey][v];delete d.subcats[pickerKey][v];}
-      }
-    }else{
-      const field=pickerKey==='statuses'?'status':pickerKey==='units'?'unit':'location';
-      d.ingredients.forEach(function(i){if(i[field]===v)i[field]=name});
-    }
-  }else{
-    const idx=arr.indexOf(v);
-    if(idx>-1)arr.splice(idx,1);
-    if(isCatKey()&&pickerLevel===0&&d.subcats[pickerKey][v])delete d.subcats[pickerKey][v];
-  }
-  saveData(d); renderPicker(); renderAll();
-}
-
-/* ===== 过期日期自动计算（入库日期 + 保质期天数） ===== */
-function calcExpiry(){
-  const inDate=document.getElementById('ing-indate').value;
-  const shelf=parseInt(document.getElementById('ing-shelf').value);
-  if(inDate&&shelf>0){
-    const d=new Date(inDate);
-    d.setDate(d.getDate()+shelf);
-    document.getElementById('ing-expiry').value=d.toISOString().slice(0,10);
-  }
-}
-
-function addIngItem(text){
-  const ed=document.getElementById('rec-ingredients-editor');
-  const addLine=ed.querySelector('.ing-add');
-  const row=document.createElement('div');
-  row.className='ing-row';
-  row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+(text||'')+'</span>';
-  if(text) ed.insertBefore(row,addLine);
-}
-document.getElementById('rec-ing-input').addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&this.value.trim()){
-    e.preventDefault();
-    const ed=document.getElementById('rec-ingredients-editor');
-    const addLine=ed.querySelector('.ing-add');
-    const row=document.createElement('div');
-    row.className='ing-row';
-    row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+this.value.trim()+'</span>';
-    ed.insertBefore(row,addLine); this.value='';
-  }
-});
-
-function addSeasItem(text){
-  const ed=document.getElementById('rec-seasonings-editor');
-  const addLine=ed.querySelector('.ing-add');
-  const row=document.createElement('div');
-  row.className='ing-row';
-  row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+(text||'')+'</span>';
-  if(text) ed.insertBefore(row,addLine);
-}
-document.getElementById('rec-seas-input').addEventListener('keydown',function(e){
-  if(e.key==='Enter'&&this.value.trim()){
-    e.preventDefault();
-    const ed=document.getElementById('rec-seasonings-editor');
-    const addLine=ed.querySelector('.ing-add');
-    const row=document.createElement('div');
-    row.className='ing-row';
-    row.innerHTML='<span class="x" onclick="this.parentElement.remove()">✕</span><span>'+this.value.trim()+'</span>';
-    ed.insertBefore(row,addLine); this.value='';
-  }
-});
-
-function saveForm(){
-  const d=getData(); let item;
-  const uid=()=>'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
-  if(modalMode==='ingredient'){
-    const n=ing_title.value.trim(); if(!n){alert('请输入名称');return}
-    const cat=ing_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,status:ing_status.value.trim(),category:cat,subcategory:ing_subcategory.value.trim(),location:ing_location.value.trim(),unit:ing_unit.value.trim(),qty:ing_qty.value.trim(),stock:ing_stock.value.trim(),inDate:ing_indate.value,shelfLife:ing_shelf.value.trim(),expiry:ing_expiry.value,note:ing_note.value.trim(),createdAt:Date.now()};
-    if(editId){const i=d.ingredients.findIndex(x=>x.id===editId);if(i>-1)d.ingredients[i]=item}
-    else d.ingredients.unshift(item);
-  } else if(modalMode==='pet'){
-    const n=pet_title.value.trim(); if(!n){alert('请输入名称');return}
-    const cat=pet_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    item={id:editId||uid(),name:n,category:cat,subcategory:pet_subcategory.value.trim(),qty:pet_qty.value.trim(),note:pet_note.value.trim(),createdAt:Date.now()};
-    if(editId){const i=d.pets.findIndex(x=>x.id===editId);if(i>-1)d.pets[i]=item}
-    else d.pets.unshift(item);
-  } else if(modalMode==='recipe'){
-    const n=rec_title.value.trim(); if(!n){alert('请输入名称');return}
-    const cat=rec_category.value.trim(); if(!cat){alert('请选择或输入分类');return}
-    const ings=[],seas=[];
-    document.querySelectorAll('#rec-ingredients-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())ings.push(el.textContent.trim())});
-    document.querySelectorAll('#rec-seasonings-editor .ing-row span:last-child').forEach(el=>{if(el.textContent.trim())seas.push(el.textContent.trim())});
-    item={id:editId||uid(),name:n,category:cat,subcategory:rec_subcategory.value.trim(),time:rec_time.value.trim(),ingredients:ings,seasonings:seas,recent:rec_recent.checked,steps:rec_steps.value.trim(),note:rec_note.value.trim(),createdAt:Date.now()};
-    if(editId){const i=d.recipes.findIndex(x=>x.id===editId);if(i>-1)d.recipes[i]=item}
-    else d.recipes.unshift(item);
-  } else if(modalMode==='wish'){
-    const n=wish_title.value.trim(); if(!n){alert('请输入菜名');return}
-    item={id:editId||uid(),name:n,type:wish_type.value.trim(),note:wish_note.value.trim(),createdAt:Date.now()};
-    if(editId){const i=d.wishlist.findIndex(x=>x.id===editId);if(i>-1)d.wishlist[i]=item}
-    else d.wishlist.unshift(item);
-  }
-  // 新分类自动收录（种草菜单不参与）
-  if(modalMode!=='wish'){
-    const ck=modalMode==='ingredient'?'ingredients':modalMode==='pet'?'pets':'recipes';
-    if(!d.cats[ck].includes(item.category)){d.cats[ck].push(item.category)}
-  }
-  // 新位置/状态/单位自动收录
-  if(modalMode==='ingredient'){
-    if(item.location&&!d.locations.includes(item.location)){d.locations.push(item.location)}
-    if(item.status&&!d.statuses.includes(item.status)){d.statuses.push(item.status)}
-    if(item.unit&&!d.units.includes(item.unit)){d.units.push(item.unit)}
-  }
-  saveData(d); closeModal(); renderAll();
-}
-
-function deleteItem(type,id){
-  if(!confirm('确定要删除吗？'))return;
-  const d=getData();
-  if(type==='ingredient')d.ingredients=d.ingredients.filter(x=>x.id!==id);
-  else if(type==='pet')d.pets=d.pets.filter(x=>x.id!==id);
-  else if(type==='recipe')d.recipes=d.recipes.filter(x=>x.id!==id);
-  else d.wishlist=d.wishlist.filter(x=>x.id!==id);
-  saveData(d); renderAll();
-}
-
-/* ===== 首页渲染（2×2 统计 + 今日食谱进度卡 + 内容/空状态卡） ===== */
+/* ============ 今日概览统计（蓝色图标，深色 tile） ============ */
 function renderHome(){
   const d=getData();
-  const ings=d.ingredients, pets=d.pets, recs=d.recipes, wish=d.wishlist;
-  const recentRecs=recs.filter(r=>r.recent);
-  const pct=recs.length?Math.round(recentRecs.length/recs.length*100):0;
+  document.getElementById('home-date').textContent='8月11日 星期二 · 晴 27°';
+  document.getElementById('stat-ic-0').innerHTML=ICONS.pantry;
+  document.getElementById('stat-ic-1').innerHTML=ICONS.pets;
+  document.getElementById('stat-ic-2').innerHTML=ICONS.recipes;
+  document.getElementById('stat-num-0').textContent=d.ingredients.length;
+  document.getElementById('stat-num-1').textContent=d.pets.length;
+  document.getElementById('stat-num-2').textContent=d.recipes.length;
 
-  // 2×2 统计网格（淡雅四色点缀）
-  document.getElementById('home-stats-grid').innerHTML=
-    statCard('leaf','食材库',ings.length,'ingredients','#FF9F0A','rgba(255,159,10,0.16)')+
-    statCard('paw','宠物用品',pets.length,'pets','#AF52DE','rgba(175,82,222,0.16)')+
-    statCard('book','食谱',recs.length,'recipes','#FF9F0A','rgba(255,159,10,0.16)')+
-    statCard('target','种草',wish.length,'stats','#34C759','rgba(52,199,89,0.16)');
+  // 临期食材（默认示例：牛奶/鸡蛋）
+  const expiring=d.ingredients.filter(i=>i.exp).slice(0,3);
+  document.getElementById('home-expiry').innerHTML=expiring.map(i=>{
+    const days=Math.max(0,Math.round((new Date(i.exp)-Date.now())/86400000));
+    return `<div class="expiry-row" onclick="goToPage('ingredients')">
+      <span class="expiry-icon" style="background:#E8F0FB;color:#0066CC">${ICONS.flame}</span>
+      <div class="expiry-info"><div class="expiry-name">${i.name}</div><div class="expiry-meta">剩余 ${i.qty||'—'} · ${i.exp} 到期</div></div>
+      <span class="expiry-tag">剩 ${days} 天</span>
+    </div>`;
+  }).join('')||`<div class="empty-card" onclick="goToPage('ingredients')"><span class="ec-icon">${ICONS.pantry}</span><p>还没有临期食材哦 ~</p></div>`;
 
-  // 区块 B：今日食谱（进度卡 + 已选列表）
-  document.getElementById('home-progress').innerHTML=
-    `<div class="progress-card" onclick="goToPage('recipes')">
-      <div class="pc-top">
-        <span class="pc-ic">${ICONS.book}</span>
-        <span class="pc-tag">今日食谱</span>
-        <span class="pc-pct">${pct}%</span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-      <div class="pc-bottom"><span>已选 ${recentRecs.length} 道</span><span>共 ${recs.length} 道</span></div>
-    </div>`+
-    (recentRecs.length?`<div class="list-card" style="margin-top:10px">`+recentRecs.slice(0,3).map(r=>`
-      <div class="list-row" onclick="goToPage('recipes')">
-        <span class="row-ic" style="color:#E8839A;background:#FCEEF2">${ICONS.book}</span>
-        <div class="info"><div class="name">${r.name}</div><div class="meta">${r.category}${r.subcategory?'/'+r.subcategory:''}${r.time?' · '+r.time:''}</div></div>
-        <span class="tag-mini" style="color:#FF9500;background:#FFF4E5">今日</span>
-      </div>`).join('')+`</div>`
-      :`<div class="empty-card" style="margin-top:10px" onclick="goToPage('recipes')"><span class="ec-icon">${ICONS.book}</span><p>今天还没选食谱哦 ~</p><span class="ec-hint">去食谱里勾选</span></div>`);
-
-  // 宠物用品（有数据显示最近，无数据空状态卡）
-  document.getElementById('home-pets').innerHTML=pets.length?
-    `<div class="list-card">`+pets.slice(0,2).map(p=>`
-      <div class="list-row" onclick="goToPage('pets')">
-        <span class="row-ic" style="color:#AF52DE;background:#F1EBFB">${ICONS.paw}</span>
-        <div class="info"><div class="name">${p.name}</div><div class="meta">${p.category}${p.subcategory?'/'+p.subcategory:''} · ${p.qty||'—'}</div></div>
-        <span class="chev">${ICONS.chev}</span>
-      </div>`).join('')+`</div>`
-    :emptyCard('paw','还没有宠物用品哦 ~','pet');
-
-  // 区块 D：种草菜单（点击进食谱页）
-  document.getElementById('home-wishlist').innerHTML=wish.length?
-    `<div class="list-card">`+wish.slice(0,2).map(w=>`
-      <div class="list-row" onclick="goToPage('recipes')">
-        <span class="row-ic" style="color:#2FB6A3;background:#E4F6F3">${ICONS.target}</span>
-        <div class="info"><div class="name">${w.name}</div><div class="meta">${w.type||'未分类'}${w.note?' · '+w.note:''}</div></div>
-        <span class="chev">${ICONS.chev}</span>
-      </div>`).join('')+`</div>`
-    :emptyCard('target','还没有种草菜单哦 ~','wish');
+  // 推荐食谱横排
+  document.getElementById('home-recipes').innerHTML=d.recipes.slice(0,4).map(r=>`
+    <div class="recipe-card" onclick="goToPage('recipes')">
+      <div class="thumb">${ICONS.recipes}</div>
+      <div class="info"><div class="recipe-name">${r.name}</div><div class="recipe-meta">${r.time} · ${r.tag}</div></div>
+    </div>`).join('');
 }
 
-function statCard(icon,label,num,page,c,bg){
-  return `<button class="stat-card" onclick="goToPage('${page}')">
-    <div class="stat-top"><span class="stat-icon" style="color:${c};background:${bg}">${ICONS[icon]}</span><span class="stat-num">${num}</span></div>
-    <div class="stat-label">${label}</div>
-  </button>`;
-}
-
-function emptyCard(icon,text,type){
-  return `<div class="empty-card" onclick="openModal('${type}')">
-    <span class="ec-icon">${ICONS[icon]}</span>
-    <p>${text}</p>
-    <span class="ec-hint">点击添加</span>
-  </div>`;
-}
-
-/* ===== 设置页（仅入口 + 版本） ===== */
-function renderSettings(){
-  const d=getData();
-  document.getElementById('ing-count').textContent=d.ingredients.length;
-  document.getElementById('pet-count').textContent=d.pets.length;
-  document.getElementById('rec-count').textContent=d.recipes.length;
-}
-
-/* ===== 分类管理页（一级 + 二级） ===== */
-let catTab='ingredients';
-let catExpanded={};
-document.getElementById('cat-tabs').addEventListener('click',function(e){
-  const pill=e.target.closest('.pill'); if(!pill)return;
-  this.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
-  pill.classList.add('active');
-  catTab=pill.dataset.type;
-  renderCatsPage();
-});
-function renderCatsPage(){
-  const d=getData();
-  const cats=d.cats[catTab];
-  const items=catTab==='ingredients'?d.ingredients:catTab==='pets'?d.pets:d.recipes;
-  const useCount=c=>items.filter(i=>i.category===c).length;
-  document.getElementById('cat-list').innerHTML=cats.length?
-    cats.map(c=>{
-      const subs=d.subcats[catTab][c]||[];
-      const expanded=catExpanded[catTab+'_'+c];
-      return `<div class="list-row">
-        <button class="cat-row-name" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">${c}</button>
-        <button class="sub-btn" onclick="event.stopPropagation();toggleSubcats('${catTab}','${c.replace(/'/g,"\\'")}')">${subs.length?subs.length+' 子':'子'} ${expanded?'▼':'▶'}</button>
-        <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
-        <button class="act-btn" onclick="renameCat('${catTab}','${c.replace(/'/g,"\\'")}')">✎</button>
-        <button class="act-btn del" onclick="removeCat('${catTab}','${c.replace(/'/g,"\\'")}')">🗑</button>
-      </div>`+
-      (expanded?(subs.map(s=>`<div class="sub-row">
-        <span class="tag">${s}</span>
-        <span class="use-count">${items.filter(i=>i.category===c&&i.subcategory===s).length} 项</span>
-        <button class="act-btn" onclick="renameSubcat('${catTab}','${c.replace(/'/g,"\\'")}','${s.replace(/'/g,"\\'")}')">✎</button>
-        <button class="act-btn del" onclick="removeSubcat('${catTab}','${c.replace(/'/g,"\\'")}','${s.replace(/'/g,"\\'")}')">🗑</button>
-      </div>`).join('')+`<div class="sub-row" style="border-bottom:none"><button class="sub-add" onclick="addSubcat('${catTab}','${c.replace(/'/g,"\\'")}')">+ 添加二级分类</button></div>`):'')
-    }).join('')
-    :`<div style="padding:24px;text-align:center;color:#C7C7CC;font-size:13px">还没有分类，下方添加一个吧</div>`;
-}
-function toggleSubcats(type,parent){
-  const k=type+'_'+parent;
-  catExpanded[k]=!catExpanded[k];
-  renderCatsPage();
-}
-function addSubcat(type,parent){
-  const name=prompt('输入二级分类名称（添加到「'+parent+'」）','');
-  if(!name||!name.trim())return;
-  const v=name.trim();
-  const d=getData();
-  if(!d.subcats[type][parent])d.subcats[type][parent]=[];
-  if(d.subcats[type][parent].includes(v)){alert('该二级分类已存在');return}
-  d.subcats[type][parent].push(v);
-  saveData(d); renderCatsPage(); renderAll();
-}
-function renameSubcat(type,parent,oldName){
-  const newName=prompt('输入新的二级分类名称',oldName);
-  if(!newName||!newName.trim())return;
-  const name=newName.trim();
-  const d=getData();
-  const arr=d.subcats[type][parent]||[];
-  if(arr.includes(name)&&name!==oldName){alert('该二级分类已存在');return}
-  const idx=arr.indexOf(oldName);
-  if(idx>-1)arr[idx]=name;
-  const items=type==='ingredients'?d.ingredients:type==='pets'?d.pets:d.recipes;
-  items.forEach(i=>{if(i.category===parent&&i.subcategory===oldName)i.subcategory=name});
-  saveData(d); renderCatsPage(); renderAll();
-}
-function removeSubcat(type,parent,sub){
-  if(!confirm(`删除二级分类「${sub}」？已有项目不受影响。`))return;
-  const d=getData();
-  d.subcats[type][parent]=(d.subcats[type][parent]||[]).filter(s=>s!==sub);
-  saveData(d); renderCatsPage(); renderAll();
-}
-function addCat(){
-  const input=document.getElementById('new-cat-input');
-  const name=input.value.trim();
-  if(!name){alert('请输入分类名称');return}
-  const d=getData();
-  if(d.cats[catTab].includes(name)){alert('该分类已存在');return}
-  d.cats[catTab].push(name);
-  saveData(d); input.value=''; renderCatsPage();
-}
-function renameCat(type,oldName){
-  const newName=prompt('输入新的分类名称',oldName);
-  if(!newName||!newName.trim())return;
-  const name=newName.trim();
-  const d=getData();
-  if(d.cats[type].includes(name)&&name!==oldName){alert('该分类已存在');return}
-  d.cats[type]=d.cats[type].map(c=>c===oldName?name:c);
-  // 同步更新该分类下所有项目的分类名
-  const items=type==='ingredients'?d.ingredients:type==='pets'?d.pets:d.recipes;
-  items.forEach(i=>{if(i.category===oldName)i.category=name});
-  // 同步二级分类键
-  if(d.subcats[type][oldName]){d.subcats[type][name]=d.subcats[type][oldName];delete d.subcats[type][oldName];}
-  saveData(d); renderCatsPage(); renderAll();
-}
-function removeCat(type,cat){
-  if(!confirm(`删除分类「${cat}」？已有项目不受影响，只是不再出现在筛选中。`))return;
-  const d=getData();
-  d.cats[type]=d.cats[type].filter(c=>c!==cat);
-  delete d.subcats[type][cat];
-  saveData(d); renderCatsPage(); renderAll();
-}
-
-/* ===== 位置管理页（食材存放位置） ===== */
-function renderLocsPage(){
-  const d=getData();
-  const useCount=c=>d.ingredients.filter(i=>i.location===c).length;
-  document.getElementById('loc-list').innerHTML=d.locations.length?
-    d.locations.map(c=>`<div class="list-row">
-      <button class="cat-row-name" onclick="renameLoc('${c.replace(/'/g,"\\'")}')">${c}</button>
-      <span class="tag-mini" style="color:#A0A0A8">${useCount(c)} 项</span>
-      <button class="act-btn" onclick="renameLoc('${c.replace(/'/g,"\\'")}')">✎</button>
-      <button class="act-btn del" onclick="removeLoc('${c.replace(/'/g,"\\'")}')">🗑</button>
-    </div>`).join('')
-    :`<div style="padding:24px;text-align:center;color:#C7C7CC;font-size:13px">还没有位置，下方添加一个吧</div>`;
-}
-function addLoc(){
-  const input=document.getElementById('new-loc-input');
-  const name=input.value.trim();
-  if(!name){alert('请输入位置名称');return}
-  const d=getData();
-  if(d.locations.includes(name)){alert('该位置已存在');return}
-  d.locations.push(name);
-  saveData(d); input.value=''; renderLocsPage();
-}
-function renameLoc(oldName){
-  const newName=prompt('输入新的位置名称',oldName);
-  if(!newName||!newName.trim())return;
-  const name=newName.trim();
-  const d=getData();
-  if(d.locations.includes(name)&&name!==oldName){alert('该位置已存在');return}
-  d.locations=d.locations.map(c=>c===oldName?name:c);
-  d.ingredients.forEach(i=>{if(i.location===oldName)i.location=name});
-  saveData(d); renderLocsPage(); renderAll();
-}
-function removeLoc(loc){
-  if(!confirm(`删除位置「${loc}」？已有食材不受影响。`))return;
-  const d=getData();
-  d.locations=d.locations.filter(c=>c!==loc);
-  saveData(d); renderLocsPage(); renderAll();
-}
-
-/* ===== 食材库列表 ===== */
+/* ============ 食材库 ============ */
+const CATS=['全部','蔬菜','水果','肉蛋','乳品','冷冻'];
+let ingFilter='全部';
 function renderIngredients(){
   const d=getData();
-  let items=d.ingredients;
-  if(ingFilter!=='all')items=items.filter(i=>i.category===ingFilter);
-  const el=document.getElementById('ingredient-list');
-  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.leaf}</span><p>还没有记录会做的食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
-  el.innerHTML=`<div class="list-card">`+items.map(i=>{
-    const metaParts=[
-      i.status?'「'+i.status+'」':'',
-      i.category+(i.subcategory?'/'+i.subcategory:''),
-      i.location?'📍 '+i.location:'',
-      i.qty?(i.qty+(i.unit||'')):'',
-      i.stock?'剩'+i.stock+(i.unit||''):'',
-      i.expiry?'⏰ '+i.expiry.slice(5):''
-    ].filter(Boolean).join(' · ');
-    return `<div class="list-row">
-    <span class="row-ic">${ICONS.leaf}</span>
-    <div class="info">
-      <div class="name">${i.name}</div>
-      <div class="meta">${metaParts||'吃过 · 会做'}</div>
-    </div>
-    ${i.status?'<span class="tag-mini" style="color:#FF9500;background:#FFF4E5">'+i.status+'</span>':'<span class="tag-mini">'+i.category+'</span>'}
-    <div class="row-actions">
-      <button class="act-btn" onclick="openModal('ingredient','${i.id}')">✎</button>
-      <button class="act-btn del" onclick="deleteItem('ingredient','${i.id}')">🗑</button>
-    </div>
-  </div>`;
-  }).join('')+`</div>`;
+  const kw=(document.getElementById('ing-search').value||'').trim();
+  document.getElementById('ing-chips').innerHTML=CATS.map(c=>
+    `<button class="chip ${c===ingFilter?'active':''}" onclick="ingFilter='${c}';renderIngredients()">${c}</button>`).join('');
+  let list=d.ingredients.filter(i=>!kw||i.name.includes(kw));
+  const expiring=list.filter(i=>i.exp);
+  const fresh=list.filter(i=>!i.exp);
+  let html='';
+  if(expiring.length)html+=`<div class="group-title"><span class="gname warn">即将到期 · ${expiring.length}</span><span class="gmore">查看全部</span></div><div class="list-card">`+
+    expiring.map(i=>`<div class="ing-row"><span class="ing-icon" style="background:#E8F0FB;color:#0066CC">${ICONS.flame}</span><div class="ing-info"><div class="ing-name">${i.name}</div><div class="ing-meta">${i.qty||'—'} · ${i.loc||'—'}</div></div><span class="ing-tag">剩 ${Math.max(0,Math.round((new Date(i.exp)-Date.now())/86400000))} 天</span></div>`).join('')+`</div>`;
+  if(fresh.length)html+=`<div class="group-title"><span class="gname">新鲜库存 · ${fresh.length}</span></div><div class="list-card">`+
+    fresh.map(i=>`<div class="ing-row"><span class="ing-icon" style="background:#EAF2FC;color:#0066CC">${ICONS.pantry}</span><div class="ing-info"><div class="ing-name">${i.name}</div><div class="ing-meta">${i.qty||'—'} · ${i.loc||'—'}</div></div><span style="color:#CCCCCC;font-size:18px">—</span></div>`).join('')+`</div>`;
+  if(!list.length)html=`<div class="empty-card" onclick="openModal('ingredient')"><span class="ec-icon">${ICONS.pantry}</span><p>还没有记录食材哦 ~</p><span class="ec-hint">点击添加</span></div>`;
+  document.getElementById('ing-list').innerHTML=html;
 }
 
-/* ===== 宠物列表 ===== */
+/* ============ 宠物 ============ */
 function renderPets(){
   const d=getData();
-  let items=d.pets;
-  if(petFilter!=='all')items=items.filter(i=>i.category===petFilter);
-  const el=document.getElementById('pet-list');
-  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('pet')"><span class="ec-icon">${ICONS.paw}</span><p>还没有宠物用品哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
-  el.innerHTML=`<div class="list-card">`+items.map(i=>`<div class="list-row">
-    <span class="row-ic">${ICONS.paw}</span>
-    <div class="info">
-      <div class="name">${i.name}</div>
-      <div class="meta">${i.qty||'—'}${i.note?' · '+i.note:''}</div>
-    </div>
-    <span class="tag-mini">${i.category}${i.subcategory?'/'+i.subcategory:''}</span>
-    <div class="row-actions">
-      <button class="act-btn" onclick="openModal('pet','${i.id}')">✎</button>
-      <button class="act-btn del" onclick="deleteItem('pet','${i.id}')">🗑</button>
-    </div>
-  </div>`).join('')+`</div>`;
+  document.getElementById('pet-list').innerHTML=d.pets.map(p=>{
+    const ok=p.health==='健康';
+    return `<div class="pet-card">
+      <div class="pet-avatar">${ICONS.pets}</div>
+      <div class="pet-info">
+        <div class="pet-name-row"><span class="pet-name">${p.name}</span><span class="pet-status ${ok?'ok':'warn'}">${p.health}</span></div>
+        <div class="pet-meta">${p.cat} · ${p.gender} · ${p.age}</div>
+        <div class="pet-meta2">体重 ${p.weight||'—'} · 8月11日</div>
+      </div>
+    </div>`;
+  }).join('')||`<div class="empty-card" onclick="openModal('pet')"><span class="ec-icon">${ICONS.pets}</span><p>还没有宠物哦 ~</p><span class="ec-hint">点击添加</span></div>`;
+  document.getElementById('todo-count').textContent=d.pets.length?`${d.pets.length*2} 项`:'0 项';
+  document.getElementById('pet-todos').innerHTML=d.pets.length?
+    d.pets.flatMap(p=>[
+      {ic:ICONS.bowl,bg:'#FFF2EC',c:'#E5531A',n:`喂${p.name}`,m:'早晚各一次 · 约 60g'},
+      {ic:ICONS.droplet,bg:'#E8F0FB',c:'#0066CC',n:`陪${p.name}活动`,m:'30 分钟 · 日常互动'}
+    ]).slice(0,3).map(t=>`<div class="todo-row"><span class="todo-icon" style="background:${t.bg};color:${t.c}">${t.ic}</span><div class="todo-info"><div class="todo-name">${t.n}</div><div class="todo-meta">${t.m}</div></div><span class="todo-dot"></span></div>`).join('')
+    :`<div class="empty-card" onclick="openModal('pet')"><span class="ec-icon">${ICONS.pets}</span><p>添加宠物后这里会出现待办哦 ~</p></div>`;
 }
 
-/* ===== 食谱列表 ===== */
+/* ============ 食谱 ============ */
+const REC_CATS=['全部','快手菜','低卡','宠物餐'];
+let recFilter='全部';
 function renderRecipes(){
   const d=getData();
-  let items=d.recipes;
-  if(recFilter!=='all')items=items.filter(i=>i.category===recFilter);
-  const el=document.getElementById('recipe-list');
-  if(!items.length){el.innerHTML=`<div class="empty-card" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.book}</span><p>还没有记录食谱哦 ~</p><span class="ec-hint">点击添加</span></div>`;return}
-  el.innerHTML=items.map(i=>`<div class="item-card">
-    <div class="item-head">
-      <div class="item-info">
-        <span class="item-icon">${ICONS.book}</span>
-        <div>
-          <div class="name">${i.name}${i.recent?' <span style="font-size:10px;color:#FF9500;background:#FFF4E5;padding:2px 6px;border-radius:6px">今日</span>':''}</div>
-          <div class="meta">${i.category}${i.subcategory?'/'+i.subcategory:''}${i.time?' · ⏱ '+i.time:''}</div>
-        </div>
+  const kw=(document.getElementById('rec-search').value||'').trim();
+  document.getElementById('rec-chips').innerHTML=REC_CATS.map(c=>
+    `<button class="chip ${c===recFilter?'active':''}" onclick="recFilter='${c}';renderRecipes()">${c}</button>`).join('');
+  const list=d.recipes.filter(r=>!kw||r.name.includes(kw));
+  document.getElementById('rec-grid').innerHTML=list.map(r=>`
+    <div class="recipe-card">
+      <div class="thumb">${ICONS.recipes}</div>
+      <div class="info">
+        <div class="recipe-name">${r.name}</div>
+        <div class="recipe-meta" style="display:flex;justify-content:space-between;align-items:center"><span>${r.time} · ${r.tag}</span><span style="color:${r.fav?'#E5531A':'#CCCCCC'};width:18px;height:18px;display:inline-flex">${ICONS.heart}</span></div>
       </div>
-      <div class="row-actions">
-        <button class="act-btn" onclick="openModal('recipe','${i.id}')">✎</button>
-        <button class="act-btn del" onclick="deleteItem('recipe','${i.id}')">🗑</button>
-      </div>
-    </div>
-    ${i.ingredients&&i.ingredients.length?`<div style="font-size:12px;color:#8E8E93;margin:8px 0 4px">🧾 食材：${i.ingredients.join('、')}</div>`:''}
-    ${i.seasonings&&i.seasonings.length?`<div style="font-size:12px;color:#8E8E93;margin:4px 0">🧂 配料：${i.seasonings.join('、')}</div>`:''}
-    ${i.steps?`<div class="detail-txt">${i.steps}</div>`:''}
-    ${i.note?`<div class="detail-meta">📌 ${i.note}</div>`:''}
-  </div>`).join('');
-  // 种草菜单（放食谱页）
-  const wd=d.wishlist;
-  document.getElementById('recipe-wishlist').innerHTML=wd.length?
-    `<div class="list-card">`+wd.map(w=>`<div class="list-row">
-      <span class="row-ic" style="color:#2FB6A3;background:#E4F6F3">${ICONS.target}</span>
-      <div class="info"><div class="name">${w.name}</div><div class="meta">${w.type||'未分类'}${w.note?' · '+w.note:''}</div></div>
-      <div class="row-actions">
-        <button class="act-btn" onclick="openModal('wish','${w.id}')">✎</button>
-        <button class="act-btn del" onclick="deleteItem('wish','${w.id}')">🗑</button>
-      </div>
-    </div>`).join('')+`</div>`
-    :`<div class="empty-card" onclick="openModal('wish')"><span class="ec-icon">${ICONS.target}</span><p>还没有种草菜单哦 ~</p><span class="ec-hint">点击添加</span></div>`;
+    </div>`).join('')||`<div class="empty-card" style="grid-column:1/-1" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.recipes}</span><p>还没有食谱哦 ~</p><span class="ec-hint">点击添加</span></div>`;
 }
 
-function initNavIndicator(){moveIndicator(0,true)}
-function renderAll(){renderFilters('ingredients');renderFilters('pets');renderFilters('recipes');renderHome();renderIngredients();renderPets();renderRecipes();renderSettings();renderCatsPage();renderLocsPage();}
-renderAll();
-initNavIndicator();
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js').catch(function(err) {
-      console.log('SW 注册失败:', err);
-    });
-  });
+/* ============ 页面切换 ============ */
+function goToPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+p));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.dataset.page===p));
+  const ind=document.getElementById('nav-indicator');
+  const items=[...document.querySelectorAll('.nav-item')];
+  const idx=items.findIndex(el=>el.dataset.page===p);
+  ind.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1)';
+  ind.style.transform=`translateX(${idx*100}%)`;
+  if(p==='home')renderHome();else if(p==='ingredients')renderIngredients();else if(p==='pets')renderPets();else renderRecipes();
 }
+document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>goToPage(b.dataset.page)));
+window.addEventListener('load',()=>{goToPage('home')});
+
+/* ============ Modal（添加） ============ */
+let modalType=null;
+function openModal(type){modalType=type;
+  const titles={ingredient:'添加食材',pet:'添加宠物',recipe:'添加食谱'};
+  document.getElementById('modal-title').textContent=titles[type];
+  let f='';
+  if(type==='ingredient')f=`<div class="form-group"><label>名称</label><input id="f-name" placeholder="如 鲜牛奶"></div><div class="form-group"><label>数量</label><input id="f-qty" placeholder="如 500ml"></div><div class="form-group"><label>位置</label><input id="f-loc" placeholder="如 冷藏"></div>`;
+  else if(type==='pet')f=`<div class="form-group"><label>名字</label><input id="f-name" placeholder="如 布丁"></div><div class="form-group"><label>品种</label><input id="f-cat" placeholder="如 金毛犬"></div><div class="form-group"><label>健康状态</label><select id="f-health"><option>健康</option><option>待喂食</option></select></div>`;
+  else f=`<div class="form-group"><label>食谱名</label><input id="f-name" placeholder="如 番茄炖牛腩"></div><div class="form-group"><label>耗时</label><input id="f-time" placeholder="如 60分钟"></div><div class="form-group"><label>标签</label><input id="f-tag" placeholder="如 中辣"></div>`;
+  f+=`<button class="btn-save" onclick="saveForm()">保存</button><button class="btn-cancel" onclick="closeModal()">取消</button>`;
+  document.getElementById('modal-form').innerHTML=f;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function saveForm(){
+  const d=getData();const v=id=>document.getElementById('f-'+id).value.trim();
+  if(modalType==='ingredient')d.ingredients.push({id:Date.now(),name:v('name'),qty:v('qty'),loc:v('loc'),exp:''});
+  else if(modalType==='pet')d.pets.push({id:Date.now(),name:v('name'),cat:v('cat'),gender:'—',age:'—',weight:'—',health:v('health')});
+  else d.recipes.push({id:Date.now(),name:v('name'),time:v('time')||'—',tag:v('tag')||'—',fav:false});
+  saveData(d);closeModal();renderAll();
+}
+function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes()}
 </script>
 </body>
 </html>

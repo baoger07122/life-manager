@@ -24,7 +24,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 /* ========= Header（真实状态栏安全区 + 页面大标题） ========= */
 .hero{padding:calc(env(safe-area-inset-top, 20px) + 16px) 20px 6px;background:#FFFFFF}
-.hero-title{font-size:28px;font-weight:600;color:#1C1C1E;letter-spacing:-0.5px}
+.hero-title{font-size:26px;font-weight:600;color:#1C1C1E;letter-spacing:-0.5px}
 .hero-sub{font-size:13px;color:#8E8E93;margin-top:3px}
 
 /* ========= Content ========= */
@@ -122,7 +122,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 /* ========= 底部悬浮胶囊导航（5 Tab，弹性指示器动画） ========= */
 .bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.98);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 12px 36px rgba(0,0,0,0.14);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
-.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:#FF9500;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
+.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:#FF9F0A;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);position:relative;z-index:1;color:#1C1C1E;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:color .25s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(24px, 6.6vw, 28px);height:clamp(24px, 6.6vw, 28px)}
@@ -296,7 +296,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <div id="page-stats" class="page">
     <div class="hero">
       <div class="hero-title">设置</div>
-      <div class="hero-sub">生活管家 v8.9.21</div>
+      <div class="hero-sub">生活管家 v8.9.22</div>
     </div>
     <div class="content">
       <div class="list-card">
@@ -314,7 +314,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
         </div>
       </div>
 
-      <div class="version-footer">生活管家 v8.9.21 · 数据保存在本机</div>
+      <div class="version-footer">生活管家 v8.9.22 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -366,19 +366,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
   <nav class="bottom-nav">
     <div class="nav-indicator" id="nav-indicator"></div>
     <button class="nav-item active" data-page="home">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg></span><span>首页</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.8L12 3.5l9 7.3"/><path d="M5.5 9.8V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.8"/><path d="M10 21v-5.5h4V21"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg></span><span>首页</span>
     </button>
     <button class="nav-item" data-page="ingredients">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="6.5"/><path d="M12 7.5c-1-2.4-3.2-2.9-3.2-2.9s.2 2.7 3.2 3z"/><path d="M12 7.5c1-2.4 3.2-2.9 3.2-2.9s-.2 2.7-3.2 3z"/><path d="M12 7.5V4.5"/></svg></span><span>食材</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7-2.8-7-6.6C5 9 8 6 12 6s7 3 7 7.4c0 3.8-2.5 6.6-7 6.6z"/><path d="M12 6.2C12 4.6 10.8 3.6 9.5 3.4c-.2.9-.1 2.2.9 3"/><path d="M12 6.2c0-1.6 1.2-2.6 2.5-2.8.2.9.1 2.2-.9 3"/><path d="M12 6.2V4.8"/><path d="M9 14.5a2.8 2.8 0 0 0 2.6 2.6"/></svg></span><span>食材</span>
     </button>
     <button class="nav-item" data-page="pets">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.4 0-8-2.9-8-6.5C4 9.4 7.6 5 12 5s8 4.4 8 8.5c0 3.6-3.6 6.5-8 6.5z"/><path d="M9 4l-2 2"/><path d="M15 4l2 2"/><path d="M8.5 13h.01"/><path d="M15.5 13h.01"/><path d="M9.5 16.5c.7.7 1.6 1 2.5 1s1.8-.3 2.5-1"/></svg></span><span>宠物</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5c-4.8 0-8.5-3-8.5-7 0-5 3.4-9.5 8.5-9.5s8.5 4.5 8.5 9.5c0 4-3.7 7-8.5 7z"/><path d="M8.8 3.5L6.5 4.8"/><path d="M15.2 3.5l2.3 1.3"/><circle cx="9.2" cy="12.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="14.8" cy="12.8" r="0.9" fill="currentColor" stroke="none"/><path d="M9.8 16.3c1.3 1 3.1 1 4.4 0"/><path d="M7.5 12.2l-2.2-.8"/><path d="M16.5 12.2l2.2-.8"/></svg></span><span>宠物</span>
     </button>
     <button class="nav-item" data-page="recipes">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg></span><span>食谱</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v6.5c0 1.4 1 2.4 2.2 2.4H9c1.2 0 2.2-1 2.2-2.4V2.5"/><path d="M7 2.5V21"/><path d="M5.5 6h3"/><path d="M21 2.5v5.5c0 2.2-1.5 3.4-3 3.4s-3-1.2-3-3.4V2.5"/><path d="M18 11.4V21"/></svg></span><span>食谱</span>
     </button>
     <button class="nav-item" data-page="stats">
-      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span><span>设置</span>
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 21V13"/><path d="M10 21V8"/><path d="M16.5 21V3.5"/><path d="M3.5 21h17"/><circle cx="16.5" cy="6" r="1.6" fill="currentColor" stroke="none"/></svg></span><span>设置</span>
     </button>
   </nav>
 
@@ -496,7 +496,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC"
 
 <script>
 const STORE_KEY = 'life_manager_v3';
-const VERSION = '8.9.21';
+const VERSION = '8.9.22';
 const DEFAULT_CATS = {
   ingredients: ['蔬菜','水果','肉类','海鲜','蛋奶','调味品','主食','其他'],
   pets: ['食品','玩具','清洁','医疗','窝具','其他'],

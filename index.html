@@ -131,15 +131,48 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 .recipe-grid .thumb{height:120px}
 .recipe-grid .recipe-name{font-size:15px}
 
+/* ========= 设置页：分组卡片 ========= */
+.set-group{margin-bottom:20px}
+.set-group-title{font-size:13px;font-weight:600;color:#8E8E93;letter-spacing:0.3px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.set-add-btn{width:hug_contents;height:28px;padding:0 12px;border-radius:14px;background:#0066CC;border:none;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer;outline:none;font-family:inherit}
+.set-add-btn svg{width:14px;height:14px}
+.set-card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
+.set-row{display:flex;align-items:center;justify-content:space-between;height:46px;padding:0 12px 0 16px}
+.set-row+.set-row{border-top:1px solid #F2F2F7}
+.set-row-left{display:flex;align-items:center;gap:10px}
+.set-row-ic{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.set-row-ic svg{width:14px;height:14px}
+.set-row-name{font-size:15px;color:#1D1D1F}
+.set-row-count{font-size:12px;color:#8E8E93;margin-left:auto;margin-right:8px}
+.set-row-chev svg{width:16px;height:16px;color:#C7C7CC}
+.set-divider{height:1px;background:#F1F1F3}
+
+/* ========= 设置页：备份深色卡 ========= */
+.backup-card{background:#272729;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.backup-ic{width:44px;height:44px;border-radius:12px;background:#0066CC;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.backup-ic svg{width:24px;height:24px;color:#fff}
+.backup-info{flex:1;min-width:0}
+.backup-name{font-size:15px;font-weight:600;color:#fff}
+.backup-meta{font-size:12px;color:#CCCCCC;margin-top:3px;line-height:1.3}
+.backup-btn{flex-shrink:0;height:32px;padding:0 14px;border-radius:16px;background:#fff;border:none;color:#0066CC;font-size:12px;font-weight:600;cursor:pointer;outline:none;font-family:inherit}
+.restore-card{background:#fff;border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.restore-ic{width:44px;height:44px;border-radius:12px;background:#EDF1F7;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.restore-ic svg{width:24px;height:24px;color:#0066CC}
+.datastats-row{display:flex;gap:10px;margin-top:12px}
+.datastat{flex:1;background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.datastat .num{font-size:20px;font-weight:600;color:#1D1D1F}
+.datastat .lbl{font-size:12px;color:#8E8E93;margin-top:4px}
+.set-footer{text-align:center;font-size:12px;color:#C7C7CC;padding:28px 0 10px}
+
 /* ========= 头部行（标题+加号） ========= */
 .head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .head-row .hero-title{margin:0}
 .add-btn{width:36px;height:36px;border-radius:18px;background:#0066CC;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none}
 .add-btn svg{width:18px;height:18px}
 
-/* ========= 底部悬浮胶囊导航（4 Tab，蓝色激活） ========= */
+/* ========= 底部悬浮胶囊导航（5 Tab，蓝色激活） ========= */
 .bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.98);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 12px 36px rgba(0,0,0,0.14);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
-.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/4);background:#0066CC;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
+.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:#0066CC;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);position:relative;z-index:1;color:#1C1C1E;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:color .25s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(24px, 6.6vw, 28px);height:clamp(24px, 6.6vw, 28px)}
@@ -271,6 +304,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
     </div>
   </div>
 
+  <!-- ============ 05 设置 ============ -->
+  <div class="page" id="page-settings">
+    <div class="hero">
+      <div class="hero-title">设置</div>
+    </div>
+    <div class="content" style="padding-top:0">
+      <!-- 分类管理 -->
+      <div class="set-group">
+        <div class="set-group-title">分类管理 <button class="set-add-btn" onclick="addCat()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新增</button></div>
+        <div class="set-card" id="cat-list"></div>
+      </div>
+      <!-- 数据管理 -->
+      <div class="set-group">
+        <div class="set-group-title">数据管理</div>
+        <div class="backup-card">
+          <span class="backup-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.5a3.5 3.5 0 0 1 .5 7H7z"/><path d="M12 11v5"/><path d="M9.5 13.5L12 11l2.5 2.5"/></svg></span>
+          <div class="backup-info">
+            <div class="backup-name">一键备份</div>
+            <div class="backup-meta">导出全部数据为 JSON 文件，安全保存</div>
+          </div>
+          <button class="backup-btn" onclick="backupAll()">立即备份</button>
+        </div>
+        <div class="restore-card">
+          <span class="restore-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v10"/><path d="M8 10l4 4 4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+          <div class="backup-info">
+            <div class="backup-name" style="color:#1D1D1F">恢复数据</div>
+            <div class="backup-meta" style="color:#7A7A7A">从备份 JSON 文件导入数据</div>
+          </div>
+          <button class="backup-btn" style="background:#EDF1F7;color:#0066CC" onclick="document.getElementById('restore-file').click()">选择文件</button>
+          <input type="file" id="restore-file" accept=".json,application/json" style="display:none" onchange="restoreAll(this.files[0])">
+        </div>
+        <div class="datastats-row" id="data-stats"></div>
+      </div>
+      <div class="set-footer">个人管家 v1.0 · 数据保存在本机</div>
+    </div>
+  </div>
+
   <!-- ============ 底部导航（4 Tab） ============ -->
   <nav class="bottom-nav">
     <div class="nav-indicator" id="nav-indicator"></div>
@@ -285,6 +355,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
     </button>
     <button class="nav-item" data-page="recipes">
       <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5v6.5c0 1.4 1 2.4 2.2 2.4H9c1.2 0 2.2-1 2.2-2.4V2.5"/><path d="M7 2.5V21"/><path d="M5.5 6h3"/><path d="M21 2.5v5.5c0 2.2-1.5 3.4-3 3.4s-3-1.2-3-3.4V2.5"/><path d="M18 11.4V21"/></svg></span><span>食谱</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 21V13"/><path d="M10 21V8"/><path d="M16.5 21V3.5"/><path d="M3.5 21h17"/><circle cx="16.5" cy="6" r="1.6" fill="currentColor" stroke="none"/></svg></span><span>设置</span>
     </button>
   </nav>
 
@@ -428,6 +501,87 @@ function renderRecipes(){
     </div>`).join('')||`<div class="empty-card" style="grid-column:1/-1" onclick="openModal('recipe')"><span class="ec-icon">${ICONS.recipes}</span><p>还没有食谱哦 ~</p><span class="ec-hint">点击添加</span></div>`;
 }
 
+/* ============ 设置页：分类管理 ============ */
+function renderSettings(){
+  const d=getData();
+  // 分类管理（自动聚合分类 + 统计每一项数量）
+  const cats=Object.keys((d.cats||{})).length?d.cats:DEFAULT_CATS();
+  const catList=document.getElementById('cat-list');
+  const rows=Object.entries(cats).map(([name,iconColor])=>{
+    const [iconClass,color]=iconColor;
+    const count=d.ingredients.filter(i=>i.cat===name).length;
+    return `<div class="set-row">
+      <div class="set-row-left"><span class="set-row-ic" style="background:${color==='#E5531A'?'#FFF2EC':color};color:${color}">${ICONS[iconClass]||ICONS.pantry}</span><span class="set-row-name">${name}</span></div>
+      <span class="set-row-count">${count} 项</span>
+      <span class="set-row-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+    </div>`;
+  }).join('');
+  catList.innerHTML=rows||`<div class="set-row" style="justify-content:center;color:#A0A0A8;font-size:13px">暂无分类，点击右上角新增</div>`;
+
+  // 数据统计
+  document.getElementById('data-stats').innerHTML=
+    `<div class="datastat"><div class="num">${d.ingredients.length}</div><div class="lbl">库存食材</div></div>`+
+    `<div class="datastat"><div class="num">${d.pets.length}</div><div class="lbl">宠物</div></div>`+
+    `<div class="datastat"><div class="num">${d.recipes.length}</div><div class="lbl">食谱</div></div>`;
+}
+function DEFAULT_CATS(){return {蔬菜:['leaf','#0066CC'],水果:['flame','#E5531A']}}
+function addCat(){
+  const name=prompt('输入新分类名称：');
+  if(!name||!name.trim())return;
+  const d=getData();if(!d.cats)d.cats=DEFAULT_CATS();
+  if(d.cats[name.trim()]){alert('该分类已存在');return}
+  d.cats[name.trim()]=['pantry','#8E8E93'];
+  saveData(d);renderSettings();
+}
+
+/* ============ 一键备份 / 恢复（参照考公复盘 exportAll/importAll） ============ */
+function backupAll(){
+  const d=getData();
+  const data={
+    version:1,
+    app:'life-manager-v5',
+    exportedAt:new Date().toISOString(),
+    ingredients:d.ingredients||[],
+    pets:d.pets||[],
+    recipes:d.recipes||[],
+    cats:d.cats||{}
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='个人管家-backup.json';   // 固定文件名，避免每天多次导出产生大量带日期文件
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert('已导出备份文件 个人管家-backup.json，请妥善保存');
+}
+function restoreAll(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    try{
+      const jsonData=JSON.parse(reader.result);
+      if(!jsonData||!jsonData.version)throw new Error('无效的备份文件格式');
+      if(!confirm('恢复将覆盖当前全部数据，确定继续吗？'))return;
+      const d=getData();
+      if(Array.isArray(jsonData.ingredients))d.ingredients=jsonData.ingredients;
+      if(Array.isArray(jsonData.pets))d.pets=jsonData.pets;
+      if(Array.isArray(jsonData.recipes))d.recipes=jsonData.recipes;
+      if(jsonData.cats)d.cats=jsonData.cats;
+      saveData(d);
+      document.getElementById('restore-file').value='';
+      renderAll();renderSettings();
+      alert('数据恢复成功');
+    }catch(e){
+      alert('恢复失败：'+e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 /* ============ 页面切换 ============ */
 function goToPage(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id==='page-'+p));
@@ -437,7 +591,7 @@ function goToPage(p){
   const idx=items.findIndex(el=>el.dataset.page===p);
   ind.style.transition='transform .45s cubic-bezier(.34,1.56,.64,1)';
   ind.style.transform=`translateX(${idx*100}%)`;
-  if(p==='home')renderHome();else if(p==='ingredients')renderIngredients();else if(p==='pets')renderPets();else renderRecipes();
+  if(p==='home')renderHome();else if(p==='ingredients')renderIngredients();else if(p==='pets')renderPets();else if(p==='recipes')renderRecipes();else renderSettings();
 }
 document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>goToPage(b.dataset.page)));
 window.addEventListener('load',()=>{goToPage('home')});
@@ -463,7 +617,7 @@ function saveForm(){
   else d.recipes.push({id:Date.now(),name:v('name'),time:v('time')||'—',tag:v('tag')||'—',fav:false});
   saveData(d);closeModal();renderAll();
 }
-function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes()}
+function renderAll(){renderHome();renderIngredients();renderPets();renderRecipes();renderSettings()}
 </script>
 </body>
 </html>

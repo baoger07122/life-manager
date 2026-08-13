@@ -1,5 +1,5 @@
 // 生活管家 Service Worker - network-first + 核心资源预缓存
-const CACHE_NAME = 'life-manager-v4.0';
+const CACHE_NAME = 'life-manager-v4.1';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',

@@ -17,10 +17,6 @@ html{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:10
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1D1D1F;line-height:1.5;min-height:100vh;padding-bottom:132px}
 .app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
-.status-bar{height:calc(env(safe-area-inset-top, 0px) + 44px);display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px calc(env(safe-area-inset-top, 0px) > 0 ? 8px : 18px);color:#1D1D1F}
-.status-bar .time{font-size:15px;font-weight:600;letter-spacing:0.2px}
-.status-icons{display:flex;align-items:center;gap:7px}
-.status-icons svg{display:block}
 .hero{padding:calc(env(safe-area-inset-top, 0px) + 14px) 20px 0}
 .hero-title{font-size:28px;font-weight:700;color:#1D1D1F;letter-spacing:-0.5px}
 .hero-sub{font-size:13px;color:#86868B;margin-top:3px}
@@ -190,17 +186,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 </head>
 <body>
 <div class="app">
-
-  <!-- 状态栏 -->
-  <div class="status-bar">
-    <span class="time">9:41</span>
-    <span class="status-icons">
-      <svg width="17" height="11" viewBox="0 0 17 11" fill="none"><rect x="0" y="7" width="3" height="4" rx="0.5" fill="#1D1D1F"/><rect x="4.5" y="5" width="3" height="6" rx="0.5" fill="#1D1D1F"/><rect x="9" y="3" width="3" height="8" rx="0.5" fill="#1D1D1F"/><rect x="13.5" y="0" width="3" height="11" rx="0.5" fill="#1D1D1F" opacity="0.35"/></svg>
-      <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><path d="M8 10c.83 0 1.5-.67 1.5-1.5S8.83 7 8 7s-1.5.67-1.5 1.5S7.17 10 8 10z" fill="#1D1D1F"/><path d="M4 6.5c1.1-1.1 2.5-1.7 4-1.7s2.9.6 4 1.7" stroke="#1D1D1F" stroke-width="1.2" stroke-linecap="round"/><path d="M1.5 4c1.9-1.9 4.1-3 6.5-3s4.6 1.1 6.5 3" stroke="#1D1D1F" stroke-width="1.2" stroke-linecap="round"/></svg>
-      <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x="0.5" y="0.5" width="21" height="11" rx="3" stroke="#1D1D1F" stroke-opacity="0.4"/><rect x="2" y="2" width="15" height="8" rx="1.5" fill="#1D1D1F"/><path d="M23 4v4c1.1-.3 1.1-3.7 0-4z" fill="#1D1D1F" fill-opacity="0.4"/></svg>
-    </span>
-  </div>
-
   <!-- 01 首页 -->
   <div class="page active" id="page-home">
     <div class="hero">

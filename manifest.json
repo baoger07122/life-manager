@@ -1,11 +1,11 @@
 {
-  "name": "生活管家",
-  "short_name": "生活管家",
-  "description": "食材 / 宠物用品 / 个人食谱管理",
+  "name": "个人管家",
+  "short_name": "个人管家",
+  "description": "食材 / 宠物 / 菜谱 便捷管理",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F2F2F7",
-  "theme_color": "#E8E6F5",
+  "background_color": "#F5F5F7",
+  "theme_color": "#F5F5F7",
   "orientation": "portrait",
   "icons": [
     {

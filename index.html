@@ -10,24 +10,24 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#F5F5F7">
+<meta name="theme-color" content="#F4F0FF">
 <meta name="apple-mobile-web-app-title" content="个人管家">
 <style>
 html{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;text-size-adjust:100%}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#F5F5F7;color:#1D1D1F;line-height:1.5;min-height:100vh;padding-bottom:132px}
-.app{max-width:420px;margin:0 auto;background:#F5F5F7;min-height:100vh;position:relative}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Helvetica Neue",sans-serif;background:#F4F0FF;color:#1F1B3A;line-height:1.5;min-height:100vh;padding-bottom:132px}
+.app{max-width:420px;margin:0 auto;background:#F4F0FF;min-height:100vh;position:relative}
 .hero{padding:calc(env(safe-area-inset-top, 0px) + 14px) 20px 0}
-.hero-title{font-size:28px;font-weight:700;color:#1D1D1F;letter-spacing:-0.5px}
-.hero-sub{font-size:13px;color:#86868B;margin-top:3px}
+.hero-title{font-size:28px;font-weight:700;color:#1F1B3A;letter-spacing:-0.5px}
+.hero-sub{font-size:13px;color:#8E8AAE;margin-top:3px}
 .content{padding:14px 20px 24px}
 .head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .head-row .hero-title{margin:0}
-.add-btn{width:36px;height:36px;border-radius:18px;background:#007AFF;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;flex-shrink:0}
+.add-btn{width:36px;height:36px;border-radius:18px;background:#6D7CFF;border:none;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;flex-shrink:0}
 .add-btn svg{width:18px;height:18px}
 .sec-head{display:flex;justify-content:space-between;align-items:center;background:none;border:none;width:100%;padding:0;cursor:pointer;margin-bottom:10px;outline:none;font-family:inherit}
-.sec-title{font-size:20px;font-weight:600;color:#1D1D1F;letter-spacing:-0.2px}
-.sec-more{display:flex;align-items:center;gap:2px;font-size:13px;color:#007AFF}
+.sec-title{font-size:20px;font-weight:600;color:#1F1B3A;letter-spacing:-0.2px}
+.sec-more{display:flex;align-items:center;gap:2px;font-size:13px;color:#6D7CFF}
 .sec-more svg{width:14px;height:14px}
 .card{background:#fff;border-radius:18px;padding:8px 0;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
 .list-card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
@@ -35,73 +35,73 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 .entry-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .entry-icon svg{width:24px;height:24px}
 .entry-info{flex:1;min-width:0}
-.entry-name{font-size:17px;font-weight:600;color:#1D1D1F}
-.entry-desc{font-size:13px;color:#86868B;margin-top:4px}
+.entry-name{font-size:17px;font-weight:600;color:#1F1B3A}
+.entry-desc{font-size:13px;color:#8E8AAE;margin-top:4px}
 .entry-chev{color:#C7C7CC;flex-shrink:0}
 .entry-chev svg{width:18px;height:18px}
 .overview-card{background:#fff;border-radius:18px;padding:18px 20px;margin-top:20px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.ov-head{font-size:20px;font-weight:600;color:#1D1D1F;margin-bottom:8px}
+.ov-head{font-size:20px;font-weight:600;color:#1F1B3A;margin-bottom:8px}
 .ov-item{display:flex;align-items:center;gap:14px;padding:12px 0;cursor:pointer}
-.ov-item+.ov-item{border-top:1px solid #F2F2F7}
+.ov-item+.ov-item{border-top:1px solid #EFEBFA}
 .ov-dot{width:10px;height:10px;border-radius:5px;flex-shrink:0}
-.ov-icon{flex-shrink:0;display:flex;color:#007AFF}
+.ov-icon{flex-shrink:0;display:flex;color:#6D7CFF}
 .ov-icon svg{width:22px;height:22px}
 .ov-text{flex:1;min-width:0}
-.ov-name{font-size:15px;font-weight:500;color:#1D1D1F}
-.ov-meta{font-size:13px;color:#86868B;margin-top:2px}
+.ov-name{font-size:15px;font-weight:500;color:#1F1B3A}
+.ov-meta{font-size:13px;color:#8E8AAE;margin-top:2px}
 .ov-chev{color:#C7C7CC;flex-shrink:0}
 .ov-chev svg{width:18px;height:18px}
 .search-bar{display:flex;align-items:center;gap:8px;background:#fff;border-radius:12px;padding:0 14px;height:40px;margin-bottom:12px}
-.search-bar svg{width:18px;height:18px;color:#86868B;flex-shrink:0}
-.search-bar input{flex:1;border:none;outline:none;background:none;font-size:15px;color:#1D1D1F;font-family:inherit}
-.search-bar input::placeholder{color:#86868B}
+.search-bar svg{width:18px;height:18px;color:#8E8AAE;flex-shrink:0}
+.search-bar input{flex:1;border:none;outline:none;background:none;font-size:15px;color:#1F1B3A;font-family:inherit}
+.search-bar input::placeholder{color:#8E8AAE}
 .seg{display:flex;background:#E9E9EB;border-radius:14px;padding:4px;gap:4px;margin-bottom:12px}
-.seg-item{flex:1;height:36px;border-radius:10px;border:none;background:none;font-size:13px;font-weight:500;color:#86868B;cursor:pointer;outline:none;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0 4px}
-.seg-item.active{background:#fff;color:#1D1D1F;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.06)}
+.seg-item{flex:1;height:36px;border-radius:10px;border:none;background:none;font-size:13px;font-weight:500;color:#8E8AAE;cursor:pointer;outline:none;font-family:inherit;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.seg-item.active{background:#fff;color:#1F1B3A;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,0.06)}
 .chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.chip{flex-shrink:0;height:32px;padding:0 14px;border-radius:16px;font-size:13px;display:flex;align-items:center;background:#fff;color:#1D1D1F;border:none;cursor:pointer;outline:none;font-family:inherit}
-.chip.active{background:#007AFF;color:#fff;font-weight:600}
+.chip{flex-shrink:0;height:32px;padding:0 14px;border-radius:16px;font-size:13px;display:flex;align-items:center;background:#fff;color:#1F1B3A;border:none;cursor:pointer;outline:none;font-family:inherit}
+.chip.active{background:#6D7CFF;color:#fff;font-weight:600}
 .ing-row{display:flex;align-items:center;gap:12px;padding:12px 14px}
-.ing-row+.ing-row{border-top:1px solid #F2F2F7}
+.ing-row+.ing-row{border-top:1px solid #EFEBFA}
 .ing-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ing-icon svg{width:20px;height:20px}
 .ing-info{flex:1;min-width:0}
-.ing-name{font-size:16px;font-weight:600;color:#1D1D1F}
-.ing-meta{font-size:12px;color:#86868B;margin-top:2px}
+.ing-name{font-size:16px;font-weight:600;color:#1F1B3A}
+.ing-meta{font-size:12px;color:#8E8AAE;margin-top:2px}
 .status-tag{flex-shrink:0;padding:4px 9px;border-radius:11px;font-size:11px;font-weight:600}
 .status-tag.open{background:#FFF2EC;color:#E5531A}
-.status-tag.split{background:#EAF4FF;color:#007AFF}
+.status-tag.split{background:#ECE8FF;color:#6D7CFF}
 .status-tag.sealed{background:#EDF7F1;color:#33995F}
 .stock-btn{flex-shrink:0;display:flex;align-items:center;gap:6px}
 .stock-btn button{width:28px;height:28px;border-radius:14px;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;outline:none;font-size:18px;font-family:inherit}
-.stock-btn .minus{background:#F2F2F7;color:#1D1D1F}
-.stock-btn .plus{background:#007AFF;color:#fff}
-.stock-btn .qty-num{font-size:15px;font-weight:600;color:#1D1D1F;min-width:18px;text-align:center}
+.stock-btn .minus{background:#EFEBFA;color:#1F1B3A}
+.stock-btn .plus{background:#6D7CFF;color:#fff}
+.stock-btn .qty-num{font-size:15px;font-weight:600;color:#1F1B3A;min-width:18px;text-align:center}
 .empty-card{background:#fff;border-radius:18px;padding:30px 20px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);cursor:pointer}
-.ec-icon{width:44px;height:44px;border-radius:14px;background:#EAF2FC;display:flex;align-items:center;justify-content:center;color:#007AFF;margin:0 auto 10px}
+.ec-icon{width:44px;height:44px;border-radius:14px;background:#ECE8FF;display:flex;align-items:center;justify-content:center;color:#6D7CFF;margin:0 auto 10px}
 .ec-icon svg{width:24px;height:24px}
-.empty-card p{font-size:13px;color:#86868B}
+.empty-card p{font-size:13px;color:#8E8AAE}
 .ec-hint{font-size:11px;color:#C7C7CC;margin-top:6px;display:block}
 .pet-head{display:flex;align-items:center;gap:16px;background:#fff;border-radius:18px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);margin-bottom:16px}
 .pet-avatar{width:64px;height:64px;border-radius:32px;background:#FFD7C9;display:flex;align-items:center;justify-content:center;color:#FF8A65;flex-shrink:0}
 .pet-avatar svg{width:36px;height:36px}
 .pet-info{flex:1;min-width:0}
-.pet-name{font-size:22px;font-weight:700;color:#1D1D1F}
-.pet-meta{font-size:13px;color:#86868B;margin-top:3px}
+.pet-name{font-size:22px;font-weight:700;color:#1F1B3A}
+.pet-meta{font-size:13px;color:#8E8AAE;margin-top:3px}
 .supply-row{display:flex;align-items:center;gap:12px;padding:14px 16px}
-.supply-row+.supply-row{border-top:1px solid #F2F2F7}
+.supply-row+.supply-row{border-top:1px solid #EFEBFA}
 .supply-icon{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .supply-icon svg{width:20px;height:20px}
 .supply-info{flex:1;min-width:0}
-.supply-name{font-size:16px;font-weight:600;color:#1D1D1F}
-.supply-meta{font-size:12px;color:#86868B;margin-top:2px}
+.supply-name{font-size:16px;font-weight:600;color:#1F1B3A}
+.supply-meta{font-size:12px;color:#8E8AAE;margin-top:2px}
 .brand-row{display:flex;align-items:center;padding:12px 16px}
-.brand-row+.brand-row{border-top:1px solid #F2F2F7}
+.brand-row+.brand-row{border-top:1px solid #EFEBFA}
 .brand-info{flex:1;min-width:0}
-.brand-name{font-size:15px;font-weight:600;color:#1D1D1F}
-.brand-price{font-size:12px;color:#86868B;margin-top:2px}
+.brand-name{font-size:15px;font-weight:600;color:#1F1B3A}
+.brand-price{font-size:12px;color:#8E8AAE;margin-top:2px}
 .love-tag{flex-shrink:0;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:500}
-.remind-card{background:#007AFF;border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:12px;cursor:pointer}
+.remind-card{background:linear-gradient(135deg,#A78BFA,#6D7CFF);border-radius:18px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:12px;cursor:pointer;box-shadow:0 8px 20px rgba(109,124,255,0.25)}
 .remind-ic{width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .remind-ic svg{width:24px;height:24px;color:#fff}
 .remind-info{flex:1;min-width:0}
@@ -112,46 +112,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 .timeline-row{display:flex;align-items:center;gap:12px;padding:10px 16px}
 .tl-dot{width:10px;height:10px;border-radius:5px;flex-shrink:0}
 .tl-info{flex:1;min-width:0}
-.tl-name{font-size:15px;font-weight:500;color:#1D1D1F}
-.tl-time{font-size:12px;color:#86868B;margin-top:2px}
+.tl-name{font-size:15px;font-weight:500;color:#1F1B3A}
+.tl-time{font-size:12px;color:#8E8AAE;margin-top:2px}
 .recipe-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .recipe-card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
 .recipe-card .thumb{width:100%;height:110px;display:flex;align-items:center;justify-content:center;color:#fff}
 .recipe-card .thumb svg{width:36px;height:36px}
 .recipe-card .info{padding:10px 12px 12px}
-.recipe-name{font-size:15px;font-weight:600;color:#1D1D1F}
-.recipe-meta{font-size:12px;color:#86868B;margin-top:3px}
+.recipe-name{font-size:15px;font-weight:600;color:#1F1B3A}
+.recipe-meta{font-size:12px;color:#8E8AAE;margin-top:3px}
 .plan-row{display:flex;align-items:center;gap:12px;padding:12px 16px}
-.plan-row+.plan-row{border-top:1px solid #F2F2F7}
+.plan-row+.plan-row{border-top:1px solid #EFEBFA}
 .plan-check{width:22px;height:22px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.plan-check.done{background:#007AFF}
+.plan-check.done{background:#6D7CFF}
 .plan-check.done svg{width:14px;height:14px;color:#fff}
 .plan-check.todo{border:2px solid #C7C7CC;background:none}
-.plan-name{flex:1;min-width:0;font-size:16px;font-weight:500;color:#1D1D1F}
+.plan-name{flex:1;min-width:0;font-size:16px;font-weight:500;color:#1F1B3A}
 .plan-name.done-txt{color:#C7C7CC;text-decoration:line-through}
-.plan-tag{font-size:12px;color:#86868B;flex-shrink:0}
-.link-box{display:flex;align-items:center;gap:10px;background:#F2F2F7;border-radius:12px;padding:0 14px;height:44px;margin-bottom:12px}
-.link-box svg{width:20px;height:20px;color:#86868B;flex-shrink:0}
-.link-box input{flex:1;border:none;outline:none;background:none;font-size:14px;color:#1D1D1F;font-family:inherit}
-.link-box input::placeholder{color:#86868B}
+.plan-tag{font-size:12px;color:#8E8AAE;flex-shrink:0}
+.link-box{display:flex;align-items:center;gap:10px;background:#EFEBFA;border-radius:12px;padding:0 14px;height:44px;margin-bottom:12px}
+.link-box svg{width:20px;height:20px;color:#8E8AAE;flex-shrink:0}
+.link-box input{flex:1;border:none;outline:none;background:none;font-size:14px;color:#1F1B3A;font-family:inherit}
+.link-box input::placeholder{color:#8E8AAE}
 .note-card{background:#fff;border-radius:18px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
 .note-thumb{width:100%;height:130px;display:flex;align-items:center;justify-content:center;color:#fff}
 .note-thumb svg{width:40px;height:40px}
 .note-info{padding:12px 14px}
-.note-title{font-size:15px;font-weight:600;color:#1D1D1F}
-.note-src{font-size:12px;color:#86868B;margin-top:3px}
+.note-title{font-size:15px;font-weight:600;color:#1F1B3A}
+.note-src{font-size:12px;color:#8E8AAE;margin-top:3px}
 .set-group{margin-bottom:20px}
-.set-group-title{font-size:13px;font-weight:600;color:#86868B;letter-spacing:0.3px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.set-add-btn{height:28px;padding:0 12px;border-radius:14px;background:#007AFF;border:none;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer;outline:none;font-family:inherit}
+.set-group-title{font-size:13px;font-weight:600;color:#8E8AAE;letter-spacing:0.3px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.set-add-btn{height:28px;padding:0 12px;border-radius:14px;background:#6D7CFF;border:none;color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer;outline:none;font-family:inherit}
 .set-add-btn svg{width:14px;height:14px}
 .set-card{background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(0,0,0,0.04);overflow:hidden}
 .set-row{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 12px 0 16px;cursor:pointer}
-.set-row+.set-row{border-top:1px solid #F2F2F7}
+.set-row+.set-row{border-top:1px solid #EFEBFA}
 .set-row-left{display:flex;align-items:center;gap:10px}
 .set-row-note{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .set-row-note svg{width:14px;height:14px}
-.set-row-name{font-size:16px;color:#1D1D1F}
-.set-row-count{font-size:13px;color:#86868B;margin-left:auto;margin-right:8px}
+.set-row-name{font-size:16px;color:#1F1B3A}
+.set-row-count{font-size:13px;color:#8E8AAE;margin-left:auto;margin-right:8px}
 .set-row-chev svg{width:16px;height:16px;color:#C7C7CC}
 .toggle{width:51px;height:31px;border-radius:16px;background:#34C759;position:relative;flex-shrink:0;cursor:pointer;transition:background .25s}
 .toggle.off{background:#E9E9EB}
@@ -159,9 +159,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 .toggle.on .knob{left:22px}
 .toggle.off .knob{left:2px}
 .set-footer{text-align:center;font-size:12px;color:#C7C7CC;padding:28px 0 10px}
-.bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.98);border-radius:clamp(22px, 6vw, 26px);box-shadow:0 12px 36px rgba(0,0,0,0.14);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50}
-.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:#007AFF;border-radius:clamp(16px, 4.6vw, 20px);will-change:transform}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);position:relative;z-index:1;color:#86868B;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:color .25s}
+.bottom-nav{position:fixed;bottom:calc(env(safe-area-inset-bottom, 0px) + clamp(10px, 3.4vw, 14px));left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:388px;background:rgba(255,255,255,0.98);border-radius:clamp(22px, 6vw, 28px);box-shadow:0 6px 24px rgba(107, 120, 255, 0.18);display:flex;padding:clamp(6px, 1.9vw, 8px);z-index:50;border:1px solid rgba(238,234,255,0.9)}
+.nav-indicator{position:absolute;top:clamp(6px, 1.9vw, 8px);bottom:clamp(6px, 1.9vw, 8px);left:clamp(6px, 1.9vw, 8px);width:calc((100% - 2*clamp(6px, 1.9vw, 8px))/5);background:linear-gradient(135deg,#A78BFA,#6D7CFF);border-radius:clamp(16px, 4.6vw, 20px);will-change:transform;box-shadow:0 4px 14px rgba(109,124,255,0.4)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:clamp(2px, 1vw, 4px);background:none;border:none;cursor:pointer;outline:none;padding:clamp(10px, 3.2vw, 13px) 0 clamp(8px, 2.6vw, 11px);position:relative;z-index:1;color:#8E8AAE;font-size:clamp(10.5px, 2.9vw, 12px);font-weight:500;font-family:inherit;transition:color .25s}
 .nav-item .icon{display:flex}
 .nav-item .icon svg{width:clamp(22px, 6vw, 26px);height:clamp(22px, 6vw, 26px)}
 .nav-item.active{color:#FFFFFF}
@@ -172,16 +172,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-title{font-size:18px;font-weight:600;margin-bottom:16px;text-align:center}
 .form-group{margin-bottom:12px}
-.form-group label{display:block;font-size:12px;color:#86868B;margin-bottom:6px;font-weight:500}
+.form-group label{display:block;font-size:12px;color:#8E8AAE;margin-bottom:6px;font-weight:500}
 .form-group input,.form-group select{width:100%;height:44px;border:1px solid #E5E5EA;border-radius:12px;padding:0 14px;font-size:15px;outline:none;font-family:inherit;background:#F9F9FB}
-.form-group input:focus,.form-group select:focus{border-color:#007AFF}
+.form-group input:focus,.form-group select:focus{border-color:#6D7CFF}
 .form-row{display:flex;gap:10px}
 .form-row .form-group{flex:1}
 .label-chips{display:flex;flex-wrap:wrap;gap:8px}
-.label-chip{height:32px;padding:0 14px;border-radius:16px;font-size:13px;background:#F2F2F7;color:#1D1D1F;border:none;cursor:pointer;outline:none;font-family:inherit}
-.label-chip.active{background:#007AFF;color:#fff;font-weight:600}
-.btn-save{width:100%;height:48px;border-radius:999px;background:#007AFF;color:#fff;border:none;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;outline:none;font-family:inherit}
-.btn-cancel{width:100%;height:44px;border-radius:999px;background:#F2F2F7;color:#1D1D1F;border:none;font-size:14px;cursor:pointer;margin-top:8px;outline:none;font-family:inherit}
+.label-chip{height:32px;padding:0 14px;border-radius:16px;font-size:13px;background:#EFEBFA;color:#1F1B3A;border:none;cursor:pointer;outline:none;font-family:inherit}
+.label-chip.active{background:#6D7CFF;color:#fff;font-weight:600}
+.btn-save{width:100%;height:48px;border-radius:999px;background:#6D7CFF;color:#fff;border:none;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;outline:none;font-family:inherit}
+.btn-cancel{width:100%;height:44px;border-radius:999px;background:#EFEBFA;color:#1F1B3A;border:none;font-size:14px;cursor:pointer;margin-top:8px;outline:none;font-family:inherit}
 </style>
 </head>
 <body>
@@ -194,7 +194,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
     </div>
     <div class="content">
       <div class="entry-card" onclick="goToPage('food')">
-        <span class="entry-icon" style="background:#EAF4FF;color:#007AFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7-2.8-7-6.6C5 9 8 6 12 6s7 3 7 7.4c0 3.8-2.5 6.6-7 6.6z"/><path d="M12 6.2C12 4.6 10.8 3.6 9.5 3.4c-.2.9-.1 2.2.9 3"/><path d="M12 6.2c0-1.6 1.2-2.6 2.5-2.8.2.9.1 2.2-.9 3"/><path d="M12 6.2V4.8"/><path d="M9 14.5a2.8 2.8 0 0 0 2.6 2.6"/></svg></span>
+        <span class="entry-icon" style="background:#ECE8FF;color:#6D7CFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-4.5 0-7-2.8-7-6.6C5 9 8 6 12 6s7 3 7 7.4c0 3.8-2.5 6.6-7 6.6z"/><path d="M12 6.2C12 4.6 10.8 3.6 9.5 3.4c-.2.9-.1 2.2.9 3"/><path d="M12 6.2c0-1.6 1.2-2.6 2.5-2.8.2.9.1 2.2-.9 3"/><path d="M12 6.2V4.8"/><path d="M9 14.5a2.8 2.8 0 0 0 2.6 2.6"/></svg></span>
         <div class="entry-info"><div class="entry-name">食物管理</div><div class="entry-desc" id="food-desc">冷藏 · 冷冻 · 置物架 共 0 件</div></div>
         <span class="entry-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>
       </div>
@@ -277,7 +277,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
         <div class="set-group-title"><span>数据管理</span></div>
         <div class="set-card">
           <div class="set-row" onclick="backupAll()">
-            <div class="set-row-left"><span class="set-row-note" style="background:#EAF4FF;color:#007AFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.5a3.5 3.5 0 0 1 .5 7H7z"/><path d="M12 11v5"/><path d="M9.5 13.5L12 11l2.5 2.5"/></svg></span><span class="set-row-name">一键备份</span></div>
+            <div class="set-row-left"><span class="set-row-note" style="background:#ECE8FF;color:#6D7CFF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1-.8-7.9A5 5 0 0 1 16 8.5a3.5 3.5 0 0 1 .5 7H7z"/><path d="M12 11v5"/><path d="M9.5 13.5L12 11l2.5 2.5"/></svg></span><span class="set-row-name">一键备份</span></div>
             <span class="set-row-chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
           </div>
           <div class="set-row" onclick="document.getElementById('restore-file').click()">
@@ -287,7 +287,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","H
           <input type="file" id="restore-file" accept=".json,application/json" style="display:none" onchange="restoreAll(this.files[0])">
         </div>
       </div>
-      <div class="set-footer">个人管家 v1.2 · 数据保存在本机</div>
+      <div class="set-footer">个人管家 v1.3 · 数据保存在本机</div>
     </div>
   </div>
 
@@ -391,7 +391,7 @@ const ICONS={
 const STATUS_CLS={ '已开封':'open','已分装':'split','密封':'sealed' };
 const AREA_ICON={ '阳台·冰柜':'freeze','客厅·冰箱':'pantry','厨房·置物架':'recipe' };
 const AREA_COLOR={ '阳台·冰柜':'#E8F0FB','客厅·冰箱':'#EDF7F1','厨房·置物架':'#FFF6EC' };
-const AREA_ICOLOR={ '阳台·冰柜':'#007AFF','客厅·冰箱':'#34C759','厨房·置物架':'#FF9500' };
+const AREA_ICOLOR={ '阳台·冰柜':'#6D7CFF','客厅·冰箱':'#34C759','厨房·置物架':'#FF9500' };
 const RECIPE_GRAD=['linear-gradient(135deg,#FF9A76,#FFB84D)','linear-gradient(135deg,#7ED0A6,#34C759)','linear-gradient(135deg,#C9A06B,#8B5E34)','linear-gradient(135deg,#F2C94C,#E0A82E)'];
 
 /* ============ 首页渲染 ============ */
@@ -447,7 +447,7 @@ function renderFoodList(){
     const cls=STATUS_CLS[i.status]||'sealed';
     const aic=AREA_ICON[i.area]||'pantry';
     const abg=AREA_COLOR[i.area]||'#E8F0FB';
-    const ac=AREA_ICOLOR[i.area]||'#007AFF';
+    const ac=AREA_ICOLOR[i.area]||'#6D7CFF';
     return '<div class="ing-row">'+
       '<span class="ing-icon" style="background:'+abg+';color:'+ac+'">'+ICONS[aic]+'</span>'+
       '<div class="ing-info"><div class="ing-name">'+i.name+'</div><div class="ing-meta">'+i.area+' · '+i.cat+' · '+i.qty+(i.unit||'')+'</div></div>'+
@@ -490,7 +490,7 @@ function renderPet(){
   const supIColor={ '猫罐头':'#E5531A','冻干':'#34C759','猫砂':'#AF52DE' };
   (d.supplies||[]).forEach(function(s){
     const sub=s.type==='猫砂'&&s.litterType?' · '+s.litterType:'';
-    html+='<div class="supply-row"><span class="supply-icon" style="background:'+(supColor[s.type]||'#F2F2F7')+';color:'+(supIColor[s.type]||'#86868B')+'">'+ICONS[supIcons[s.type]||'pantry']+'</span><div class="supply-info"><div class="supply-name">'+s.type+'</div><div class="supply-meta">库存 '+s.qty+' '+(s.unit||'')+sub+'</div></div><div class="stock-btn"><button class="minus" onclick="supplyChange('+s.id+',-1)">-</button><span class="qty-num">'+s.qty+'</span><button class="plus" onclick="supplyChange('+s.id+',1)">+</button></div></div>';
+    html+='<div class="supply-row"><span class="supply-icon" style="background:'+(supColor[s.type]||'#EFEBFA')+';color:'+(supIColor[s.type]||'#8E8AAE')+'">'+ICONS[supIcons[s.type]||'pantry']+'</span><div class="supply-info"><div class="supply-name">'+s.type+'</div><div class="supply-meta">库存 '+s.qty+' '+(s.unit||'')+sub+'</div></div><div class="stock-btn"><button class="minus" onclick="supplyChange('+s.id+',-1)">-</button><span class="qty-num">'+s.qty+'</span><button class="plus" onclick="supplyChange('+s.id+',1)">+</button></div></div>';
   });
   html+='</div>';
 
@@ -516,7 +516,7 @@ function renderPet(){
     const dotC=isAdd?'#34C759':'#AF52DE';
     html+='<div class="timeline-row"><span class="tl-dot" style="background:'+dotC+'"></span><div class="tl-info"><div class="tl-name">'+l.type+'猫砂'+(l.litterType?' · '+l.litterType:'')+'</div><div class="tl-time">'+l.time+'</div></div></div>';
   });
-  if(!(d.litterLog&&d.litterLog.length))html+='<div class="timeline-row"><div class="tl-info"><div class="tl-name" style="color:#86868B">还没有维护记录</div></div></div>';
+  if(!(d.litterLog&&d.litterLog.length))html+='<div class="timeline-row"><div class="tl-info"><div class="tl-name" style="color:#8E8AAE">还没有维护记录</div></div></div>';
   html+='</div>';
 
   document.getElementById('pet-content').innerHTML=html;
@@ -579,7 +579,7 @@ function renderRecipe(){
         '<span class="plan-check '+(p.done?'done':'todo')+'">'+(p.done?ICONS.check:'')+'</span>'+
         '<span class="plan-name '+(p.done?'done-txt':'')+'">'+p.name+'</span>'+
         '<span class="plan-tag">'+p.tag+'</span></div>';
-    }).join('')+(d.plan.length?'':'<div class="timeline-row"><div class="tl-name" style="color:#86868B">暂无待做计划，去菜谱里挑选吧</div></div>')+'</div>';
+    }).join('')+(d.plan.length?'':'<div class="timeline-row"><div class="tl-name" style="color:#8E8AAE">暂无待做计划，去菜谱里挑选吧</div></div>')+'</div>';
     box.innerHTML+='<div class="empty-card" style="margin-top:12px;cursor:default"><p>从「擅长菜谱」长按可加入待做</p></div>';
   }else{
     box.innerHTML='<div class="link-box">'+ICONS.link+'<input id="note-url" placeholder="粘贴菜谱外链，自动提取图片" onkeydown="if(event.key===\'Enter\')addNote()"></div>'+
@@ -615,8 +615,8 @@ function renderSettings(){
     {key:'recipeCats',name:'菜谱分类',count:(c.recipeCats||[]).length},
     {key:'litterTypes',name:'猫砂类型',count:(c.litterTypes||[]).length}
   ];
-  const icons={areas:'#E8F0FB',foodCats:'#EAF4FF',recipeCats:'#FFF6EC',litterTypes:'#F4ECFF'};
-  const ics={areas:'#007AFF',foodCats:'#007AFF',recipeCats:'#FF9500',litterTypes:'#AF52DE'};
+  const icons={areas:'#E8F0FB',foodCats:'#ECE8FF',recipeCats:'#FFF6EC',litterTypes:'#F4ECFF'};
+  const ics={areas:'#6D7CFF',foodCats:'#6D7CFF',recipeCats:'#FF9500',litterTypes:'#AF52DE'};
   document.getElementById('cat-list').innerHTML=rows.map(function(r){
     return '<div class="set-row" onclick="editCats(\''+r.key+'\',\''+r.name+'\')">'+
       '<div class="set-row-left"><span class="set-row-note" style="background:'+icons[r.key]+';color:'+ics[r.key]+'">'+ICONS.pantry+'</span><span class="set-row-name">'+r.name+'</span></div>'+

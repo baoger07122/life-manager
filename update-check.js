@@ -1,5 +1,5 @@
-const APP_VERSION = "v1.3.6";
-const APP_RELEASE = "个人管家 v1.3.6 - 还原1.3.2应用图标";
+const APP_VERSION = "v1.3.2";
+const APP_RELEASE = "个人管家 v1.3.2 - 检查更新功能";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

@@ -1,5 +1,5 @@
-const APP_VERSION = "v1.3.4";
-const APP_RELEASE = "个人管家 v1.3.4 - 底部导航安全区间距优化";
+const APP_VERSION = "v1.3.5";
+const APP_RELEASE = "个人管家 v1.3.5 - 导航选中蓝色统一";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

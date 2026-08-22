@@ -10,6 +10,7 @@ const applyNavigationIconAssets = () => {
     const icon = document.createElement("img");
     icon.className = `nav-icon nav-icon-${file === "recipe" ? "recipes" : file}`;
     icon.src = `/icons/${file}.svg`;
+    icon.dataset.navAsset = file;
     icon.alt = "";
     icon.setAttribute("aria-hidden", "true");
     inlineIcon.replaceWith(icon);

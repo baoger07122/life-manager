@@ -1,5 +1,5 @@
-const APP_VERSION = "v1.3.3";
-const APP_RELEASE = "个人管家 v1.3.3 - 更新应用图标";
+const APP_VERSION = "v1.3.4";
+const APP_RELEASE = "个人管家 v1.3.4 - 底部导航静态布局";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

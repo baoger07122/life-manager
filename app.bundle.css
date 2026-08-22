@@ -2,6 +2,9 @@
 @media(min-width:700px){.app{background:linear-gradient(135deg,#dbdce5,#f0f1f5)}.app-content{min-height:calc(100vh - 40px);margin:20px auto;border-radius:27px;background:var(--bg);box-shadow:0 20px 55px #25273530}}
 .setting-backup{padding:17px}.backup-badge{font-size:10px;color:var(--brand);background:var(--brand-soft);border-radius:999px;padding:5px 8px}.backup-copy{font-size:11px;line-height:1.65;color:var(--muted);margin:0 0 13px}.backup-actions{display:flex;gap:8px}.backup-input{display:none}.backup-hint{font-size:10px;color:#a0a5ae;margin:12px 0 0}
 
+/* Home OS navigation fixes: remove unused home controls and keep secondary-page back navigation clear. */
+.home-view-toggle,.home-search{display:none!important}.page-header.has-back{position:relative;padding-left:42px}.home-os-back{position:absolute;left:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:0;cursor:pointer;box-shadow:0 3px 10px #25293810}.home-os-back span:first-child{font-size:25px;line-height:18px;font-weight:400;margin-top:-2px}.home-os-back span:last-child{font-size:10px;line-height:1;font-weight:600}
+
 /* Home OS UI spec V1: mobile-first, white surfaces, readable type, natural scrolling. */
 :root{--ink:#111827;--muted:#64748b;--weak:#94a3b8;--line:#e5e7eb;--brand:#1677ff;--brand-soft:#eff6ff;--warn:#f59e0b;--success:#22c55e;--bg:#fff}
 body{background:#fff;color:var(--ink);font-size:15px}

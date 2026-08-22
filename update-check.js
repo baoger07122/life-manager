@@ -1,5 +1,5 @@
-const APP_VERSION = "v1.3.7";
-const APP_RELEASE = "个人管家 v1.3.7 - 修复导航图标细节与动态物品数量";
+const APP_VERSION = "v1.3.8";
+const APP_RELEASE = "个人管家 v1.3.8 - 精简首页并补充页面返回导航";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

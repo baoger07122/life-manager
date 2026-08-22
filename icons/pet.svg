@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Wider, flatter cat paw silhouette: four separated toe pads + broad domed pad. -->
+  <ellipse cx="4.8" cy="10.2" rx="2.7" ry="3.65" transform="rotate(-28 4.8 10.2)" fill="currentColor"/>
+  <ellipse cx="11.2" cy="5.2" rx="2.55" ry="4.15" transform="rotate(-5 11.2 5.2)" fill="currentColor"/>
+  <ellipse cx="20.8" cy="5.2" rx="2.55" ry="4.15" transform="rotate(5 20.8 5.2)" fill="currentColor"/>
+  <ellipse cx="27.2" cy="10.2" rx="2.7" ry="3.65" transform="rotate(28 27.2 10.2)" fill="currentColor"/>
+  <path fill="currentColor" d="M6 23.9c0-5.15 4.48-9.2 10-9.2s10 4.05 10 9.2c0 2.05-1.35 3.05-3.4 3.05H9.4C7.35 26.95 6 25.95 6 23.9Z"/>
+</svg>

@@ -1,5 +1,5 @@
-const APP_VERSION = "v1.3.8";
-const APP_RELEASE = "个人管家 v1.3.8 - 精简首页并补充页面返回导航";
+const APP_VERSION = "v8.23.2";
+const APP_RELEASE = "个人管家 v8.23.2 - 同步确认版导航与紧凑设置布局";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

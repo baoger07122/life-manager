@@ -112,3 +112,36 @@ body{background:#fff;color:var(--ink);font-size:15px}
 .update-version-row{display:flex;align-items:center;gap:12px;padding:8px 0 2px}.update-version-row>div{flex:1;display:grid;gap:4px;min-width:0}.update-version-row b{font-size:16px;line-height:1.3}.update-version-row small{font-size:11px;line-height:1.4;color:var(--muted)}.update-status{margin:8px 0 0;color:var(--muted);font-size:11px;line-height:1.45}
 .settings-about p{margin:12px 0 0;color:var(--muted);font-size:11px;line-height:1.5;text-align:center}
 @media(min-width:700px){body{background:#f3f4f6}.app{max-width:430px;margin:24px auto;min-height:calc(100vh - 48px);border:1px solid var(--line);box-shadow:0 12px 42px #0f172a14}.app-content{min-height:calc(100vh - 48px)}}
+
+/* Home OS v8.23.2 parity with the confirmed prototype. */
+.bottom-nav{bottom:max(10px,env(safe-area-inset-bottom))}
+.bottom-nav button{color:#172f43;font-size:10px;line-height:13px;font-weight:500;gap:4px;padding:4px 2px}
+.bottom-nav button.active{color:#1677FF;font-weight:600}
+.nav-icon-wrap{height:27px}
+.nav-icon,.nav-icon-pet{width:25px;height:25px}
+.nav-selection-pill{background:rgba(226,228,234,.72);border-color:rgba(255,255,255,.86);box-shadow:0 7px 18px rgba(31,41,55,.08),inset 0 1px 0 rgba(255,255,255,.84)}
+.settings-page-header{margin-bottom:14px}
+.settings-section{padding:13px;margin:10px 0}
+.settings-section>h2{margin:0 0 3px;font-size:16px;line-height:1.35}
+.settings-row{min-height:50px;padding:8px 0}
+.settings-row>span{gap:2px}
+.settings-row b,.settings-block>b{font-size:14px;line-height:1.3}
+.settings-row small,.settings-block>small{font-size:11px;line-height:1.3}
+.settings-row input{height:32px;font-size:13px}
+.settings-row em{font-size:11px}
+.settings-row i{font-size:20px}
+.settings-block{padding:9px 0}
+.settings-block>i{top:10px;font-size:20px}
+.settings-block>.btn{margin-top:6px}
+.setting-tags{gap:5px;margin-top:7px}
+.setting-tags span{padding:6px 8px;font-size:11px}
+.setting-backup{padding:2px 0 7px}
+.setting-backup h3{font-size:16px}
+.backup-copy{line-height:1.5;margin-bottom:8px}
+.backup-actions{gap:6px}
+.backup-hint{margin-top:8px}
+.update-version-row{gap:10px;padding:6px 0 1px}
+.update-version-row b{font-size:15px}
+.update-version-row small{font-size:11px;line-height:1.3}
+.update-status{margin-top:6px}
+.settings-about p{margin-top:8px}

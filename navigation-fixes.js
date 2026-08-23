@@ -78,6 +78,8 @@ const refreshNavigationFixes = () => {
   removeHomeViewSetting();
 
   const header = content.querySelector(".page-header");
+  const headerTitle = header?.querySelector("h1")?.textContent?.trim();
+  header?.classList.toggle("settings-page-header", headerTitle === "设置");
   const page = getPageTarget(content);
   if (!header) return;
 

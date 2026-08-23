@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.23.16";
-const APP_RELEASE = "个人管家 v8.23.16 - 首页顶部统计动态化";
+const APP_VERSION = "v8.23.17";
+const APP_RELEASE = "个人管家 v8.23.17 - 首页统计卡UI优化";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

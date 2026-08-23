@@ -18,7 +18,7 @@ const clearLocalData = () => {
 
   window.localStorage.setItem("home-os-v1", JSON.stringify(EMPTY_HOME_STATE));
   const hash = window.location.hash || "#home";
-  window.location.replace(`${window.location.pathname}?v=8.23.14&refresh=${Date.now()}${hash}`);
+  window.location.replace(`${window.location.pathname}?v=8.23.15&refresh=${Date.now()}${hash}`);
 };
 
 const ensureClearDataRow = () => {

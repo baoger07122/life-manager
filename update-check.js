@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.23.4";
-const APP_RELEASE = "个人管家 v8.23.4 - 主导航栏下调";
+const APP_VERSION = "v8.23.5";
+const APP_RELEASE = "个人管家 v8.23.5 - 缩小标题与统计字号，移除胶囊硬边框";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

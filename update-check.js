@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.23.5";
-const APP_RELEASE = "个人管家 v8.23.5 - 缩小标题与统计字号，移除胶囊硬边框";
+const APP_VERSION = "v8.23.6";
+const APP_RELEASE = "个人管家 v8.23.6 - 新增保质期计算与手动到期日期选项，修复输入框自动放大";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

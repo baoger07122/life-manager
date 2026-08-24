@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.24.6";
-const APP_RELEASE = "个人管家 v8.24.6 - 优化导航远距离切换与选中胶囊圆角";
+const APP_VERSION = "v8.24.5";
+const APP_RELEASE = "个人管家 v8.24.5 - 修复底部导航快速切换动画";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

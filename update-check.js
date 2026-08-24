@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.24.5";
-const APP_RELEASE = "个人管家 v8.24.5 - 修复底部导航快速切换动画";
+const APP_VERSION = "v8.24.7";
+const APP_RELEASE = "个人管家 v8.24.7 - 修复连续点击后震动失效";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

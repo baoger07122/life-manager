@@ -48,7 +48,7 @@ jobs:
         run: |
           xcodebuild \
             -project ios/App/App.xcodeproj \
-            -scheme App \
+            -target App \
             -configuration Release \
             -sdk iphoneos \
             -archivePath build/HomeOS.xcarchive \

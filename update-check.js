@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.24.2";
-const APP_RELEASE = "个人管家 v8.24.2 - 调整首页宠物状态到顶部";
+const APP_VERSION = "v8.24.3";
+const APP_RELEASE = "个人管家 v8.24.3 - 统一震动反馈并配置 Capacitor 云端 iOS 构建流程";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

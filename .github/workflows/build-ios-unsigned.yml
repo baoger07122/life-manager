@@ -28,14 +28,14 @@ jobs:
       - name: Install Capacitor dependencies
         run: npm ci
 
-      - name: Point the shell at the selected Render URL
+      - name: Point the local boot shell at the selected Render URL
         run: |
           node <<'NODE'
           const fs = require("fs");
-          const path = "capacitor.config.ts";
+          const path = "www/index.html";
           const renderUrl = process.env.RENDER_URL;
           let source = fs.readFileSync(path, "utf8");
-          source = source.replace(/url:\s*"[^"]+"/, `url: "${renderUrl}"`);
+          source = source.replace(/const HOME_OS_URL = "[^"]+";/, `const HOME_OS_URL = "${renderUrl}";`);
           fs.writeFileSync(path, source);
           NODE
 

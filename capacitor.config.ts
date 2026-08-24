@@ -5,10 +5,8 @@ const config: CapacitorConfig = {
   appName: "Home OS",
   webDir: "www",
   server: {
-    // The native shell loads the Render site so web fixes can be released
-    // without rebuilding the container. The version manifest remains the
-    // source of truth for the in-app update check.
-    url: "https://life-manager-1.onrender.com/",
+    // Start from the bundled local boot page, then navigate to Render after
+    // the remote application has loaded. This avoids a blank launch screen.
     cleartext: false,
     allowNavigation: ["life-manager-1.onrender.com"],
   },

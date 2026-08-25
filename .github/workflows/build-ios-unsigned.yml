@@ -44,6 +44,10 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Apply the Home OS app icon
+        run: |
+          cp native-assets/AppIcon-1024.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+
       - name: Build unsigned app bundle
         run: |
           xcodebuild \

@@ -1,5 +1,5 @@
-const APP_VERSION = "v8.24.8";
-const APP_RELEASE = "个人管家 v8.24.8 - 优化 iOS 启动加载体验";
+const APP_VERSION = "v8.25.1";
+const APP_RELEASE = "个人管家 v8.25.1 - 更新 Home OS App 图标";
 
 const compareVersions = (left, right) => {
   const parse = (value) => value.replace(/^v/i, "").split(".").map((part) => Number.parseInt(part, 10) || 0);

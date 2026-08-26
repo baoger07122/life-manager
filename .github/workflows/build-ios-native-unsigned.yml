@@ -1,0 +1,49 @@
+name: Build Home OS Native unsigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout native rewrite branch
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the native Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+
+      - name: Build unsigned native app
+        working-directory: ios-native
+        run: |
+          xcodebuild \
+            -project HomeOSNative.xcodeproj \
+            -scheme HomeOSNative \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CONFIGURATION_BUILD_DIR="$PWD/build/Release-iphoneos" \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package unsigned native IPA
+        working-directory: ios-native
+        run: |
+          mkdir -p Payload
+          cp -R build/Release-iphoneos/HomeOSNative.app Payload/HomeOSNative.app
+          ditto -c -k --sequesterRsrc --keepParent Payload HomeOSNative-unsigned.ipa
+
+      - name: Upload native IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: home-os-native-unsigned-ipa
+          path: ios-native/HomeOSNative-unsigned.ipa
+          if-no-files-found: error

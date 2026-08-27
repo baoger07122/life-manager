@@ -41,8 +41,8 @@ struct RootView: View {
         content
             .tag(tab)
             .tabItem {
-                Image(tab.asset)
-                    .renderingMode(.template)
+                Image(selection == tab ? "\(tab.asset)-selected" : tab.asset)
+                    .renderingMode(.original)
                 Text(tab.title)
             }
     }

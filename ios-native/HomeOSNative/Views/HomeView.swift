@@ -8,7 +8,6 @@ struct HomeView: View {
             ScrollView {
                 LazyVStack(spacing: 16) {
                     PageTitle(title: "我的物品", subtitle: "原生版 · 对应 Web v8.25.1")
-                    SystemIconComparisonSection()
                     petStatus
                     if !store.dueFoods.isEmpty { expirySection }
                     quickFoods
@@ -115,78 +114,6 @@ struct HomeView: View {
                             Text(item.time).font(.caption).foregroundStyle(HomeTheme.muted)
                         }
                     }
-                }
-            }
-        }
-    }
-}
-
-private struct SystemIconComparisonSection: View {
-    var body: some View {
-        HomeCard {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("系统图标方案对比")
-                        .font(.headline)
-                    Text("点击图标可预览选中状态；蓝色为选中，黑色为未选中。")
-                        .font(.caption)
-                        .foregroundStyle(HomeTheme.muted)
-                }
-
-                SystemIconPreviewRow(
-                    title: "A · 填充风格",
-                    symbols: ["house.fill", "refrigerator.fill", "book.closed.fill", "pawprint.fill", "gearshape.fill"]
-                )
-
-                Divider()
-
-                SystemIconPreviewRow(
-                    title: "B · 线性风格",
-                    symbols: ["house", "refrigerator", "book.closed", "pawprint", "gearshape"]
-                )
-
-                Divider()
-
-                SystemIconPreviewRow(
-                    title: "C · 语义风格",
-                    symbols: ["shippingbox.fill", "basket.fill", "fork.knife", "cat.fill", "slider.horizontal.3"]
-                )
-            }
-        }
-    }
-}
-
-private struct SystemIconPreviewRow: View {
-    private let tabTitles = ["首页", "食品", "菜谱", "宠物", "设置"]
-
-    let title: String
-    let symbols: [String]
-    @State private var selectedIndex = 0
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(HomeTheme.muted)
-
-            HStack(spacing: 0) {
-                ForEach(symbols.indices, id: \.self) { index in
-                    Button {
-                        selectedIndex = index
-                        NativeHaptics.selection()
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: symbols[index])
-                                .font(.system(size: 22, weight: .medium))
-                                .frame(height: 24)
-                            Text(tabTitles[index])
-                                .font(.system(size: 9, weight: selectedIndex == index ? .semibold : .medium))
-                        }
-                        .foregroundStyle(selectedIndex == index ? HomeTheme.blue : .black)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
                 }
             }
         }

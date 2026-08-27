@@ -26,13 +26,6 @@ foreach ($swiftFile in (Get-ChildItem -LiteralPath $nativeSource -Recurse -Filte
     Copy-Item -LiteralPath $swiftFile.FullName -Destination $destination -Force
 }
 
-$previewAssets = Join-Path $previewPackage 'Assets.xcassets'
-New-Item -ItemType Directory -Path $previewAssets -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $nativeSource 'Resources\Assets.xcassets\Contents.json') `
-    -Destination $previewAssets -Force
-foreach ($imageSet in (Get-ChildItem -LiteralPath (Join-Path $nativeSource 'Resources\Assets.xcassets') -Directory -Filter '*.imageset')) {
-    Copy-Item -LiteralPath $imageSet.FullName -Destination $previewAssets -Recurse -Force
-}
 Copy-Item -LiteralPath $packageTemplate -Destination (Join-Path $previewPackage 'Package.swift') -Force
 
 Write-Output $previewPackage

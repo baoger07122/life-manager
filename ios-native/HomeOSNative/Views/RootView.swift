@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum RootTab: String, CaseIterable, Identifiable {
     case home, food, recipes, pet, settings
@@ -15,11 +16,23 @@ enum RootTab: String, CaseIterable, Identifiable {
         }
     }
 
-    var asset: String { "nav-\(rawValue)" }
+    var symbol: String {
+        switch self {
+        case .home: "house.fill"
+        case .food: "basket.fill"
+        case .recipes: "fork.knife"
+        case .pet: "cat.fill"
+        case .settings: "slider.horizontal.3"
+        }
+    }
 }
 
 struct RootView: View {
     @State private var selection: RootTab = .home
+
+    init() {
+        UITabBar.appearance().unselectedItemTintColor = .black
+    }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -41,8 +54,7 @@ struct RootView: View {
         content
             .tag(tab)
             .tabItem {
-                Image(selection == tab ? "\(tab.asset)-selected" : tab.asset)
-                    .renderingMode(.original)
+                Image(systemName: tab.symbol)
                 Text(tab.title)
             }
     }

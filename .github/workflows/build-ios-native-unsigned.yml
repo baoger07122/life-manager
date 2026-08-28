@@ -11,12 +11,18 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-26
     permissions:
       contents: read
     steps:
       - name: Checkout native rewrite branch
         uses: actions/checkout@v4
+
+      - name: Confirm the latest Apple toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
 
       - name: Install XcodeGen
         run: brew install xcodegen

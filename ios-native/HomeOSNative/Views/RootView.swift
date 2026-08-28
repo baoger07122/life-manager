@@ -43,8 +43,6 @@ struct RootView: View {
             tab(SettingsView(), for: .settings)
         }
         .tint(HomeTheme.blue)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
         .onChange(of: selection) { _, _ in
             NativeHaptics.selection()
         }

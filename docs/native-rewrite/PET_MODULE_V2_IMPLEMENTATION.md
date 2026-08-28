@@ -30,7 +30,7 @@
 - 正式产品只适配 iPhone 竖屏；iPad 横屏、iPad 分屏及 iPad 正式布局不属于本模块范围。
 - iPhone 竖屏、动态字体、深色模式和前后台恢复尚未真机验收。
 - Windows 环境没有 Swift/Xcode 编译器；本轮完成静态检查与 Playgrounds 同步。iPad Playgrounds 只用于预览交互，不能代替 iPhone 正式构建与真机验收。
-- 当前未生成 IPA、未迁移 Web 数据、未修改 Web `main`。
+- 当前已生成 `0.1.9 (10)` 未签名 IPA；未迁移 Web 数据，未修改 Web `main`。
 
 ## 本轮预览验收顺序
 

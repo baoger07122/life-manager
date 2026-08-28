@@ -98,6 +98,199 @@ struct PetItem: Codable, Identifiable, Hashable {
     var price: Double?
     var cat: String
     var preference: String
+    var image: String?
+    var unitConversionToBase: Double?
+    var primaryCategory: String? = nil
+    var secondaryCategory: String? = nil
+    var variant: String? = nil
+    var lowStockThreshold: Double? = nil
+    var notes: String? = nil
+    var isArchived: Bool = false
+    var foodRole: String? = nil
+    var expirationDate: String? = nil
+    var litterKind: String? = nil
+    var createdAt: Double? = nil
+    var updatedAt: Double? = nil
+}
+
+extension PetItem {
+    enum CodingKeys: String, CodingKey {
+        case id, type, name, brand, model, spec, quantity, unit, days, weeklyUsage
+        case lastReplenishedAt, purchaseHistory, replenishmentHistory, feedback, price
+        case cat, preference, image, unitConversionToBase
+        case primaryCategory, secondaryCategory, variant, lowStockThreshold, notes, isArchived
+        case foodRole, expirationDate, litterKind, createdAt, updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        type = try values.decodeIfPresent(String.self, forKey: .type) ?? "其他用品"
+        name = try values.decodeIfPresent(String.self, forKey: .name) ?? "未命名用品"
+        brand = try values.decodeIfPresent(String.self, forKey: .brand) ?? ""
+        model = try values.decodeIfPresent(String.self, forKey: .model) ?? ""
+        spec = try values.decodeIfPresent(String.self, forKey: .spec) ?? ""
+        quantity = try values.decodeIfPresent(Double.self, forKey: .quantity) ?? 0
+        unit = try values.decodeIfPresent(String.self, forKey: .unit) ?? "件"
+        days = try values.decodeIfPresent(Int.self, forKey: .days) ?? 0
+        weeklyUsage = try values.decodeIfPresent(Double.self, forKey: .weeklyUsage)
+        lastReplenishedAt = try values.decodeIfPresent(String.self, forKey: .lastReplenishedAt)
+        purchaseHistory = try values.decodeIfPresent([PetPurchaseRecord].self, forKey: .purchaseHistory)
+        replenishmentHistory = try values.decodeIfPresent([PetPurchaseRecord].self, forKey: .replenishmentHistory)
+        feedback = try values.decodeIfPresent([PetFeedback].self, forKey: .feedback)
+        price = try values.decodeIfPresent(Double.self, forKey: .price)
+        cat = try values.decodeIfPresent(String.self, forKey: .cat) ?? ""
+        preference = try values.decodeIfPresent(String.self, forKey: .preference) ?? ""
+        image = try values.decodeIfPresent(String.self, forKey: .image)
+        unitConversionToBase = try values.decodeIfPresent(Double.self, forKey: .unitConversionToBase)
+        primaryCategory = try values.decodeIfPresent(String.self, forKey: .primaryCategory)
+        secondaryCategory = try values.decodeIfPresent(String.self, forKey: .secondaryCategory)
+        variant = try values.decodeIfPresent(String.self, forKey: .variant)
+        lowStockThreshold = try values.decodeIfPresent(Double.self, forKey: .lowStockThreshold)
+        notes = try values.decodeIfPresent(String.self, forKey: .notes)
+        isArchived = try values.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        foodRole = try values.decodeIfPresent(String.self, forKey: .foodRole)
+        expirationDate = try values.decodeIfPresent(String.self, forKey: .expirationDate)
+        litterKind = try values.decodeIfPresent(String.self, forKey: .litterKind)
+        createdAt = try values.decodeIfPresent(Double.self, forKey: .createdAt)
+        updatedAt = try values.decodeIfPresent(Double.self, forKey: .updatedAt)
+    }
+}
+
+enum PetInventoryTransactionType: String, Codable, Hashable {
+    case inbound
+    case outbound
+    case adjustment
+}
+
+enum PetInventorySource: String, Codable, Hashable {
+    case manual
+    case migration
+    case litterRefill
+    case litterReplace
+}
+
+struct PetInventoryTransaction: Codable, Identifiable, Hashable {
+    var id: String
+    var productID: String
+    var type: PetInventoryTransactionType
+    var quantityChange: Double
+    var quantityBefore: Double
+    var quantityAfter: Double
+    var unit: String
+    var occurrenceDate: String
+    var reason: String
+    var source: PetInventorySource
+    var linkedOperationID: String?
+    var totalPrice: Double?
+    var unitPrice: Double?
+    var purchaseChannel: String?
+    var expirationDate: String?
+    var note: String?
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct PetProductReview: Codable, Identifiable, Hashable {
+    var id: String
+    var productID: String
+    var reviewDate: String
+    var repurchaseLevel: Int
+    var reviewText: String
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct PetPalatabilityReview: Codable, Identifiable, Hashable {
+    var id: String
+    var productID: String
+    var petID: String
+    var petNameSnapshot: String
+    var reviewDate: String
+    var preference: String
+    var note: String?
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct PetProfile: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var image: String?
+    var breed: String
+    var birthDate: String
+    var isDeleted: Bool
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct PetEventCategory: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var createdAt: Double
+    var isDeleted: Bool
+}
+
+enum PetEventSource: String, Codable, Hashable {
+    case manual
+    case litterRefill
+    case litterReplace
+}
+
+struct PetEvent: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var categoryID: String
+    var categoryNameSnapshot: String
+    var petIDs: [String]
+    var petNameSnapshots: [String]
+    var occurrenceDate: String
+    var note: String?
+    var imageReferences: [String]
+    var source: PetEventSource
+    var litterOperationID: String?
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct LitterAllocation: Codable, Identifiable, Hashable {
+    var id: String
+    var productID: String
+    var productNameSnapshot: String
+    var quantity: Double
+    var unit: String
+    var baseAmount: Double
+}
+
+enum LitterOperationType: String, Codable, Hashable {
+    case initialize
+    case refill
+    case replace
+}
+
+struct LitterOperation: Codable, Identifiable, Hashable {
+    var id: String
+    var type: LitterOperationType
+    var occurrenceDate: String
+    var allocations: [LitterAllocation]
+    var totalBaseAmount: Double
+    var amountBeforeOperation: Double
+    var amountAfterOperation: Double
+    var linkedEventID: String?
+    var createdAt: Double
+    var updatedAt: Double
+}
+
+struct LitterBoxState: Codable, Identifiable, Hashable {
+    var id: String
+    var initializedAt: String
+    var baseAmount: Double
+    var estimatedCurrentAmount: Double
+    var baseUnit: String
+    var lastOperationDate: String
+    var averageDailyUsage: Double?
+    var thresholdRatio: Double
+    var updatedAt: Double
 }
 
 struct ActivityItem: Codable, Identifiable, Hashable {
@@ -160,6 +353,7 @@ struct HomeSettings: Codable, Hashable {
     var recipeCollections: [String]?
     var expiryReminderEnabled: Bool?
     var expiryThresholds: ExpiryThresholds?
+    var petEventCollapsedDateGroups: [String: Bool]?
 
     static let standard = HomeSettings(
         threshold: 15,
@@ -176,7 +370,8 @@ struct HomeSettings: Codable, Hashable {
         foodTagOrder: [],
         recipeCollections: ["收藏", "家常菜", "减脂餐", "想尝试"],
         expiryReminderEnabled: true,
-        expiryThresholds: .standard
+        expiryThresholds: .standard,
+        petEventCollapsedDateGroups: [:]
     )
 }
 
@@ -186,23 +381,39 @@ struct HomeBackup: Codable, Hashable {
     var plans: [MealPlan]
     var prepChecks: [PrepCheck]
     var petItems: [PetItem]
+    var pets: [PetProfile]
+    var petEventCategories: [PetEventCategory]
+    var petEvents: [PetEvent]
+    var litterBoxState: LitterBoxState?
+    var litterOperations: [LitterOperation]
+    var petInventoryTransactions: [PetInventoryTransaction]
+    var petProductReviews: [PetProductReview]
+    var petPalatabilityReviews: [PetPalatabilityReview]
     var activities: [ActivityItem]
     var settings: HomeSettings
 
     static let empty = HomeBackup(
-        foods: [], recipes: [], plans: [], prepChecks: [], petItems: [], activities: [], settings: .standard
+        foods: [], recipes: [], plans: [], prepChecks: [], petItems: [], pets: [], petEventCategories: [], petEvents: [], litterBoxState: nil, litterOperations: [], petInventoryTransactions: [], petProductReviews: [], petPalatabilityReviews: [], activities: [], settings: .standard
     )
 
     enum CodingKeys: String, CodingKey {
-        case foods, recipes, plans, prepChecks, petItems, activities, settings
+        case foods, recipes, plans, prepChecks, petItems, pets, petEventCategories, petEvents, litterBoxState, litterOperations, petInventoryTransactions, petProductReviews, petPalatabilityReviews, activities, settings
     }
 
-    init(foods: [FoodItem], recipes: [RecipeItem], plans: [MealPlan], prepChecks: [PrepCheck], petItems: [PetItem], activities: [ActivityItem], settings: HomeSettings) {
+    init(foods: [FoodItem], recipes: [RecipeItem], plans: [MealPlan], prepChecks: [PrepCheck], petItems: [PetItem], pets: [PetProfile] = [], petEventCategories: [PetEventCategory] = [], petEvents: [PetEvent] = [], litterBoxState: LitterBoxState? = nil, litterOperations: [LitterOperation] = [], petInventoryTransactions: [PetInventoryTransaction] = [], petProductReviews: [PetProductReview] = [], petPalatabilityReviews: [PetPalatabilityReview] = [], activities: [ActivityItem], settings: HomeSettings) {
         self.foods = foods
         self.recipes = recipes
         self.plans = plans
         self.prepChecks = prepChecks
         self.petItems = petItems
+        self.pets = pets
+        self.petEventCategories = petEventCategories
+        self.petEvents = petEvents
+        self.litterBoxState = litterBoxState
+        self.litterOperations = litterOperations
+        self.petInventoryTransactions = petInventoryTransactions
+        self.petProductReviews = petProductReviews
+        self.petPalatabilityReviews = petPalatabilityReviews
         self.activities = activities
         self.settings = settings
     }
@@ -214,6 +425,14 @@ struct HomeBackup: Codable, Hashable {
         plans = try values.decodeIfPresent([MealPlan].self, forKey: .plans) ?? []
         prepChecks = try values.decodeIfPresent([PrepCheck].self, forKey: .prepChecks) ?? []
         petItems = try values.decodeIfPresent([PetItem].self, forKey: .petItems) ?? []
+        pets = try values.decodeIfPresent([PetProfile].self, forKey: .pets) ?? []
+        petEventCategories = try values.decodeIfPresent([PetEventCategory].self, forKey: .petEventCategories) ?? []
+        petEvents = try values.decodeIfPresent([PetEvent].self, forKey: .petEvents) ?? []
+        litterBoxState = try values.decodeIfPresent(LitterBoxState.self, forKey: .litterBoxState)
+        litterOperations = try values.decodeIfPresent([LitterOperation].self, forKey: .litterOperations) ?? []
+        petInventoryTransactions = try values.decodeIfPresent([PetInventoryTransaction].self, forKey: .petInventoryTransactions) ?? []
+        petProductReviews = try values.decodeIfPresent([PetProductReview].self, forKey: .petProductReviews) ?? []
+        petPalatabilityReviews = try values.decodeIfPresent([PetPalatabilityReview].self, forKey: .petPalatabilityReviews) ?? []
         activities = try values.decodeIfPresent([ActivityItem].self, forKey: .activities) ?? []
         settings = try values.decodeIfPresent(HomeSettings.self, forKey: .settings) ?? .standard
     }

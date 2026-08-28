@@ -25,16 +25,35 @@ struct HomeView: View {
     private var petStatus: some View {
         HomeCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("宠物状态").font(.headline)
-                let litter = store.data.petItems.filter { $0.type == "猫砂" || $0.type == "除臭包" }
-                if litter.isEmpty {
-                    EmptyState(icon: "pawprint.fill", title: "还没有宠物用品", message: "后续可在宠物页面添加猫砂和补给。")
-                } else {
-                    ForEach(litter.prefix(3)) { item in
+                Text("宠物状态").font(HomeTypography.sectionTitle)
+                let petFoods = store.activePetItems.filter { $0.resolvedPrimaryCategory == "宠物食品" }
+                if let prediction = store.litterPrediction {
+                    VStack(alignment: .leading, spacing: 7) {
                         HStack {
-                            Text(item.name).font(.subheadline.weight(.medium))
+                            Text("猫砂盆预计余量").font(HomeTypography.cardTitle)
                             Spacer()
-                            Text("预计 \(item.days) 天").foregroundStyle(HomeTheme.muted).font(.subheadline)
+                            Text("\(prediction.currentAmount.formatted(.number.precision(.fractionLength(1)))) kg")
+                                .font(HomeTypography.body.weight(.semibold))
+                        }
+                        ProgressView(value: prediction.progress)
+                            .tint(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.blue)
+                        HStack {
+                            Text(prediction.hasEnoughData ? "预计可用 \(prediction.daysRemaining ?? 0) 天" : "预计可用天数：数据不足")
+                            Spacer()
+                            Text(prediction.shouldRefill ? "建议补充猫砂" : "预计 \(prediction.thresholdDate ?? "数据不足") 达到 40%")
+                                .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
+                        }
+                        .font(HomeTypography.supporting)
+                    }
+                }
+                if petFoods.isEmpty && store.litterPrediction == nil {
+                    EmptyState(icon: "pawprint.fill", title: "还没有宠物用品", message: "可前往宠物页面添加猫砂和宠物食品。")
+                } else {
+                    ForEach(petFoods.prefix(3)) { item in
+                        HStack {
+                            Text(item.name).font(HomeTypography.body.weight(.medium))
+                            Spacer()
+                            Text("\(store.petInventory(for: item.id).formatted())\(item.unit)").foregroundStyle(HomeTheme.muted).font(HomeTypography.body)
                         }
                     }
                 }

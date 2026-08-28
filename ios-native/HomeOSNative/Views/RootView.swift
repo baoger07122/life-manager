@@ -19,10 +19,10 @@ enum RootTab: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .home: "house.fill"
-        case .food: "basket.fill"
-        case .recipes: "fork.knife"
+        case .food: "takeoutbag.and.cup.and.straw.fill"
+        case .recipes: "list.bullet.clipboard.fill"
         case .pet: "cat.fill"
-        case .settings: "slider.horizontal.3"
+        case .settings: "gearshape.fill"
         }
     }
 }

@@ -2,30 +2,38 @@ $ErrorActionPreference = 'Stop'
 
 $nativeSource = Join-Path $PSScriptRoot 'HomeOSNative'
 $packageTemplate = Join-Path $PSScriptRoot 'PlaygroundPackage.swift'
-$playgroundsRoot = 'C:\Users\bao\iCloudDrive\iCloud~com~apple~Playgrounds'
-$previewPackage = Join-Path $playgroundsRoot 'HomeOSNativePreview.swiftpm'
+$previewRoots = @(
+    'C:\Users\bao\iCloudDrive\iCloud~com~apple~Playgrounds',
+    'C:\Users\bao\iCloudDrive\临时文件夹'
+)
 
-$resolvedRoot = [IO.Path]::GetFullPath($playgroundsRoot).TrimEnd('\')
-$resolvedPreview = [IO.Path]::GetFullPath($previewPackage)
-$expectedPrefix = $resolvedRoot + '\'
-if (-not $resolvedPreview.StartsWith($expectedPrefix, [StringComparison]::OrdinalIgnoreCase) -or
-    [IO.Path]::GetFileName($resolvedPreview) -ne 'HomeOSNativePreview.swiftpm') {
-    throw 'Refusing to replace an unexpected preview path.'
+$swiftFiles = @(Get-ChildItem -LiteralPath $nativeSource -Recurse -Filter '*.swift' -File)
+$duplicateNames = $swiftFiles | Group-Object Name | Where-Object Count -gt 1
+if ($duplicateNames) {
+    throw "Duplicate Swift filename in preview package: $($duplicateNames.Name -join ', ')"
 }
 
-if (Test-Path -LiteralPath $resolvedPreview) {
-    Remove-Item -LiteralPath $resolvedPreview -Recurse -Force
-}
-New-Item -ItemType Directory -Path $previewPackage -Force | Out-Null
+foreach ($previewRoot in $previewRoots) {
+    $previewPackage = Join-Path $previewRoot 'HomeOSNativePreview.swiftpm'
+    $resolvedRoot = [IO.Path]::GetFullPath($previewRoot).TrimEnd('\')
+    $resolvedPreview = [IO.Path]::GetFullPath($previewPackage)
+    $expectedPreview = $resolvedRoot + '\HomeOSNativePreview.swiftpm'
 
-foreach ($swiftFile in (Get-ChildItem -LiteralPath $nativeSource -Recurse -Filter '*.swift' -File)) {
-    $destination = Join-Path $previewPackage $swiftFile.Name
-    if (Test-Path -LiteralPath $destination) {
-        throw "Duplicate Swift filename in preview package: $($swiftFile.Name)"
+    if (-not $resolvedPreview.Equals($expectedPreview, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'Refusing to update an unexpected preview path.'
     }
-    Copy-Item -LiteralPath $swiftFile.FullName -Destination $destination -Force
+
+    # Keep the .swiftpm directory itself stable. Replacing the whole directory
+    # makes iCloud create a new document identity and Swift Playgrounds may keep
+    # opening a cached or conflicted older copy.
+    New-Item -ItemType Directory -Path $resolvedPreview -Force | Out-Null
+
+    foreach ($swiftFile in $swiftFiles) {
+        $destination = Join-Path $resolvedPreview $swiftFile.Name
+        Copy-Item -LiteralPath $swiftFile.FullName -Destination $destination -Force
+    }
+
+    Copy-Item -LiteralPath $packageTemplate -Destination (Join-Path $resolvedPreview 'Package.swift') -Force
+
+    Write-Output $resolvedPreview
 }
-
-Copy-Item -LiteralPath $packageTemplate -Destination (Join-Path $previewPackage 'Package.swift') -Force
-
-Write-Output $previewPackage

@@ -12,15 +12,39 @@ struct SettingsView: View {
                 Section("数据概览") {
                     LabeledContent("食品", value: "\(store.data.foods.count)")
                     LabeledContent("菜谱", value: "\(store.data.recipes.count)")
-                    LabeledContent("宠物用品", value: "\(store.data.petItems.count)")
+                    LabeledContent("宠物物品", value: "\(store.activePetItems.count)")
                 }
                 Section("数据管理") {
                     Button("导出 JSON 备份") { exporting = true; NativeHaptics.tap() }
                     Button("导入 Web / 原生备份") { importing = true; NativeHaptics.tap() }
                     Button("清空应用数据", role: .destructive) { confirmClear = true; NativeHaptics.warning() }
                 }
+                Section("宠物设置") {
+                    NavigationLink {
+                        PetManagementView()
+                    } label: {
+                        Label("宠物管理", systemImage: "cat.fill")
+                    }
+                    NavigationLink {
+                        PetEventCategorySettingsView()
+                    } label: {
+                        Label("宠物事项设置", systemImage: "tag.fill")
+                    }
+                    NavigationLink {
+                        PetPreferenceSummaryView()
+                    } label: {
+                        Label("猫咪偏好", systemImage: "heart.fill")
+                    }
+                }
+                Section("开发与设计") {
+                    NavigationLink {
+                        UIComponentLibraryView()
+                    } label: {
+                        Label("UI 组件库", systemImage: "square.grid.2x2.fill")
+                    }
+                }
                 Section("版本") {
-                    LabeledContent("原生版本", value: "0.1.5 (6)")
+                    LabeledContent("原生版本", value: "0.1.9 (10)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
                     Text("当前为原生重写第一阶段，不包含 WebView。")
                         .font(.footnote).foregroundStyle(HomeTheme.muted)

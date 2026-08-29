@@ -19,7 +19,7 @@ struct PetManagementView: View {
                             petAvatar(pet)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(pet.name).font(HomeTypography.cardTitle)
-                                Text([pet.breed, pet.birthDate].filter { !$0.isEmpty }.joined(separator: " · "))
+                                Text([pet.breed, HomeDateText.display(pet.birthDate)].filter { !$0.isEmpty }.joined(separator: " · "))
                                     .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
                             }
                         }

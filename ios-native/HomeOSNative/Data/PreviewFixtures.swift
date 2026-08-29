@@ -26,7 +26,7 @@ enum PreviewFixtures {
             petItem(id: "preview-pet-supply-1", type: "猫砂", name: "矿砂", brand: "喵洁客", spec: "8kg", quantity: 8, unit: "kg", primary: "宠物用品", secondary: "猫砂", conversion: 1)
         ]
 
-        let transactions = petItems.map { item in
+        var transactions = petItems.map { item in
             PetInventoryTransaction(
                 id: "preview-stock-\(item.id)", productID: item.id, type: .inbound,
                 quantityChange: item.quantity, quantityBefore: 0, quantityAfter: item.quantity,
@@ -38,6 +38,24 @@ enum PreviewFixtures {
                 expirationDate: nil, note: nil, createdAt: nowValue - 50, updatedAt: nowValue - 50
             )
         }
+        transactions.append(contentsOf: [
+            PetInventoryTransaction(
+                id: "preview-stock-food-1-earlier", productID: "preview-pet-food-1", type: .inbound,
+                quantityChange: 1, quantityBefore: 1.4, quantityAfter: 2.4, unit: "kg",
+                occurrenceDate: day(-42), reason: "补充库存", source: .manual,
+                linkedOperationID: nil, totalPrice: 128, unitPrice: 128,
+                purchaseChannel: "官方旗舰店", expirationDate: nil, note: nil,
+                createdAt: nowValue - 420, updatedAt: nowValue - 420
+            ),
+            PetInventoryTransaction(
+                id: "preview-stock-food-1-out", productID: "preview-pet-food-1", type: .outbound,
+                quantityChange: -0.3, quantityBefore: 2.7, quantityAfter: 2.4, unit: "kg",
+                occurrenceDate: day(-1), reason: "日常使用", source: .manual,
+                linkedOperationID: nil, totalPrice: nil, unitPrice: nil,
+                purchaseChannel: nil, expirationDate: nil, note: nil,
+                createdAt: nowValue - 8, updatedAt: nowValue - 8
+            )
+        ])
 
         let productReviews = [
             PetProductReview(
@@ -68,8 +86,8 @@ enum PreviewFixtures {
 
         let eventCategory = PetEventCategory(id: "preview-event-category", name: "日常护理", createdAt: nowValue - 300, isDeleted: false)
         let events = [
-            PetEvent(id: "preview-event-1", name: "剪指甲", categoryID: eventCategory.id, categoryNameSnapshot: eventCategory.name, petIDs: [catA.id], petNameSnapshots: [catA.name], occurrenceDate: day(0), note: "前爪已完成", imageReferences: [], source: .manual, litterOperationID: nil, createdAt: nowValue, updatedAt: nowValue),
-            PetEvent(id: "preview-event-2", name: "体重记录", categoryID: eventCategory.id, categoryNameSnapshot: eventCategory.name, petIDs: [catB.id], petNameSnapshots: [catB.name], occurrenceDate: day(-1), note: "4.8kg", imageReferences: [], source: .manual, litterOperationID: nil, createdAt: nowValue - 80, updatedAt: nowValue - 80)
+            PetEvent(id: "preview-event-1", name: "剪指甲", categoryID: eventCategory.id, categoryNameSnapshot: eventCategory.name, petIDs: [], petNameSnapshots: [], occurrenceDate: day(0), note: "前爪已完成", imageReferences: [], source: .manual, litterOperationID: nil, createdAt: nowValue, updatedAt: nowValue),
+            PetEvent(id: "preview-event-2", name: "清洁饮水机", categoryID: eventCategory.id, categoryNameSnapshot: eventCategory.name, petIDs: [], petNameSnapshots: [], occurrenceDate: day(-1), note: "滤芯和水箱已清洁", imageReferences: [], source: .manual, litterOperationID: nil, createdAt: nowValue - 80, updatedAt: nowValue - 80)
         ]
 
         let foods = [
@@ -103,7 +121,7 @@ enum PreviewFixtures {
             feedback: nil, price: nil, cat: "", preference: "", image: nil,
             unitConversionToBase: conversion, primaryCategory: primary,
             secondaryCategory: secondary, variant: nil, lowStockThreshold: nil,
-            notes: "预览测试数据", isArchived: false,
+            notes: "预览测试数据", packageType: secondary.contains("罐") ? "罐" : "袋", isArchived: false,
             foodRole: nil,
             expirationDate: nil, litterKind: secondary == "猫砂" ? "矿砂" : nil,
             createdAt: Date().timeIntervalSince1970, updatedAt: Date().timeIntervalSince1970

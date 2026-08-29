@@ -9,7 +9,6 @@ struct PetEventEditorView: View {
 
     @State private var name = ""
     @State private var categoryID = ""
-    @State private var selectedPetID = "all"
     @State private var occurrenceDate = Date()
     @State private var note = ""
     @State private var imageReferences: [String] = []
@@ -45,10 +44,6 @@ struct PetEventEditorView: View {
                     }
                 }
 
-                Picker("关联宠物", selection: $selectedPetID) {
-                    Text("全部宠物").tag("all")
-                    ForEach(store.activePets) { pet in Text(pet.name).tag(pet.id) }
-                }
                 DatePicker("发生日期", selection: $occurrenceDate, displayedComponents: .date)
             }
 
@@ -118,7 +113,7 @@ struct PetEventEditorView: View {
     }
 
     private var fingerprint: String {
-        [name, categoryID, selectedPetID, LitterPredictionService.format(occurrenceDate), note, imageReferences.joined(separator: "|")].joined(separator: "¦")
+        [name, categoryID, LitterPredictionService.format(occurrenceDate), note, imageReferences.joined(separator: "|")].joined(separator: "¦")
     }
 
     private func loadExistingIfNeeded() {
@@ -126,7 +121,6 @@ struct PetEventEditorView: View {
         if let eventID, let event = store.data.petEvents.first(where: { $0.id == eventID }) {
             name = event.name
             categoryID = event.categoryID
-            selectedPetID = event.petIDs.count == 1 ? event.petIDs[0] : "all"
             occurrenceDate = LitterPredictionService.parse(event.occurrenceDate) ?? Date()
             note = event.note ?? ""
             imageReferences = event.imageReferences
@@ -138,12 +132,11 @@ struct PetEventEditorView: View {
     }
 
     private func save() {
-        let petIDs = selectedPetID == "all" ? store.activePets.map(\.id) : [selectedPetID]
         if store.saveManualPetEvent(
             id: eventID,
             name: name,
             categoryID: categoryID,
-            petIDs: petIDs,
+            petIDs: [],
             occurrenceDate: LitterPredictionService.format(occurrenceDate),
             note: note,
             imageReferences: imageReferences
@@ -180,11 +173,10 @@ struct PetEventDetailView: View {
         ScrollView {
             if let event {
                 LazyVStack(alignment: .leading, spacing: 16) {
-                    PageTitle(title: event.name, subtitle: event.occurrenceDate)
+                    PageTitle(title: event.name, subtitle: HomeDateText.display(event.occurrenceDate))
                     HomeCard {
                         VStack(alignment: .leading, spacing: 10) {
                             detailRow("分类", event.categoryNameSnapshot)
-                            detailRow("关联宠物", petNames(for: event))
                             detailRow("来源", sourceTitle(event.source))
                         }
                     }
@@ -259,13 +251,6 @@ struct PetEventDetailView: View {
         }
     }
 
-    private func petNames(for event: PetEvent) -> String {
-        guard !event.petNameSnapshots.isEmpty else { return "全部宠物" }
-        return event.petNameSnapshots.enumerated().map { index, name in
-            guard event.petIDs.indices.contains(index) else { return name }
-            return store.activePets.contains(where: { $0.id == event.petIDs[index] }) ? name : "\(name)（已删除）"
-        }.joined(separator: "、")
-    }
 }
 
 struct PetStoredImage: View {

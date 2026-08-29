@@ -21,6 +21,7 @@ settings{}
 ```
 
 日期继续使用 `yyyy-MM-dd` 字符串，标识符继续使用字符串。原生实现导入时允许缺少新增字段并使用默认值，导出时不得删除 Web 仍在使用的字段。
+界面层统一转换为 `yyyy年M月d日` 中文日期；显示格式变化不修改备份值。
 
 详细字段以 `ios-native/HomeOSNative/Models/HomeModels.swift` 为可执行契约。每次字段变更必须同步更新本文件、Swift 模型和 Web 类型定义。
 
@@ -33,6 +34,7 @@ settings{}
 - `litterOperations[]`：初始化、补砂和换砂操作及各产品分配明细。
 - `settings.petEventCollapsedDateGroups`：日期分组的展开/折叠记忆。
 - `petItems[].unitConversionToBase`：非 kg/g 单位换算到 kg 的倍率。
+- `petItems[].packageType`：可选包装形式，例如袋、罐、盒；与 `spec` 单件规格及 `unit` 库存单位分别保存。
 - `petInventoryTransactions[]`：宠物物品入库、出库、调整和猫砂联动流水；当前库存由 `quantityChange` 求和。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
 - `petProductReviews[].dimensionScores`：本次评价各维度的 1～5 整数分数字典；综合分不重复存储，由维度算术平均得到。旧记录缺少时使用原 `repurchaseLevel` 作为兼容评分。
@@ -41,5 +43,7 @@ settings{}
 - `petInventoryTransactions[].totalPrice` 与 `unitPrice`：新建物品的初始库存也作为入库流水记录可选购入总额和自动折算单价。
 
 `petItems[].lowStockThreshold` 和 `foodRole` 仅为旧备份宽容读取字段；当前原生新建/编辑页面不再写入预警库存或食品用途。
+
+`petEvents[].petIDs` 与 `petNameSnapshots` 继续保留以兼容旧备份；当前原生新建或编辑宠物事项统一写入空数组，不再按宠物筛选事项。
 
 旧备份缺少上述字段时使用空集合或 `nil`，不得因此拒绝导入。宠物用品历史字段缺失时使用安全默认值；导出时保留原有顶层集合和新增集合。

@@ -39,7 +39,7 @@ struct HomeView: View {
                                 Text("猫砂余量").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                                 Text(prediction.hasEnoughData ? "\(prediction.daysRemaining ?? 0) 天" : "数据积累中")
                                     .font(HomeTypography.metric)
-                                Text(prediction.shouldRefill ? "建议尽快补充" : "预计 \(prediction.thresholdDate ?? "--") 前补充")
+                            Text(prediction.shouldRefill ? "建议尽快补充" : "预计 \(HomeDateText.display(prediction.thresholdDate)) 前补充")
                                     .font(HomeTypography.supporting)
                                     .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
                             }
@@ -82,7 +82,7 @@ struct HomeView: View {
                     ForEach(store.dueFoods.prefix(6)) { item in
                         VStack(alignment: .leading, spacing: 7) {
                             Text(item.name).font(HomeTypography.cardTitle)
-                            Text(item.expiry).font(HomeTypography.supporting).foregroundStyle(HomeTheme.orange)
+                            Text(HomeDateText.display(item.expiry)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.orange)
                         }
                         .frame(width: 130, alignment: .leading)
                         .padding(13)
@@ -126,7 +126,7 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(store.data.plans.prefix(3)) { plan in
                             HStack {
-                                Text("\(plan.date) · \(plan.meal)").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                                Text("\(HomeDateText.display(plan.date)) · \(plan.meal)").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
                                 Spacer()
                                 Text(store.data.recipes.first(where: { $0.id == plan.recipeId })?.name ?? "未找到菜谱").font(HomeTypography.body.weight(.medium))
                             }

@@ -32,6 +32,22 @@ enum HomeTypography {
     static let metric = Font.system(size: 28, weight: .bold, design: .rounded)
 }
 
+enum HomeDateText {
+    private static func formatter(_ pattern: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = pattern
+        return formatter
+    }
+
+    static func display(_ storedValue: String?) -> String {
+        guard let storedValue, !storedValue.isEmpty else { return "--" }
+        guard let date = formatter("yyyy-MM-dd").date(from: storedValue) else { return storedValue }
+        return formatter("yyyy年M月d日").string(from: date)
+    }
+}
+
 enum NativeHaptics {
     static func selection() { UISelectionFeedbackGenerator().selectionChanged() }
     static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.72) }

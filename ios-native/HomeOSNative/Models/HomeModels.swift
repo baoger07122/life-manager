@@ -105,6 +105,7 @@ struct PetItem: Codable, Identifiable, Hashable {
     var variant: String? = nil
     var lowStockThreshold: Double? = nil
     var notes: String? = nil
+    var packageType: String? = nil
     var isArchived: Bool = false
     var foodRole: String? = nil
     var expirationDate: String? = nil
@@ -118,7 +119,7 @@ extension PetItem {
         case id, type, name, brand, model, spec, quantity, unit, days, weeklyUsage
         case lastReplenishedAt, purchaseHistory, replenishmentHistory, feedback, price
         case cat, preference, image, unitConversionToBase
-        case primaryCategory, secondaryCategory, variant, lowStockThreshold, notes, isArchived
+        case primaryCategory, secondaryCategory, variant, lowStockThreshold, notes, packageType, isArchived
         case foodRole, expirationDate, litterKind, createdAt, updatedAt
     }
 
@@ -148,6 +149,7 @@ extension PetItem {
         variant = try values.decodeIfPresent(String.self, forKey: .variant)
         lowStockThreshold = try values.decodeIfPresent(Double.self, forKey: .lowStockThreshold)
         notes = try values.decodeIfPresent(String.self, forKey: .notes)
+        packageType = try values.decodeIfPresent(String.self, forKey: .packageType)
         isArchived = try values.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         foodRole = try values.decodeIfPresent(String.self, forKey: .foodRole)
         expirationDate = try values.decodeIfPresent(String.self, forKey: .expirationDate)

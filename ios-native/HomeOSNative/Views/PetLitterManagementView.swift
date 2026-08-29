@@ -21,7 +21,7 @@ struct PetLitterManagementView: View {
                                 VStack(alignment: .leading, spacing: 7) {
                                     Text(prediction.hasEnoughData ? "预计可用 \(prediction.daysRemaining ?? 0) 天" : "数据积累中")
                                         .font(HomeTypography.sectionTitle)
-                                    Text(prediction.shouldRefill ? "建议补充猫砂" : "预计 \(prediction.thresholdDate ?? "--") 前补充")
+                                    Text(prediction.shouldRefill ? "建议补充猫砂" : "预计 \(HomeDateText.display(prediction.thresholdDate)) 前补充")
                                         .font(HomeTypography.body)
                                         .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
                                     Text("当前预计 \(prediction.currentAmount.formatted(.number.precision(.fractionLength(1)))) kg · 基准 \(state.baseAmount.formatted(.number.precision(.fractionLength(1)))) kg")

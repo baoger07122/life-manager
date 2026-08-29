@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PetView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var selectedPetID = "all"
     @State private var selectedCategoryID = "all"
     @State private var litterSheet: LitterSheet?
 
@@ -68,7 +67,7 @@ struct PetView: View {
                                     .font(HomeTypography.sectionTitle)
                                 if prediction.hasEnoughData {
                                     Text("预计可用 \(prediction.daysRemaining ?? 0) 天").font(HomeTypography.body)
-                                    Text(prediction.shouldRefill ? "建议补充猫砂" : "预计 \(prediction.thresholdDate ?? "--") 达到 40%")
+                                    Text(prediction.shouldRefill ? "建议补充猫砂" : "预计 \(HomeDateText.display(prediction.thresholdDate)) 达到 40%")
                                         .font(HomeTypography.supporting.weight(.semibold))
                                         .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
                                 } else {
@@ -128,9 +127,9 @@ struct PetView: View {
             HStack(spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 20) {
-                        filterTab(title: "全部宠物", id: "all", selection: $selectedPetID, prominent: true)
-                        ForEach(store.activePets) { pet in
-                            filterTab(title: pet.name, id: pet.id, selection: $selectedPetID, prominent: true)
+                        filterTab(title: "全部", id: "all", selection: $selectedCategoryID, prominent: true)
+                        ForEach(store.activePetEventCategories) { category in
+                            filterTab(title: category.name, id: category.id, selection: $selectedCategoryID, prominent: true)
                         }
                     }
                 }
@@ -142,16 +141,6 @@ struct PetView: View {
                 }
                 .buttonStyle(HomePressButtonStyle())
                 .accessibilityLabel("添加宠物事项")
-            }
-            if store.activePetEventCategories.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 20) {
-                        filterTab(title: "全部分类", id: "all", selection: $selectedCategoryID)
-                        ForEach(store.activePetEventCategories) { category in
-                            filterTab(title: category.name, id: category.id, selection: $selectedCategoryID)
-                        }
-                    }
-                }
             }
         }
         .padding(.horizontal, 14)
@@ -171,9 +160,7 @@ struct PetView: View {
 
     private var filteredEvents: [PetEvent] {
         store.data.petEvents.filter { event in
-            let matchesPet = selectedPetID == "all" || event.petIDs.contains(selectedPetID)
-            let matchesCategory = selectedCategoryID == "all" || event.categoryID == selectedCategoryID
-            return matchesPet && matchesCategory
+            selectedCategoryID == "all" || event.categoryID == selectedCategoryID
         }
         .sorted {
             if $0.occurrenceDate == $1.occurrenceDate { return $0.createdAt > $1.createdAt }
@@ -207,25 +194,30 @@ struct PetView: View {
                 if !collapsed {
                     ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
                         if index > 0 { Divider() }
-                        NavigationLink {
-                            PetEventDetailView(eventID: event.id)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(event.name).font(HomeTypography.cardTitle)
-                                    Spacer()
-                                    Text(event.categoryNameSnapshot)
-                                        .font(HomeTypography.supporting)
-                                        .foregroundStyle(HomeTheme.blue)
+                        NavigationLink { PetEventDetailView(eventID: event.id) } label: {
+                            HStack(alignment: .top, spacing: 11) {
+                                VStack(spacing: 0) {
+                                    Circle().fill(HomeTheme.blue).frame(width: 9, height: 9)
+                                    if index < events.count - 1 {
+                                        Rectangle().fill(HomeTheme.line).frame(width: 1.5).frame(minHeight: 44)
+                                    }
                                 }
-                                Text(petNames(for: event))
-                                    .font(HomeTypography.supporting)
-                                    .foregroundStyle(HomeTheme.muted)
-                                if let note = event.note, !note.isEmpty {
-                                    Text(note).font(HomeTypography.body).foregroundStyle(HomeTheme.muted).lineLimit(1)
+                                .padding(.top, 5)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(event.name).font(HomeTypography.cardTitle)
+                                        Spacer()
+                                        Text(event.categoryNameSnapshot)
+                                            .font(HomeTypography.supporting)
+                                            .foregroundStyle(HomeTheme.blue)
+                                    }
+                                    if let note = event.note, !note.isEmpty {
+                                        Text(note).font(HomeTypography.body).foregroundStyle(HomeTheme.muted).lineLimit(2)
+                                    }
                                 }
+                                .padding(.bottom, 10)
                             }
-                            .padding(.vertical, 10)
+                            .padding(.top, 9)
                         }
                         .buttonStyle(.plain)
                     }
@@ -234,19 +226,7 @@ struct PetView: View {
     }
 
     private func relativeDateTitle(_ value: String) -> String {
-        guard let date = LitterPredictionService.parse(value) else { return value }
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) { return "今天" }
-        if calendar.isDateInYesterday(date) { return "昨天" }
-        return value
-    }
-
-    private func petNames(for event: PetEvent) -> String {
-        guard !event.petNameSnapshots.isEmpty else { return "全部宠物" }
-        return event.petNameSnapshots.enumerated().map { index, name in
-            guard event.petIDs.indices.contains(index) else { return name }
-            return store.activePets.contains(where: { $0.id == event.petIDs[index] }) ? name : "\(name)（已删除）"
-        }.joined(separator: "、")
+        return HomeDateText.display(value)
     }
 }
 

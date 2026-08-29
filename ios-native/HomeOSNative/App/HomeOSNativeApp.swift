@@ -8,6 +8,7 @@ struct HomeOSNativeApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(store)
+                .environment(\.locale, Locale(identifier: "zh_CN"))
                 .preferredColorScheme(.light)
                 .task {
                     #if PLAYGROUND_PREVIEW

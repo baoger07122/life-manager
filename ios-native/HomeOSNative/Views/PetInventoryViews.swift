@@ -12,6 +12,7 @@ struct PetItemEditorView: View {
     @State private var brand = ""
     @State private var variant = ""
     @State private var spec = ""
+    @State private var packageType = ""
     @State private var unit = "袋"
     @State private var initialStock = 0.0
     @State private var purchaseTotalText = ""
@@ -64,7 +65,9 @@ struct PetItemEditorView: View {
                         divider
                         editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
                         divider
-                        editorTextRow(title: "规格 / 型号", placeholder: "选填", text: $spec)
+                        editorTextRow(title: "包装形式", placeholder: "例如袋、罐、盒", text: $packageType)
+                        divider
+                        editorTextRow(title: "单件规格", placeholder: "例如5.4kg、185g", text: $spec)
                         divider
                         editorTextRow(title: "库存单位", placeholder: "例如 kg、袋、罐", text: $unit)
                     }
@@ -111,6 +114,7 @@ struct PetItemEditorView: View {
                         Text("备注").font(HomeTypography.sectionTitle)
                         TextField("选填", text: $notes, axis: .vertical)
                             .font(HomeTypography.body)
+                            .multilineTextAlignment(.center)
                             .lineLimit(3...6)
                             .textFieldStyle(HomeTextFieldStyle())
                     }
@@ -219,6 +223,7 @@ struct PetItemEditorView: View {
             ?? store.categories(for: .pet, parentID: primaryID).first?.id ?? ""
         name = item.name; brand = item.brand
         variant = item.variant ?? item.model; spec = item.spec.isEmpty ? variant : item.spec; unit = item.unit
+        packageType = item.packageType ?? ""
         notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
         conversion = item.unitConversionToBase ?? 0; imageReference = item.image
     }
@@ -232,6 +237,8 @@ struct PetItemEditorView: View {
         item.type = savedSecondary; item.name = name.trimmingCharacters(in: .whitespacesAndNewlines); item.brand = brand; item.model = spec; item.spec = spec
         item.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines); item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
         item.variant = spec.isEmpty ? nil : spec; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes
+        let cleanPackageType = packageType.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.packageType = cleanPackageType.isEmpty ? nil : cleanPackageType
         item.foodRole = nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
         if itemID == nil, let calculatedUnitPrice { item.price = calculatedUnitPrice }
@@ -429,7 +436,7 @@ struct PetInventoryEditorView: View {
     @State private var target = 0.0
     @State private var date = Date()
     @State private var reason = ""
-    @State private var totalPrice = 0.0
+    @State private var totalPriceText = ""
     @State private var channel = ""
     @State private var note = ""
     @State private var hasExpiration = false
@@ -438,8 +445,13 @@ struct PetInventoryEditorView: View {
     private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
     private var title: String { mode == .inbound ? "入库" : mode == .outbound ? (quick ? "快速出库" : "出库") : "修正库存" }
     private var calculatedUnitPrice: Double? {
-        guard mode == .inbound, quantity > 0, totalPrice > 0 else { return nil }
+        guard mode == .inbound, quantity > 0, let totalPrice, totalPrice > 0 else { return nil }
         return totalPrice / quantity
+    }
+    private var totalPrice: Double? {
+        let normalized = totalPriceText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value > 0 else { return nil }
+        return value
     }
 
     var body: some View {
@@ -454,7 +466,8 @@ struct PetInventoryEditorView: View {
                 }
                 if mode == .inbound {
                     Section("购买信息") {
-                        TextField("购买总价（可选）", value: $totalPrice, format: .currency(code: "CNY")).keyboardType(.decimalPad)
+                        TextField("¥0.00（选填）", text: $totalPriceText)
+                            .keyboardType(.decimalPad)
                         LabeledContent("折算单价", value: calculatedUnitPrice.map { "¥\($0.formatted(.number.precision(.fractionLength(2))))/\(item?.unit ?? "单位")" } ?? "自动计算")
                             .foregroundStyle(HomeTheme.muted)
                         TextField("购买渠道（可选）", text: $channel).font(HomeTypography.body)
@@ -480,7 +493,7 @@ struct PetInventoryEditorView: View {
         if mode == .adjustment {
             success = store.adjustPetInventory(productID: productID, target: target, occurrenceDate: dateString, reason: reason)
         } else {
-            success = store.recordPetInventory(productID: productID, type: mode == .inbound ? .inbound : .outbound, quantity: quantity, occurrenceDate: dateString, reason: reason.isEmpty ? (mode == .inbound ? "购买入库" : "日常使用") : reason, totalPrice: totalPrice > 0 ? totalPrice : nil, purchaseChannel: channel, expirationDate: hasExpiration ? LitterPredictionService.format(expirationDate) : nil, note: note)
+            success = store.recordPetInventory(productID: productID, type: mode == .inbound ? .inbound : .outbound, quantity: quantity, occurrenceDate: dateString, reason: reason.isEmpty ? (mode == .inbound ? "购买入库" : "日常使用") : reason, totalPrice: totalPrice, purchaseChannel: channel, expirationDate: hasExpiration ? LitterPredictionService.format(expirationDate) : nil, note: note)
         }
         if success { dismiss() }
     }
@@ -507,10 +520,17 @@ struct PetProductReviewEditorView: View {
                 }
                 Section("评分维度") {
                     ForEach(dimensions, id: \.self) { dimension in
-                        Picker(dimension, selection: scoreBinding(for: dimension)) {
-                            ForEach(1...5, id: \.self) { Text("\($0)").tag($0) }
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(dimension)
+                                .font(HomeTypography.body.weight(.semibold))
+                                .foregroundStyle(HomeTheme.ink)
+                            Picker(dimension, selection: scoreBinding(for: dimension)) {
+                                ForEach(1...5, id: \.self) { Text("\($0)分").tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
                         }
-                        .pickerStyle(.segmented)
+                        .padding(.vertical, 3)
                     }
                     LabeledContent("本次综合评分", value: overallScore.formatted(.number.precision(.fractionLength(1))))
                 }

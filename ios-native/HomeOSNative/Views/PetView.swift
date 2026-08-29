@@ -17,7 +17,6 @@ struct PetView: View {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
                     header
                     PetItemsListView()
-                    litterSection
                     timelineSection
                 }
                 .padding(.horizontal, HomeMetrics.pageInset)
@@ -36,20 +35,7 @@ struct PetView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            PageTitle(title: "宠物", subtitle: "用品、猫砂状态与护理事项")
-            NavigationLink {
-                PetEventEditorView()
-            } label: {
-                Label("添加事项", systemImage: "plus")
-                    .font(HomeTypography.body.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: HomeMetrics.controlHeight)
-                    .background(HomeTheme.blue, in: RoundedRectangle(cornerRadius: HomeMetrics.controlRadius, style: .continuous))
-            }
-            .buttonStyle(HomePressButtonStyle())
-        }
+        PageTitle(title: "宠物")
     }
 
     private var litterSection: some View {
@@ -116,7 +102,18 @@ struct PetView: View {
 
     private var timelineSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HomeSectionHeader(title: "宠物事项时间轴")
+            HStack {
+                Text("宠物事项").font(HomeTypography.sectionTitle)
+                Spacer()
+                NavigationLink { PetEventEditorView() } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 21, weight: .regular))
+                        .foregroundStyle(HomeTheme.blue)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(HomePressButtonStyle())
+                .accessibilityLabel("添加宠物事项")
+            }
             filters
             if groupedEvents.isEmpty {
                 HomeCard {

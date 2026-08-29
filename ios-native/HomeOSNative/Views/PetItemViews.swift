@@ -1,9 +1,6 @@
 import SwiftUI
 import PhotosUI
 
-let petFoodCategories = ["猫粮", "主食罐", "零食罐", "冻干", "汤罐", "其他食品"]
-let petSupplyCategories = ["猫砂", "除臭用品", "清洁用品", "其他用品"]
-
 extension PetItem {
     var resolvedPrimaryCategory: String { primaryCategory ?? (type.contains("食品") ? "宠物食品" : "宠物用品") }
     var resolvedSecondaryCategory: String { secondaryCategory ?? type }
@@ -11,32 +8,47 @@ extension PetItem {
 
 struct PetItemsListView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var primary = "全部"
-    @State private var secondary = "全部"
-    @State private var quickOutboundID: String?
+    @State private var primaryID = "pet-root-food"
+    @State private var secondaryID = "all"
+    @State private var expandedItemID: String?
+    @State private var quickMode: PetInventoryTransactionType = .outbound
+    @State private var quickQuantity = 1.0
+
+    private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
+    private var selectedPrimary: ManagedCategory? {
+        primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first
+    }
+    private var secondaryCategories: [ManagedCategory] {
+        guard let selectedPrimary else { return [] }
+        return store.categories(for: .pet, parentID: selectedPrimary.id)
+    }
 
     private var items: [PetItem] {
         store.activePetItems.filter {
-            (primary == "全部" || $0.resolvedPrimaryCategory == primary)
-                && (secondary == "全部" || $0.resolvedSecondaryCategory == secondary)
+            guard let selectedPrimary else { return false }
+            let secondaryName = secondaryCategories.first { $0.id == secondaryID }?.name
+            return $0.resolvedPrimaryCategory == selectedPrimary.name
+                && (secondaryName == nil || $0.resolvedSecondaryCategory == secondaryName)
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
-    private var secondaryOptions: [String] {
-        let defaults = primary == "宠物食品" ? petFoodCategories : primary == "宠物用品" ? petSupplyCategories : petFoodCategories + petSupplyCategories
-        return ["全部"] + Array(Set(defaults + store.activePetItems.map(\.resolvedSecondaryCategory))).sorted()
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HomeSectionHeader(title: "宠物物品")
-            filterRow(["全部", "宠物食品", "宠物用品"], selection: $primary)
-            filterRow(secondaryOptions, selection: $secondary)
-            HomeCard(padding: 12) {
+        HomeCard(padding: 0) {
+            VStack(spacing: 0) {
+                primarySelector
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+                secondarySelector
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
+                Divider()
                 if items.isEmpty {
                     VStack(spacing: 12) {
                         EmptyState(icon: "shippingbox.fill", title: "暂无宠物物品", message: "按具体产品添加食品、猫砂或其他用品。")
-                        NavigationLink("添加宠物物品") { PetItemEditorView() }.buttonStyle(HomeSecondaryButtonStyle())
+                        NavigationLink("添加宠物物品") { PetItemEditorView() }
+                            .buttonStyle(HomeSecondaryButtonStyle())
+                            .padding(.horizontal, 14)
+                            .padding(.bottom, 14)
                     }
                 } else {
                     VStack(spacing: 0) {
@@ -44,52 +56,180 @@ struct PetItemsListView: View {
                             itemRow(item)
                             if index < items.count - 1 { Divider() }
                         }
-                        NavigationLink("新增宠物物品") { PetItemEditorView() }
-                            .font(HomeTypography.body.weight(.semibold)).padding(.top, 12)
                     }
                 }
             }
         }
-        .sheet(item: Binding(get: { quickOutboundID.map { IdentifiedPetItem(id: $0) } }, set: { quickOutboundID = $0?.id })) { value in
-            PetInventoryEditorView(productID: value.id, mode: .outbound, quick: true)
+        .onAppear {
+            if !primaryCategories.contains(where: { $0.id == primaryID }) {
+                primaryID = primaryCategories.first?.id ?? ""
+            }
         }
-        .onChange(of: primary) { _, _ in secondary = "全部" }
+        .onChange(of: primaryID) { _, _ in
+            secondaryID = "all"
+            expandedItemID = nil
+        }
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        HStack(spacing: 8) {
-            NavigationLink {
-                PetItemDetailView(itemID: item.id)
-            } label: {
-                HStack(spacing: 11) {
-                    productImage(item)
+        VStack(spacing: 0) {
+            HStack(spacing: 11) {
+                NavigationLink { PetItemDetailView(itemID: item.id) } label: { productImage(item) }
+                    .buttonStyle(HomePressButtonStyle())
+                    .accessibilityLabel("查看\(item.name)详情")
+
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        expandedItemID = expandedItemID == item.id ? nil : item.id
+                        quickMode = .outbound
+                        quickQuantity = quickStep(for: item)
+                    }
+                    NativeHaptics.selection()
+                } label: {
+                    HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.name).font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.ink).lineLimit(1)
-                        Text(item.resolvedSecondaryCategory).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                        if item.resolvedPrimaryCategory == "宠物食品" {
-                            let reviews = store.latestPalatabilityReviews(for: item.id)
-                            if !reviews.isEmpty {
-                                Text(reviews.map { "\($0.petNameSnapshot)：\($0.preference)" }.joined(separator: " · "))
-                                    .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted).lineLimit(1)
-                            }
-                        }
+                            Text(item.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(HomeTheme.ink).lineLimit(1)
+                            Text(item.resolvedSecondaryCategory).font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
                     }
                     Spacer(minLength: 4)
                     VStack(alignment: .trailing, spacing: 3) {
                         Text("\(store.petInventory(for: item.id).formatted())\(item.unit)")
-                            .font(HomeTypography.body.weight(.semibold))
+                                .font(.system(size: 15, weight: .regular))
                             .foregroundStyle(isLowStock(item) ? HomeTheme.orange : HomeTheme.ink)
-                        if let review = store.latestProductReview(for: item.id) {
-                            Text(repurchaseText(review.repurchaseLevel)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.blue)
-                        }
+                            if isLowStock(item) { Text("库存偏低").font(.system(size: 12)).foregroundStyle(HomeTheme.orange) }
                     }
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
+                        Image(systemName: expandedItemID == item.id ? "chevron.up" : "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(HomeTheme.muted)
+                            .frame(width: 22)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
 
-            Button { quickOutboundID = item.id; NativeHaptics.tap() } label: {
-                Image(systemName: "minus.circle.fill").font(.system(size: 24)).foregroundStyle(HomeTheme.blue).frame(width: 44, height: 44)
-            }.buttonStyle(HomePressButtonStyle()).accessibilityLabel("快速出库")
-        }.padding(.vertical, 8)
+            if expandedItemID == item.id {
+                compactQuickManager(item)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var primarySelector: some View {
+        HStack(spacing: 22) {
+            ForEach(primaryCategories) { category in
+                Button {
+                    primaryID = category.id
+                    NativeHaptics.selection()
+                } label: {
+                    HomeUnderlineTab(title: category.name, selected: primaryID == category.id, prominent: true)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
+            NavigationLink { PetItemEditorView() } label: {
+                Image(systemName: "plus.circle")
+                    .font(.system(size: 22, weight: .regular))
+                    .foregroundStyle(HomeTheme.muted)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(HomePressButtonStyle())
+            .accessibilityLabel("新增宠物物品")
+        }
+    }
+
+    private var secondarySelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 20) {
+                Button {
+                    secondaryID = "all"
+                    expandedItemID = nil
+                    NativeHaptics.selection()
+                } label: {
+                    HomeUnderlineTab(title: "全部", selected: secondaryID == "all")
+                }
+                .buttonStyle(.plain)
+                ForEach(secondaryCategories) { category in
+                    Button {
+                        secondaryID = category.id
+                        expandedItemID = nil
+                        NativeHaptics.selection()
+                    } label: {
+                        HomeUnderlineTab(title: category.name, selected: secondaryID == category.id)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func compactQuickManager(_ item: PetItem) -> some View {
+        HStack(spacing: 6) {
+            Picker("操作", selection: $quickMode) {
+                Text("出库").tag(PetInventoryTransactionType.outbound)
+                Text("入库").tag(PetInventoryTransactionType.inbound)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 104)
+
+            HStack(spacing: 0) {
+                compactStepButton("minus") { quickQuantity = max(quickStep(for: item), quickQuantity - quickStep(for: item)) }
+                Text(quickQuantity.formatted(.number.precision(.fractionLength(0...2))))
+                    .font(.system(size: 14, weight: .medium))
+                    .frame(minWidth: 28)
+                compactStepButton("plus") { quickQuantity += quickStep(for: item) }
+            }
+            .frame(height: 36)
+            .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(HomeTheme.line, lineWidth: 0.8) }
+
+            Text(item.unit).font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
+            Spacer(minLength: 0)
+            Button("确认") { confirmQuickAction(item) }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 10)
+                .frame(height: 36)
+                .background(HomeTheme.blue, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .buttonStyle(HomePressButtonStyle())
+        }
+        .padding(9)
+        .background(HomeTheme.background.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func compactStepButton(_ icon: String, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            NativeHaptics.selection()
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(HomeTheme.ink)
+                .frame(width: 28, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func confirmQuickAction(_ item: PetItem) {
+        let success = store.recordPetInventory(
+            productID: item.id,
+            type: quickMode,
+            quantity: quickQuantity,
+            occurrenceDate: LitterPredictionService.format(Date()),
+            reason: quickMode == .inbound ? "快捷入库" : "快捷出库"
+        )
+        if success {
+            withAnimation(.easeInOut(duration: 0.18)) { expandedItemID = nil }
+        }
+    }
+
+    private func quickStep(for item: PetItem) -> Double {
+        ["kg", "公斤", "千克", "l", "L", "升"].contains(item.unit) ? 0.1 : 1
     }
 
     @ViewBuilder private func productImage(_ item: PetItem) -> some View {
@@ -106,17 +246,6 @@ struct PetItemsListView: View {
         item.lowStockThreshold.map { store.petInventory(for: item.id) <= $0 } ?? false
     }
 
-    private func filterRow(_ values: [String], selection: Binding<String>) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(values, id: \.self) { value in
-                    Button { selection.wrappedValue = value; NativeHaptics.selection() } label: {
-                        HomeChip(title: value, selected: selection.wrappedValue == value)
-                    }.buttonStyle(.plain)
-                }
-            }
-        }
-    }
 }
 
 struct PetItemDetailView: View {
@@ -137,7 +266,7 @@ struct PetItemDetailView: View {
                     transactionCard(item)
                     priceCard(item)
                     productReviewCard
-                    if item.resolvedPrimaryCategory == "宠物食品" { palatabilityCard }
+                    if isPetFood(item) { palatabilityCard }
                 }.padding(HomeMetrics.pageInset)
             } else {
                 EmptyState(icon: "exclamationmark.triangle.fill", title: "物品不存在", message: "该物品可能已停用。")
@@ -265,11 +394,13 @@ struct PetItemDetailView: View {
     private func detailRow(_ title: String, _ value: String) -> some View {
         HStack(alignment: .top) { Text(title).font(HomeTypography.body).foregroundStyle(HomeTheme.muted); Spacer(); Text(value.isEmpty ? "未记录" : value).font(HomeTypography.body.weight(.medium)).multilineTextAlignment(.trailing) }
     }
+
+    private func isPetFood(_ item: PetItem) -> Bool {
+        item.resolvedPrimaryCategory == store.petRootCategory(capabilityKey: "petFood")?.name
+    }
 }
 
 private enum PetItemDetailSheet: String, Identifiable { case inbound, outbound, adjustment, productReview, palatability; var id: String { rawValue } }
-private struct IdentifiedPetItem: Identifiable { let id: String }
-
 func repurchaseText(_ level: Int) -> String {
     switch level { case 1: "不会回购"; case 2: "回购意愿较低"; case 3: "一般"; case 4: "回购意愿较高"; default: "一定会回购" }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 enum RootTab: String, CaseIterable, Identifiable {
-    case home, food, recipes, pet, settings
+    case home, food, pet, recipes, settings
 
     var id: String { rawValue }
 
@@ -38,8 +38,8 @@ struct RootView: View {
         TabView(selection: $selection) {
             tab(HomeView(), for: .home)
             tab(FoodView(), for: .food)
-            tab(RecipesView(), for: .recipes)
             tab(PetView(), for: .pet)
+            tab(RecipesView(), for: .recipes)
             tab(SettingsView(), for: .settings)
         }
         .tint(HomeTheme.blue)

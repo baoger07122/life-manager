@@ -24,8 +24,8 @@ enum HomeMetrics {
 }
 
 enum HomeTypography {
-    static let pageTitle = Font.system(size: 22, weight: .semibold)
-    static let sectionTitle = Font.system(size: 17, weight: .semibold)
+    static let pageTitle = Font.system(size: 24, weight: .semibold)
+    static let sectionTitle = Font.system(size: 19, weight: .semibold)
     static let cardTitle = Font.system(size: 15, weight: .semibold)
     static let body = Font.system(size: 15, weight: .regular)
     static let supporting = Font.system(size: 12, weight: .regular)
@@ -53,6 +53,30 @@ struct HomeCard<Content: View>: View {
         content
             .padding(padding)
             .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous)
+                    .stroke(HomeTheme.line.opacity(0.9), lineWidth: 0.8)
+            }
+    }
+}
+
+struct HomeUnderlineTab: View {
+    let title: String
+    let selected: Bool
+    var prominent = false
+
+    var body: some View {
+        VStack(spacing: prominent ? 8 : 5) {
+            Text(title)
+                .font(.system(size: prominent ? 17 : 14, weight: prominent ? .semibold : .regular))
+                .foregroundStyle(selected ? HomeTheme.ink : HomeTheme.muted)
+                .lineLimit(1)
+            Capsule()
+                .fill(selected ? HomeTheme.blue : Color.clear)
+                .frame(width: prominent ? 28 : 20, height: 3)
+        }
+        .frame(minHeight: HomeMetrics.minimumTapTarget)
+        .contentShape(Rectangle())
     }
 }
 

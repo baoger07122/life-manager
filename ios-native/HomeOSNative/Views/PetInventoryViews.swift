@@ -5,9 +5,8 @@ struct PetItemEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let itemID: String?
-    @State private var primary = "宠物食品"
-    @State private var secondary = "猫粮"
-    @State private var customSecondary = ""
+    @State private var primaryID = "pet-root-food"
+    @State private var secondaryID = "pet-food-0"
     @State private var name = ""
     @State private var brand = ""
     @State private var variant = ""
@@ -24,14 +23,18 @@ struct PetItemEditorView: View {
     @State private var loaded = false
 
     init(itemID: String? = nil) { self.itemID = itemID }
-    private var categories: [String] { primary == "宠物食品" ? petFoodCategories : petSupplyCategories }
+    private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
+    private var selectedPrimary: ManagedCategory? { primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first }
+    private var secondaryCategories: [ManagedCategory] { selectedPrimary.map { store.categories(for: .pet, parentID: $0.id) } ?? [] }
+    private var selectedSecondary: ManagedCategory? { secondaryCategories.first { $0.id == secondaryID } ?? secondaryCategories.first }
+    private var isPetFood: Bool { selectedPrimary?.capabilityKey == "petFood" }
 
     var body: some View {
         Form {
             Section("分类") {
-                Picker("一级分类", selection: $primary) { Text("宠物食品").tag("宠物食品"); Text("宠物用品").tag("宠物用品") }
-                Picker("二级分类", selection: $secondary) { ForEach(categories, id: \.self) { Text($0) } }
-                TextField("自定义二级分类（可选）", text: $customSecondary).font(HomeTypography.body)
+                Picker("一级分类", selection: $primaryID) { ForEach(primaryCategories) { Text($0.name).tag($0.id) } }
+                Picker("二级分类", selection: $secondaryID) { ForEach(secondaryCategories) { Text($0.name).tag($0.id) } }
+                NavigationLink("管理分类") { CategoryManagementView(initialModule: .pet) }
             }
             Section("产品档案") {
                 TextField("产品名称", text: $name).font(HomeTypography.body)
@@ -43,10 +46,10 @@ struct PetItemEditorView: View {
                 if itemID == nil { TextField("初始库存", value: $initialStock, format: .number).keyboardType(.decimalPad) }
                 TextField("备注（可选）", text: $notes, axis: .vertical).font(HomeTypography.body)
             }
-            if primary == "宠物食品" {
+            if isPetFood {
                 Section("食品信息") { Picker("属性", selection: $foodRole) { Text("主食").tag("主食"); Text("零食").tag("零食") } }
             }
-            if secondary == "猫砂" {
+            if selectedSecondary?.name == "猫砂" {
                 Section("猫砂信息") {
                     TextField("猫砂种类，例如矿砂", text: $litterKind).font(HomeTypography.body)
                     TextField("每个库存单位折合 kg", value: $conversion, format: .number.precision(.fractionLength(0...4))).keyboardType(.decimalPad)
@@ -63,20 +66,22 @@ struct PetItemEditorView: View {
         .navigationTitle(itemID == nil ? "新增宠物物品" : "编辑宠物物品").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("保存", action: save).disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) } }
         .task { loadExisting() }
-        .onChange(of: primary) { _, value in secondary = value == "宠物食品" ? "猫粮" : "猫砂" }
+        .onChange(of: primaryID) { _, _ in secondaryID = secondaryCategories.first?.id ?? "" }
         .onChange(of: selectedPhoto) { _, photo in Task { if let data = try? await photo?.loadTransferable(type: Data.self) { imageReference = "data:image/jpeg;base64," + data.base64EncodedString() } } }
     }
 
     private func loadExisting() {
         guard !loaded else { return }; defer { loaded = true }
-        guard let itemID, let item = store.data.petItems.first(where: { $0.id == itemID }) else { return }
-        primary = item.resolvedPrimaryCategory
-        if (primary == "宠物食品" ? petFoodCategories : petSupplyCategories).contains(item.resolvedSecondaryCategory) {
-            secondary = item.resolvedSecondaryCategory
-        } else {
-            secondary = primary == "宠物食品" ? "其他食品" : "其他用品"
-            customSecondary = item.resolvedSecondaryCategory
+        guard let itemID, let item = store.data.petItems.first(where: { $0.id == itemID }) else {
+            primaryID = primaryCategories.first?.id ?? ""
+            secondaryID = secondaryCategories.first?.id ?? ""
+            return
         }
+        primaryID = primaryCategories.first(where: { $0.name == item.resolvedPrimaryCategory })?.id
+            ?? (item.resolvedPrimaryCategory.contains("食品") ? store.petRootCategory(capabilityKey: "petFood")?.id : store.petRootCategory(capabilityKey: "petSupply")?.id)
+            ?? primaryCategories.first?.id ?? ""
+        secondaryID = store.categories(for: .pet, parentID: primaryID).first(where: { $0.name == item.resolvedSecondaryCategory })?.id
+            ?? store.categories(for: .pet, parentID: primaryID).first?.id ?? ""
         name = item.name; brand = item.brand
         variant = item.variant ?? item.model; spec = item.spec; unit = item.unit; lowStock = item.lowStockThreshold ?? 0
         notes = item.notes ?? ""; foodRole = item.foodRole ?? "主食"; litterKind = item.litterKind ?? ""
@@ -86,12 +91,13 @@ struct PetItemEditorView: View {
     private func save() {
         let existing = itemID.flatMap { id in store.data.petItems.first { $0.id == id } }
         let now = Date().timeIntervalSince1970
-        var item = existing ?? PetItem(id: UUID().uuidString, type: primary, name: name, brand: brand, model: variant, spec: spec, quantity: max(initialStock, 0), unit: unit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
-        let savedSecondary = customSecondary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? secondary : customSecondary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let selectedPrimary, let selectedSecondary else { return }
+        var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: max(initialStock, 0), unit: unit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
+        let savedSecondary = selectedSecondary.name
         item.type = savedSecondary; item.name = name.trimmingCharacters(in: .whitespacesAndNewlines); item.brand = brand; item.model = variant; item.spec = spec
-        item.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines); item.primaryCategory = primary; item.secondaryCategory = savedSecondary
+        item.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines); item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
         item.variant = variant.isEmpty ? nil : variant; item.lowStockThreshold = lowStock > 0 ? lowStock : nil; item.notes = notes.isEmpty ? nil : notes
-        item.foodRole = primary == "宠物食品" ? foodRole : nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
+        item.foodRole = isPetFood ? foodRole : nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
         item.createdAt = item.createdAt ?? now; item.updatedAt = now
         store.upsertPetItem(item); NativeHaptics.success(); dismiss()

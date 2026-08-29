@@ -41,8 +41,8 @@
 
 | 令牌 | 当前值 | 状态 |
 | --- | --- | --- |
-| `pageTitle` | 22pt / Semibold | 本轮调整，待确认 |
-| `sectionTitle` | 17pt / Semibold | 候选 |
+| `pageTitle` | 24pt / Semibold | 预览候选 |
+| `sectionTitle` | 19pt / Semibold | 预览候选 |
 | `cardTitle` | 15pt / Semibold | 候选 |
 | `body` | 15pt / Regular | 候选 |
 | `supporting` | 12pt / Regular | 候选 |
@@ -91,6 +91,7 @@
 | UI-18 | `HomeFieldLabel` | 表单字段名和必填标记 | 候选 |
 | UI-19 | `HomeToggleRow` | 带说明的开关设置行 | 候选 |
 | UI-20 | `HomeToastView` | 短时非阻断反馈 | 候选 |
+| UI-21 | `HomeUnderlineTab` | 一级/二级分类的轻量横向选择器 | 预览候选 |
 
 ## 5. 导航图标基线
 

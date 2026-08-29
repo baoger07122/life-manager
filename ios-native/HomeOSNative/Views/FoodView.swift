@@ -10,7 +10,12 @@ struct FoodView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            VStack(spacing: 0) {
+                PageTitle(title: "食品")
+                    .padding(.horizontal, HomeMetrics.pageInset)
+                    .padding(.top, 18)
+                    .padding(.bottom, 8)
+                List {
                 if foods.isEmpty {
                     EmptyState(icon: "refrigerator.fill", title: search.isEmpty ? "还没有食品" : "没有搜索结果", message: "食品新增、详情和库存操作将在食品模块阶段完整实现。")
                         .listRowBackground(Color.clear)
@@ -29,13 +34,12 @@ struct FoodView: View {
                         .padding(.vertical, 4)
                     }
                 }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
             .background(HomeTheme.background)
-            .navigationTitle("食品")
             .searchable(text: $search, prompt: "搜索食品")
-            .toolbar { Button(action: NativeHaptics.tap) { Image(systemName: "plus") } }
         }
     }
 }

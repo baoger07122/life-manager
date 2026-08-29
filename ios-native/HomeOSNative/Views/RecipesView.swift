@@ -5,7 +5,12 @@ struct RecipesView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            VStack(spacing: 0) {
+                PageTitle(title: "菜谱")
+                    .padding(.horizontal, HomeMetrics.pageInset)
+                    .padding(.top, 18)
+                    .padding(.bottom, 8)
+                List {
                 if store.data.recipes.isEmpty {
                     EmptyState(icon: "list.clipboard.fill", title: "还没有菜谱", message: "我的菜谱、收藏、食材库和三餐计划将在菜谱阶段完整实现。")
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
@@ -17,10 +22,11 @@ struct RecipesView: View {
                         }.padding(.vertical, 5)
                     }
                 }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
-            .listStyle(.plain).scrollContentBackground(.hidden).background(HomeTheme.background)
-            .navigationTitle("菜谱")
-            .toolbar { Button(action: NativeHaptics.tap) { Image(systemName: "plus") } }
+            .background(HomeTheme.background)
         }
     }
 }

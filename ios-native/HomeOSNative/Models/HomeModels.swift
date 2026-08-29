@@ -306,6 +306,34 @@ struct CategoryDefinition: Codable, Hashable {
     var icon: String
 }
 
+enum ManagedCategoryModule: String, Codable, CaseIterable, Identifiable {
+    case pet
+    case food
+    case recipe
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .pet: "宠物"
+        case .food: "食品"
+        case .recipe: "菜谱"
+        }
+    }
+}
+
+struct ManagedCategory: Codable, Identifiable, Hashable {
+    var id: String
+    var module: ManagedCategoryModule
+    var parentID: String?
+    var name: String
+    var icon: String
+    var sortOrder: Int
+    var isSystem: Bool
+    var capabilityKey: String?
+    var isArchived: Bool
+}
+
 struct ExpiryThresholds: Codable, Hashable {
     var milk: Int
     var eggs: Int
@@ -354,6 +382,7 @@ struct HomeSettings: Codable, Hashable {
     var expiryReminderEnabled: Bool?
     var expiryThresholds: ExpiryThresholds?
     var petEventCollapsedDateGroups: [String: Bool]?
+    var managedCategories: [ManagedCategory]?
 
     static let standard = HomeSettings(
         threshold: 15,
@@ -371,7 +400,8 @@ struct HomeSettings: Codable, Hashable {
         recipeCollections: ["收藏", "家常菜", "减脂餐", "想尝试"],
         expiryReminderEnabled: true,
         expiryThresholds: .standard,
-        petEventCollapsedDateGroups: [:]
+        petEventCollapsedDateGroups: [:],
+        managedCategories: nil
     )
 }
 

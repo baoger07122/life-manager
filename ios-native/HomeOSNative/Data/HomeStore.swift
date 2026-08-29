@@ -30,7 +30,7 @@ final class HomeStore: ObservableObject {
         }
         do {
             let decoded = try decoder.decode(HomeBackup.self, from: stored)
-            let migrated = migratedPetInventory(decoded)
+            let migrated = normalizedCategories(in: migratedPetInventory(decoded))
             data = migrated
             if migrated != decoded { _ = commit(migrated) }
         } catch {
@@ -40,7 +40,7 @@ final class HomeStore: ObservableObject {
     }
 
     func replace(with backup: HomeBackup) {
-        commit(backup)
+        commit(normalizedCategories(in: backup))
     }
 
     func clearAll() {
@@ -52,7 +52,7 @@ final class HomeStore: ObservableObject {
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         do {
             let imported = try decoder.decode(HomeBackup.self, from: Data(contentsOf: url))
-            replace(with: migratedPetInventory(imported))
+            replace(with: normalizedCategories(in: migratedPetInventory(imported)))
             NativeHaptics.success()
         } catch {
             lastError = "备份导入失败：\(error.localizedDescription)"
@@ -97,6 +97,117 @@ final class HomeStore: ObservableObject {
 
     var activePetItems: [PetItem] {
         data.petItems.filter { !$0.isArchived }
+    }
+
+    func categories(for module: ManagedCategoryModule, parentID: String? = nil) -> [ManagedCategory] {
+        let source = data.settings.managedCategories ?? defaultManagedCategories(for: data)
+        return source
+            .filter { $0.module == module && $0.parentID == parentID && !$0.isArchived }
+            .sorted { $0.sortOrder == $1.sortOrder ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : $0.sortOrder < $1.sortOrder }
+    }
+
+    func petRootCategory(capabilityKey: String) -> ManagedCategory? {
+        categories(for: .pet).first { $0.capabilityKey == capabilityKey }
+    }
+
+    func addManagedCategory(module: ManagedCategoryModule, parentID: String?, name: String, icon: String? = nil) -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return fail("分类名称不能为空") }
+        var next = normalizedCategories(in: data)
+        let siblings = (next.settings.managedCategories ?? []).filter {
+            $0.module == module && $0.parentID == parentID && !$0.isArchived
+        }
+        guard !siblings.contains(where: { $0.name.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
+            return fail("同一级分类名称不能重复")
+        }
+        if let parentID {
+            guard (next.settings.managedCategories ?? []).contains(where: { $0.id == parentID && $0.module == module && !$0.isArchived }) else {
+                return fail("找不到一级分类")
+            }
+        }
+        next.settings.managedCategories?.append(ManagedCategory(
+            id: UUID().uuidString, module: module, parentID: parentID, name: cleanName,
+            icon: icon ?? defaultCategoryIcon(module), sortOrder: siblings.count, isSystem: false,
+            capabilityKey: nil, isArchived: false
+        ))
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func renameManagedCategory(id: String, name: String) -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return fail("分类名称不能为空") }
+        var next = normalizedCategories(in: data)
+        guard let index = next.settings.managedCategories?.firstIndex(where: { $0.id == id }) else { return fail("找不到分类") }
+        let category = next.settings.managedCategories![index]
+        guard !(next.settings.managedCategories ?? []).contains(where: {
+            $0.id != id && $0.module == category.module && $0.parentID == category.parentID && !$0.isArchived
+                && $0.name.caseInsensitiveCompare(cleanName) == .orderedSame
+        }) else { return fail("同一级分类名称不能重复") }
+        let oldName = category.name
+        next.settings.managedCategories![index].name = cleanName
+
+        switch category.module {
+        case .pet:
+            if category.parentID == nil {
+                for itemIndex in next.petItems.indices where next.petItems[itemIndex].resolvedPrimaryCategory == oldName {
+                    next.petItems[itemIndex].primaryCategory = cleanName
+                }
+            } else {
+                for itemIndex in next.petItems.indices where next.petItems[itemIndex].resolvedSecondaryCategory == oldName {
+                    next.petItems[itemIndex].secondaryCategory = cleanName
+                    next.petItems[itemIndex].type = cleanName
+                }
+            }
+        case .food:
+            for itemIndex in next.foods.indices where next.foods[itemIndex].category == oldName { next.foods[itemIndex].category = cleanName }
+            next.settings.foodCategoryOrder = next.settings.foodCategoryOrder?.map { $0 == oldName ? cleanName : $0 }
+            next.settings.foodCategories = next.settings.foodCategories?.map { definition in
+                definition.name == oldName ? CategoryDefinition(name: cleanName, icon: definition.icon) : definition
+            }
+        case .recipe:
+            for itemIndex in next.recipes.indices where next.recipes[itemIndex].collection == oldName { next.recipes[itemIndex].collection = cleanName }
+            next.settings.recipeCollections = next.settings.recipeCollections?.map { $0 == oldName ? cleanName : $0 }
+        }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func setManagedCategoryIcon(id: String, icon: String) -> Bool {
+        var next = normalizedCategories(in: data)
+        guard let index = next.settings.managedCategories?.firstIndex(where: { $0.id == id }) else { return fail("找不到分类") }
+        next.settings.managedCategories![index].icon = icon
+        return commit(next)
+    }
+
+    func deleteManagedCategory(id: String) -> Bool {
+        var next = normalizedCategories(in: data)
+        guard let index = next.settings.managedCategories?.firstIndex(where: { $0.id == id }) else { return fail("找不到分类") }
+        let category = next.settings.managedCategories![index]
+        guard !category.isSystem else { return fail("系统一级分类可改名和排序，但不能删除") }
+        guard !(next.settings.managedCategories ?? []).contains(where: { $0.parentID == id && !$0.isArchived }) else {
+            return fail("请先处理该分类下的二级分类")
+        }
+        guard managedCategoryUsageCount(category) == 0 else {
+            return fail("该分类仍有关联内容，请先修改关联内容的分类")
+        }
+        next.settings.managedCategories![index].isArchived = true
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func reorderManagedCategories(module: ManagedCategoryModule, parentID: String?, orderedIDs: [String]) {
+        var next = normalizedCategories(in: data)
+        for (order, id) in orderedIDs.enumerated() {
+            guard let index = next.settings.managedCategories?.firstIndex(where: {
+                $0.id == id && $0.module == module && $0.parentID == parentID
+            }) else { continue }
+            next.settings.managedCategories![index].sortOrder = order
+        }
+        if commit(next) { NativeHaptics.selection() }
     }
 
     func petInventory(for productID: String, in backup: HomeBackup? = nil) -> Double {
@@ -605,6 +716,85 @@ final class HomeStore: ObservableObject {
         if value.contains("冻干") { return "冻干" }
         if value.contains("汤罐") { return "汤罐" }
         return item.type.contains("食品") ? "其他食品" : "其他用品"
+    }
+
+    private func normalizedCategories(in backup: HomeBackup) -> HomeBackup {
+        var next = backup
+        var categories = next.settings.managedCategories ?? defaultManagedCategories(for: next)
+
+        let petRoots = categories.filter { $0.module == .pet && $0.parentID == nil }
+        let foodRoot = petRoots.first { $0.capabilityKey == "petFood" }
+        let supplyRoot = petRoots.first { $0.capabilityKey == "petSupply" }
+        for item in next.petItems where !item.isArchived {
+            let primaryName = item.resolvedPrimaryCategory
+            let capability = primaryName.contains("食品") ? "petFood" : "petSupply"
+            guard let root = capability == "petFood" ? foodRoot : supplyRoot else { continue }
+            let secondaryName = item.resolvedSecondaryCategory
+            if !categories.contains(where: {
+                $0.module == .pet && $0.parentID == root.id && !$0.isArchived
+                    && $0.name.caseInsensitiveCompare(secondaryName) == .orderedSame
+            }) {
+                let order = categories.filter { $0.module == .pet && $0.parentID == root.id }.count
+                categories.append(ManagedCategory(
+                    id: "pet-imported-\(UUID().uuidString)", module: .pet, parentID: root.id,
+                    name: secondaryName, icon: "tag.fill", sortOrder: order,
+                    isSystem: false, capabilityKey: nil, isArchived: false
+                ))
+            }
+        }
+        next.settings.managedCategories = categories
+        return next
+    }
+
+    private func defaultManagedCategories(for backup: HomeBackup) -> [ManagedCategory] {
+        func unique(_ names: [String]) -> [String] {
+            var seen = Set<String>()
+            return names.filter { !$0.isEmpty && seen.insert($0).inserted }
+        }
+        let petFoodID = "pet-root-food"
+        let petSupplyID = "pet-root-supply"
+        var values: [ManagedCategory] = [
+            ManagedCategory(id: petFoodID, module: .pet, parentID: nil, name: "宠物食品", icon: "takeoutbag.and.cup.and.straw.fill", sortOrder: 0, isSystem: true, capabilityKey: "petFood", isArchived: false),
+            ManagedCategory(id: petSupplyID, module: .pet, parentID: nil, name: "宠物用品", icon: "shippingbox.fill", sortOrder: 1, isSystem: true, capabilityKey: "petSupply", isArchived: false)
+        ]
+        for (index, name) in ["猫粮", "主食罐", "冻干", "零食罐", "汤罐", "其他食品"].enumerated() {
+            values.append(ManagedCategory(id: "pet-food-\(index)", module: .pet, parentID: petFoodID, name: name, icon: "takeoutbag.and.cup.and.straw.fill", sortOrder: index, isSystem: false, capabilityKey: nil, isArchived: false))
+        }
+        for (index, name) in ["猫砂", "除臭用品", "清洁用品", "其他用品"].enumerated() {
+            values.append(ManagedCategory(id: "pet-supply-\(index)", module: .pet, parentID: petSupplyID, name: name, icon: "shippingbox.fill", sortOrder: index, isSystem: false, capabilityKey: nil, isArchived: false))
+        }
+
+        let foodNames = unique((backup.settings.foodCategoryOrder ?? []) + (backup.settings.foodCategories ?? []).map(\.name) + backup.foods.map(\.category))
+        for (index, name) in (foodNames.isEmpty ? ["蔬菜", "水果", "肉类", "乳制品", "包装食品", "其他"] : foodNames).enumerated() {
+            values.append(ManagedCategory(id: "food-\(index)", module: .food, parentID: nil, name: name, icon: "refrigerator.fill", sortOrder: index, isSystem: false, capabilityKey: nil, isArchived: false))
+        }
+        let recipeNames = unique((backup.settings.recipeCollections ?? []) + backup.recipes.compactMap(\.collection))
+        for (index, name) in (recipeNames.isEmpty ? ["收藏", "家常菜", "减脂餐", "想尝试"] : recipeNames).enumerated() {
+            values.append(ManagedCategory(id: "recipe-\(index)", module: .recipe, parentID: nil, name: name, icon: "list.bullet.clipboard.fill", sortOrder: index, isSystem: false, capabilityKey: nil, isArchived: false))
+        }
+        return values
+    }
+
+    private func defaultCategoryIcon(_ module: ManagedCategoryModule) -> String {
+        switch module {
+        case .pet: "tag.fill"
+        case .food: "refrigerator.fill"
+        case .recipe: "list.bullet.clipboard.fill"
+        }
+    }
+
+    private func managedCategoryUsageCount(_ category: ManagedCategory) -> Int {
+        switch category.module {
+        case .pet:
+            if category.parentID == nil {
+                return activePetItems.filter { $0.resolvedPrimaryCategory == category.name }.count
+            }
+            return activePetItems.filter { $0.resolvedSecondaryCategory == category.name }.count
+        case .food:
+            return data.foods.filter { $0.category == category.name }.count
+        case .recipe:
+            return data.recipes.filter { $0.collection == category.name }.count
+        }
     }
 
     @discardableResult

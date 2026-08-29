@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UIKit
 
 struct PetItemEditorView: View {
     @EnvironmentObject private var store: HomeStore
@@ -13,61 +14,195 @@ struct PetItemEditorView: View {
     @State private var spec = ""
     @State private var unit = "袋"
     @State private var initialStock = 0.0
-    @State private var lowStock = 0.0
+    @State private var purchaseTotalText = ""
     @State private var notes = ""
-    @State private var foodRole = "主食"
     @State private var litterKind = ""
     @State private var conversion = 0.0
     @State private var imageReference: String?
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var loaded = false
+    @State private var sheet: PetItemEditorSheet?
 
     init(itemID: String? = nil) { self.itemID = itemID }
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
     private var selectedPrimary: ManagedCategory? { primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first }
     private var secondaryCategories: [ManagedCategory] { selectedPrimary.map { store.categories(for: .pet, parentID: $0.id) } ?? [] }
     private var selectedSecondary: ManagedCategory? { secondaryCategories.first { $0.id == secondaryID } ?? secondaryCategories.first }
-    private var isPetFood: Bool { selectedPrimary?.capabilityKey == "petFood" }
+    private var purchaseTotal: Double? {
+        let normalized = purchaseTotalText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value > 0 else { return nil }
+        return value
+    }
+    private var calculatedUnitPrice: Double? {
+        guard let purchaseTotal, initialStock > 0 else { return nil }
+        return purchaseTotal / initialStock
+    }
 
     var body: some View {
-        Form {
-            Section("分类") {
-                Picker("一级分类", selection: $primaryID) { ForEach(primaryCategories) { Text($0.name).tag($0.id) } }
-                Picker("二级分类", selection: $secondaryID) { ForEach(secondaryCategories) { Text($0.name).tag($0.id) } }
-                NavigationLink("管理分类") { CategoryManagementView(initialModule: .pet) }
-            }
-            Section("产品档案") {
-                TextField("产品名称", text: $name).font(HomeTypography.body)
-                TextField("品牌（可选）", text: $brand).font(HomeTypography.body)
-                TextField("口味、配方或型号（可选）", text: $variant).font(HomeTypography.body)
-                TextField("规格（可选）", text: $spec).font(HomeTypography.body)
-                TextField("库存单位", text: $unit).font(HomeTypography.body)
-                TextField("低库存提醒值（可选）", value: $lowStock, format: .number).keyboardType(.decimalPad)
-                if itemID == nil { TextField("初始库存", value: $initialStock, format: .number).keyboardType(.decimalPad) }
-                TextField("备注（可选）", text: $notes, axis: .vertical).font(HomeTypography.body)
-            }
-            if isPetFood {
-                Section("食品信息") { Picker("属性", selection: $foodRole) { Text("主食").tag("主食"); Text("零食").tag("零食") } }
-            }
-            if selectedSecondary?.name == "猫砂" {
-                Section("猫砂信息") {
-                    TextField("猫砂种类，例如矿砂", text: $litterKind).font(HomeTypography.body)
-                    TextField("每个库存单位折合 kg", value: $conversion, format: .number.precision(.fractionLength(0...4))).keyboardType(.decimalPad)
+        ScrollView {
+            VStack(spacing: HomeMetrics.sectionSpacing) {
+                imageCard
+
+                Button { sheet = .category; NativeHaptics.selection() } label: {
+                    HomeCard(padding: 0) {
+                        HStack(spacing: 10) {
+                            Text("分类").font(HomeTypography.cardTitle)
+                            Spacer()
+                            Text(categorySummary).font(HomeTypography.body).foregroundStyle(HomeTheme.muted).lineLimit(1)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+                        }
+                        .padding(.horizontal, HomeMetrics.cardPadding)
+                        .frame(minHeight: 56)
+                    }
                 }
-            }
-            Section("图片") {
-                PhotosPicker(selection: $selectedPhoto, matching: .images) { Label(imageReference == nil ? "选择图片" : "更换图片", systemImage: "photo") }
-                if let imageReference {
-                    PetStoredImage(reference: imageReference).frame(height: 180).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    Button("删除图片", role: .destructive) { self.imageReference = nil }
+                .buttonStyle(.plain)
+
+                HomeCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("基本信息").font(HomeTypography.sectionTitle).padding(.bottom, 8)
+                        editorButtonRow(title: "品牌", value: brand.isEmpty ? "无品牌" : brand) { sheet = .brand }
+                        divider
+                        editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
+                        divider
+                        editorTextRow(title: "规格 / 型号", placeholder: "选填", text: $spec)
+                        divider
+                        editorTextRow(title: "库存单位", placeholder: "例如 kg、袋、罐", text: $unit)
+                    }
                 }
+
+                HomeCard {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("库存设置").font(HomeTypography.sectionTitle).padding(.bottom, 8)
+                        if itemID == nil {
+                            editorNumberRow(title: "初始库存", value: $initialStock)
+                            divider
+                            editorTextRow(title: "本次购入总额（选填）", placeholder: "¥0", text: $purchaseTotalText, keyboard: .decimalPad)
+                            divider
+                            HStack {
+                                Text("折算单价").font(HomeTypography.body)
+                                Spacer()
+                                Text(calculatedUnitPrice.map { "¥\($0.formatted(.number.precision(.fractionLength(2))))/\(unit.isEmpty ? "单位" : unit)" } ?? "自动计算")
+                                    .font(HomeTypography.body)
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                            .frame(minHeight: HomeMetrics.controlHeight)
+                        } else {
+                            Text("库存数量请通过入库、出库或修正库存进行调整。")
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
+                if selectedSecondary?.name == "猫砂" {
+                    HomeCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("猫砂信息").font(HomeTypography.sectionTitle).padding(.bottom, 8)
+                            editorTextRow(title: "猫砂种类", placeholder: "例如矿砂", text: $litterKind)
+                            divider
+                            editorNumberRow(title: "每个库存单位折合 kg", value: $conversion)
+                        }
+                    }
+                }
+
+                HomeCard {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("备注").font(HomeTypography.sectionTitle)
+                        TextField("选填", text: $notes, axis: .vertical)
+                            .font(HomeTypography.body)
+                            .lineLimit(3...6)
+                            .textFieldStyle(HomeTextFieldStyle())
+                    }
+                }
+
+                Button("保存", action: save)
+                    .buttonStyle(HomePrimaryButtonStyle())
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .padding(.horizontal, 42)
+            }
+            .padding(.horizontal, HomeMetrics.pageInset)
+            .padding(.vertical, 16)
+        }
+        .background(HomeTheme.background)
+        .navigationTitle(itemID == nil ? "新增宠物物品" : "编辑宠物物品")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { loadExisting() }
+        .onChange(of: selectedPhoto) { _, photo in Task { if let data = try? await photo?.loadTransferable(type: Data.self) { imageReference = "data:image/jpeg;base64," + data.base64EncodedString() } } }
+        .sheet(item: $sheet) { destination in
+            switch destination {
+            case .category:
+                PetCategorySelectionSheet(primaryID: $primaryID, secondaryID: $secondaryID)
+            case .brand:
+                PetBrandSelectionSheet(brand: $brand)
             }
         }
-        .navigationTitle(itemID == nil ? "新增宠物物品" : "编辑宠物物品").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("保存", action: save).disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) } }
-        .task { loadExisting() }
-        .onChange(of: primaryID) { _, _ in secondaryID = secondaryCategories.first?.id ?? "" }
-        .onChange(of: selectedPhoto) { _, photo in Task { if let data = try? await photo?.loadTransferable(type: Data.self) { imageReference = "data:image/jpeg;base64," + data.base64EncodedString() } } }
+    }
+
+    private var categorySummary: String {
+        [selectedPrimary?.name, selectedSecondary?.name].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private var imageCard: some View {
+        HomeCard {
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Group {
+                    if let imageReference {
+                        PetStoredImage(reference: imageReference)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "pawprint.fill").font(.system(size: 34)).foregroundStyle(HomeTheme.muted)
+                            Label("添加物品图片", systemImage: "photo").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 180)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var divider: some View { Divider().overlay(HomeTheme.line) }
+
+    private func editorButtonRow(title: String, value: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title).font(HomeTypography.body).foregroundStyle(HomeTheme.ink)
+                Spacer()
+                Text(value).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .frame(minHeight: HomeMetrics.controlHeight)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func editorTextRow(title: String, placeholder: String, text: Binding<String>, keyboard: UIKeyboardType = .default) -> some View {
+        HStack(spacing: 12) {
+            Text(title).font(HomeTypography.body)
+            Spacer()
+            TextField(placeholder, text: text)
+                .font(HomeTypography.body)
+                .keyboardType(keyboard)
+                .multilineTextAlignment(.trailing)
+        }
+        .frame(minHeight: HomeMetrics.controlHeight)
+    }
+
+    private func editorNumberRow(title: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 12) {
+            Text(title).font(HomeTypography.body)
+            Spacer()
+            TextField("0", value: value, format: .number.precision(.fractionLength(0...4)))
+                .font(HomeTypography.body)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+        }
+        .frame(minHeight: HomeMetrics.controlHeight)
     }
 
     private func loadExisting() {
@@ -83,8 +218,8 @@ struct PetItemEditorView: View {
         secondaryID = store.categories(for: .pet, parentID: primaryID).first(where: { $0.name == item.resolvedSecondaryCategory })?.id
             ?? store.categories(for: .pet, parentID: primaryID).first?.id ?? ""
         name = item.name; brand = item.brand
-        variant = item.variant ?? item.model; spec = item.spec; unit = item.unit; lowStock = item.lowStockThreshold ?? 0
-        notes = item.notes ?? ""; foodRole = item.foodRole ?? "主食"; litterKind = item.litterKind ?? ""
+        variant = item.variant ?? item.model; spec = item.spec.isEmpty ? variant : item.spec; unit = item.unit
+        notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
         conversion = item.unitConversionToBase ?? 0; imageReference = item.image
     }
 
@@ -94,13 +229,192 @@ struct PetItemEditorView: View {
         guard let selectedPrimary, let selectedSecondary else { return }
         var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: max(initialStock, 0), unit: unit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
         let savedSecondary = selectedSecondary.name
-        item.type = savedSecondary; item.name = name.trimmingCharacters(in: .whitespacesAndNewlines); item.brand = brand; item.model = variant; item.spec = spec
+        item.type = savedSecondary; item.name = name.trimmingCharacters(in: .whitespacesAndNewlines); item.brand = brand; item.model = spec; item.spec = spec
         item.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines); item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
-        item.variant = variant.isEmpty ? nil : variant; item.lowStockThreshold = lowStock > 0 ? lowStock : nil; item.notes = notes.isEmpty ? nil : notes
-        item.foodRole = isPetFood ? foodRole : nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
+        item.variant = spec.isEmpty ? nil : spec; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes
+        item.foodRole = nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
+        if itemID == nil, let calculatedUnitPrice { item.price = calculatedUnitPrice }
         item.createdAt = item.createdAt ?? now; item.updatedAt = now
-        store.upsertPetItem(item); NativeHaptics.success(); dismiss()
+        store.upsertPetItem(item, openingTotalPrice: itemID == nil ? purchaseTotal : nil); NativeHaptics.success(); dismiss()
+    }
+}
+
+private enum PetItemEditorSheet: String, Identifiable {
+    case category, brand
+    var id: String { rawValue }
+}
+
+private struct PetCategorySelectionSheet: View {
+    @EnvironmentObject private var store: HomeStore
+    @Environment(\.dismiss) private var dismiss
+    @Binding private var primaryID: String
+    @Binding private var secondaryID: String
+    @State private var draftPrimaryID: String
+    @State private var draftSecondaryID: String
+
+    init(primaryID: Binding<String>, secondaryID: Binding<String>) {
+        _primaryID = primaryID
+        _secondaryID = secondaryID
+        _draftPrimaryID = State(initialValue: primaryID.wrappedValue)
+        _draftSecondaryID = State(initialValue: secondaryID.wrappedValue)
+    }
+
+    private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
+    private var secondaryCategories: [ManagedCategory] { store.categories(for: .pet, parentID: draftPrimaryID) }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 0) {
+                    ForEach(primaryCategories) { category in
+                        Button {
+                            draftPrimaryID = category.id
+                            draftSecondaryID = store.categories(for: .pet, parentID: category.id).first?.id ?? ""
+                            NativeHaptics.selection()
+                        } label: {
+                            HomeUnderlineTab(title: category.name, selected: draftPrimaryID == category.id, prominent: true)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Divider()
+                Text("具体分类").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                HomeTagFlowLayout(spacing: 8) {
+                    ForEach(secondaryCategories) { category in
+                        Button {
+                            draftSecondaryID = category.id
+                            NativeHaptics.selection()
+                        } label: {
+                            Text(category.name)
+                                .font(HomeTypography.body)
+                                .foregroundStyle(draftSecondaryID == category.id ? HomeTheme.blue : HomeTheme.ink)
+                                .padding(.horizontal, 18)
+                                .frame(height: 40)
+                                .background(draftSecondaryID == category.id ? HomeTheme.blue.opacity(0.10) : HomeTheme.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Spacer(minLength: 0)
+                Button("完成") {
+                    primaryID = draftPrimaryID
+                    secondaryID = draftSecondaryID
+                    NativeHaptics.success()
+                    dismiss()
+                }
+                .buttonStyle(HomePrimaryButtonStyle())
+            }
+            .padding(.horizontal, HomeMetrics.pageInset)
+            .padding(.bottom, 16)
+            .navigationTitle("选择分类")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .presentationDetents([.height(390)])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+private struct PetBrandSelectionSheet: View {
+    @EnvironmentObject private var store: HomeStore
+    @Environment(\.dismiss) private var dismiss
+    @Binding private var brand: String
+    @State private var query = ""
+    @State private var draftBrand: String
+
+    init(brand: Binding<String>) {
+        _brand = brand
+        _draftBrand = State(initialValue: brand.wrappedValue)
+    }
+
+    private var allBrands: [ManagedBrand] { store.brands(for: .pet) }
+    private var filteredBrands: [ManagedBrand] {
+        query.isEmpty ? allBrands : allBrands.filter { $0.name.localizedCaseInsensitiveContains(query) }
+    }
+    private var recentBrands: [ManagedBrand] { Array(allBrands.prefix(3)) }
+    private var cleanQuery: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var canAddQuery: Bool {
+        !cleanQuery.isEmpty && !allBrands.contains { $0.name.caseInsensitiveCompare(cleanQuery) == .orderedSame }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(HomeTheme.muted)
+                    TextField("搜索品牌", text: $query).font(HomeTypography.body)
+                    if !query.isEmpty {
+                        Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .frame(height: HomeMetrics.controlHeight)
+                .background(HomeTheme.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                if query.isEmpty, !recentBrands.isEmpty {
+                    brandSection(title: "最近使用", values: recentBrands)
+                }
+                brandSection(title: query.isEmpty ? "全部品牌" : "搜索结果", values: filteredBrands)
+
+                if canAddQuery {
+                    Button {
+                        if store.addManagedBrand(name: cleanQuery, modules: [.pet]) {
+                            draftBrand = cleanQuery
+                            query = ""
+                        }
+                    } label: {
+                        Label("新增品牌“\(cleanQuery)”", systemImage: "plus.circle.fill")
+                            .font(HomeTypography.body)
+                    }
+                }
+                Spacer(minLength: 0)
+                Button("完成") {
+                    brand = draftBrand
+                    NativeHaptics.success()
+                    dismiss()
+                }
+                .buttonStyle(HomePrimaryButtonStyle())
+            }
+            .padding(.horizontal, HomeMetrics.pageInset)
+            .padding(.bottom, 16)
+            .navigationTitle("选择品牌")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink("管理") { BrandManagementView() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func brandSection(title: String, values: [ManagedBrand]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+            HomeTagFlowLayout(spacing: 8) {
+                ForEach(values) { value in brandChip(value.name) }
+                if title == "全部品牌" { brandChip("无品牌") }
+            }
+        }
+    }
+
+    private func brandChip(_ value: String) -> some View {
+        let storedValue = value == "无品牌" ? "" : value
+        let selected = draftBrand.caseInsensitiveCompare(storedValue) == .orderedSame
+        return Button {
+            draftBrand = storedValue
+            NativeHaptics.selection()
+        } label: {
+            Text(value)
+                .font(HomeTypography.supporting.weight(.medium))
+                .foregroundStyle(selected ? HomeTheme.blue : HomeTheme.ink)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .background(selected ? HomeTheme.blue.opacity(0.10) : HomeTheme.background, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 

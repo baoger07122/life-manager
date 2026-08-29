@@ -36,5 +36,9 @@ settings{}
 - `petInventoryTransactions[]`：宠物物品入库、出库、调整和猫砂联动流水；当前库存由 `quantityChange` 求和。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
 - `petPalatabilityReviews[]`：仅食品使用的分宠物适口性评价，保留宠物名称快照。
+- `settings.managedBrands[]`：可用于宠物或食品模块的品牌库，包含适用范围与停用状态；旧备份缺少时由已有品牌和默认品牌生成。
+- `petInventoryTransactions[].totalPrice` 与 `unitPrice`：新建物品的初始库存也作为入库流水记录可选购入总额和自动折算单价。
+
+`petItems[].lowStockThreshold` 和 `foodRole` 仅为旧备份宽容读取字段；当前原生新建/编辑页面不再写入预警库存或食品用途。
 
 旧备份缺少上述字段时使用空集合或 `nil`，不得因此拒绝导入。宠物用品历史字段缺失时使用安全默认值；导出时保留原有顶层集合和新增集合。

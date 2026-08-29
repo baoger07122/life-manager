@@ -99,6 +99,99 @@ final class HomeStore: ObservableObject {
         data.petItems.filter { !$0.isArchived }
     }
 
+    func brands(for module: ManagedCategoryModule) -> [ManagedBrand] {
+        let source = data.settings.managedBrands ?? defaultManagedBrands(for: data)
+        return source
+            .filter { !$0.isArchived && $0.modules.contains(module) }
+            .sorted {
+                let leftCount = brandUsageCount(named: $0.name, module: module)
+                let rightCount = brandUsageCount(named: $1.name, module: module)
+                return leftCount == rightCount
+                    ? $0.name.localizedStandardCompare($1.name) == .orderedAscending
+                    : leftCount > rightCount
+            }
+    }
+
+    func addManagedBrand(name: String, modules: [ManagedCategoryModule]) -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return fail("品牌名称不能为空") }
+        guard !modules.isEmpty else { return fail("请至少选择一个适用范围") }
+        var next = data
+        var brands = next.settings.managedBrands ?? defaultManagedBrands(for: next)
+        guard !brands.contains(where: { !$0.isArchived && $0.name.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
+            return fail("品牌名称不能重复")
+        }
+        let now = Date().timeIntervalSince1970
+        brands.append(ManagedBrand(id: UUID().uuidString, name: cleanName, modules: modules, isArchived: false, createdAt: now, updatedAt: now))
+        next.settings.managedBrands = brands
+        return commit(next)
+    }
+
+    func renameManagedBrand(id: String, name: String) -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return fail("品牌名称不能为空") }
+        var next = data
+        var brands = next.settings.managedBrands ?? defaultManagedBrands(for: next)
+        guard let index = brands.firstIndex(where: { $0.id == id }) else { return fail("找不到品牌") }
+        guard !brands.contains(where: { $0.id != id && !$0.isArchived && $0.name.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
+            return fail("品牌名称不能重复")
+        }
+        let oldName = brands[index].name
+        brands[index].name = cleanName
+        brands[index].updatedAt = Date().timeIntervalSince1970
+        next.petItems.indices.filter { next.petItems[$0].brand.caseInsensitiveCompare(oldName) == .orderedSame }.forEach { next.petItems[$0].brand = cleanName }
+        next.foods.indices.filter { next.foods[$0].brand.caseInsensitiveCompare(oldName) == .orderedSame }.forEach { next.foods[$0].brand = cleanName }
+        next.settings.managedBrands = brands
+        return commit(next)
+    }
+
+    func setManagedBrandModules(id: String, modules: [ManagedCategoryModule]) -> Bool {
+        guard !modules.isEmpty else { return fail("请至少选择一个适用范围") }
+        var next = data
+        var brands = next.settings.managedBrands ?? defaultManagedBrands(for: next)
+        guard let index = brands.firstIndex(where: { $0.id == id }) else { return fail("找不到品牌") }
+        brands[index].modules = modules
+        brands[index].updatedAt = Date().timeIntervalSince1970
+        next.settings.managedBrands = brands
+        return commit(next)
+    }
+
+    func archiveManagedBrand(id: String) -> Bool {
+        var next = data
+        var brands = next.settings.managedBrands ?? defaultManagedBrands(for: next)
+        guard let index = brands.firstIndex(where: { $0.id == id }) else { return fail("找不到品牌") }
+        brands[index].isArchived = true
+        brands[index].updatedAt = Date().timeIntervalSince1970
+        next.settings.managedBrands = brands
+        return commit(next)
+    }
+
+    func mergeManagedBrand(sourceID: String, destinationID: String) -> Bool {
+        guard sourceID != destinationID else { return fail("请选择不同的目标品牌") }
+        var next = data
+        var brands = next.settings.managedBrands ?? defaultManagedBrands(for: next)
+        guard let sourceIndex = brands.firstIndex(where: { $0.id == sourceID }),
+              let destination = brands.first(where: { $0.id == destinationID && !$0.isArchived }) else { return fail("找不到品牌") }
+        let sourceName = brands[sourceIndex].name
+        next.petItems.indices.filter { next.petItems[$0].brand.caseInsensitiveCompare(sourceName) == .orderedSame }.forEach { next.petItems[$0].brand = destination.name }
+        next.foods.indices.filter { next.foods[$0].brand.caseInsensitiveCompare(sourceName) == .orderedSame }.forEach { next.foods[$0].brand = destination.name }
+        brands[sourceIndex].isArchived = true
+        brands[sourceIndex].updatedAt = Date().timeIntervalSince1970
+        next.settings.managedBrands = brands
+        return commit(next)
+    }
+
+    func brandUsageCount(named name: String, module: ManagedCategoryModule) -> Int {
+        switch module {
+        case .pet:
+            activePetItems.filter { $0.brand.caseInsensitiveCompare(name) == .orderedSame }.count
+        case .food:
+            data.foods.filter { $0.brand.caseInsensitiveCompare(name) == .orderedSame }.count
+        case .recipe:
+            0
+        }
+    }
+
     func categories(for module: ManagedCategoryModule, parentID: String? = nil) -> [ManagedCategory] {
         let source = data.settings.managedCategories ?? defaultManagedCategories(for: data)
         return source
@@ -365,7 +458,7 @@ final class HomeStore: ObservableObject {
         commit(next)
     }
 
-    func upsertPetItem(_ item: PetItem) {
+    func upsertPetItem(_ item: PetItem, openingTotalPrice: Double? = nil) {
         var next = data
         if let index = next.petItems.firstIndex(where: { $0.id == item.id }) {
             var saved = item
@@ -385,7 +478,8 @@ final class HomeStore: ObservableObject {
                     id: UUID().uuidString, productID: item.id, type: .inbound,
                     quantityChange: openingQuantity, quantityBefore: 0, quantityAfter: openingQuantity,
                     unit: item.unit, occurrenceDate: LitterPredictionService.format(Date()), reason: "初始库存",
-                    source: .manual, linkedOperationID: nil, totalPrice: nil, unitPrice: nil,
+                    source: .manual, linkedOperationID: nil, totalPrice: openingTotalPrice,
+                    unitPrice: openingTotalPrice.map { $0 / openingQuantity },
                     purchaseChannel: nil, expirationDate: item.expirationDate, note: nil,
                     createdAt: now, updatedAt: now
                 ))
@@ -773,6 +867,26 @@ final class HomeStore: ObservableObject {
             values.append(ManagedCategory(id: "recipe-\(index)", module: .recipe, parentID: nil, name: name, icon: "list.bullet.clipboard.fill", sortOrder: index, isSystem: false, capabilityKey: nil, isArchived: false))
         }
         return values
+    }
+
+    private func defaultManagedBrands(for backup: HomeBackup) -> [ManagedBrand] {
+        let now = Date().timeIntervalSince1970
+        let defaults = ["Orijen", "皇家", "渴望", "爱肯拿", "巅峰", "K9 Natural", "Instinct", "Nulo", "Wellness"]
+        let existingPet = backup.petItems.map(\.brand)
+        let existingFood = backup.foods.map(\.brand)
+        var names: [String] = []
+        for name in defaults + existingPet + existingFood {
+            let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleanName.isEmpty, !names.contains(where: { $0.caseInsensitiveCompare(cleanName) == .orderedSame }) else { continue }
+            names.append(cleanName)
+        }
+        return names.enumerated().map { index, name in
+            var modules: [ManagedCategoryModule] = []
+            if defaults.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame })
+                || existingPet.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) { modules.append(.pet) }
+            if existingFood.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) { modules.append(.food) }
+            return ManagedBrand(id: "brand-default-\(index)", name: name, modules: modules.isEmpty ? [.pet] : modules, isArchived: false, createdAt: now, updatedAt: now)
+        }
     }
 
     private func defaultCategoryIcon(_ module: ManagedCategoryModule) -> String {

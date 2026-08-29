@@ -334,6 +334,15 @@ struct ManagedCategory: Codable, Identifiable, Hashable {
     var isArchived: Bool
 }
 
+struct ManagedBrand: Codable, Identifiable, Hashable {
+    var id: String
+    var name: String
+    var modules: [ManagedCategoryModule]
+    var isArchived: Bool
+    var createdAt: Double
+    var updatedAt: Double
+}
+
 struct ExpiryThresholds: Codable, Hashable {
     var milk: Int
     var eggs: Int
@@ -383,6 +392,7 @@ struct HomeSettings: Codable, Hashable {
     var expiryThresholds: ExpiryThresholds?
     var petEventCollapsedDateGroups: [String: Bool]?
     var managedCategories: [ManagedCategory]?
+    var managedBrands: [ManagedBrand]?
 
     static let standard = HomeSettings(
         threshold: 15,
@@ -401,7 +411,8 @@ struct HomeSettings: Codable, Hashable {
         expiryReminderEnabled: true,
         expiryThresholds: .standard,
         petEventCollapsedDateGroups: [:],
-        managedCategories: nil
+        managedCategories: nil,
+        managedBrands: nil
     )
 }
 

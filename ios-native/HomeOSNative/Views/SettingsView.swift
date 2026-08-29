@@ -50,7 +50,12 @@ struct SettingsView: View {
                     } label: {
                         Label("分类管理", systemImage: "folder.fill")
                     }
-                } header: { settingsSectionTitle("分类") }
+                    NavigationLink {
+                        BrandManagementView()
+                    } label: {
+                        Label("品牌管理", systemImage: "tag.fill")
+                    }
+                } header: { settingsSectionTitle("分类与品牌") }
                 Section {
                     NavigationLink {
                         UIComponentLibraryView()

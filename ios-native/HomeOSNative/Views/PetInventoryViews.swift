@@ -13,7 +13,7 @@ struct PetItemEditorView: View {
     @State private var variant = ""
     @State private var spec = ""
     @State private var packageType = ""
-    @State private var unit = "袋"
+    @State private var unit = "件"
     @State private var initialStock = 0.0
     @State private var purchaseTotalText = ""
     @State private var notes = ""
@@ -23,6 +23,7 @@ struct PetItemEditorView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var loaded = false
     @State private var sheet: PetItemEditorSheet?
+    @State private var showDuplicateAlert = false
 
     init(itemID: String? = nil) { self.itemID = itemID }
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
@@ -65,11 +66,22 @@ struct PetItemEditorView: View {
                         divider
                         editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
                         divider
-                        editorTextRow(title: "包装形式", placeholder: "例如袋、罐、盒", text: $packageType)
+                        editorTextRow(title: selectedPrimary?.capabilityKey == "petFood" ? "口味" : "型号 / 款式", placeholder: "选填", text: $variant)
+                        divider
+                        packageTypeRow
                         divider
                         editorTextRow(title: "单件规格", placeholder: "例如5.4kg、185g", text: $spec)
                         divider
-                        editorTextRow(title: "库存单位", placeholder: "例如 kg、袋、罐", text: $unit)
+                        if packageType.isEmpty {
+                            editorTextRow(title: "库存单位", placeholder: "例如kg、件", text: $unit)
+                        } else {
+                            HStack {
+                                Text("库存单位").font(HomeTypography.body)
+                                Spacer()
+                                Text(packageType).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+                            }
+                            .frame(minHeight: HomeMetrics.controlHeight)
+                        }
                     }
                 }
 
@@ -114,9 +126,16 @@ struct PetItemEditorView: View {
                         Text("备注").font(HomeTypography.sectionTitle)
                         TextField("选填", text: $notes, axis: .vertical)
                             .font(HomeTypography.body)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(3...6)
-                            .textFieldStyle(HomeTextFieldStyle())
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(1...4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .frame(minHeight: 52, alignment: .leading)
+                            .background(HomeTheme.background, in: RoundedRectangle(cornerRadius: HomeMetrics.controlRadius, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: HomeMetrics.controlRadius, style: .continuous)
+                                    .stroke(HomeTheme.line, lineWidth: 0.6)
+                            }
                     }
                 }
 
@@ -133,6 +152,9 @@ struct PetItemEditorView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { loadExisting() }
         .onChange(of: selectedPhoto) { _, photo in Task { if let data = try? await photo?.loadTransferable(type: Data.self) { imageReference = "data:image/jpeg;base64," + data.base64EncodedString() } } }
+        .onChange(of: packageType) { _, value in
+            if !value.isEmpty { unit = value }
+        }
         .sheet(item: $sheet) { destination in
             switch destination {
             case .category:
@@ -140,6 +162,11 @@ struct PetItemEditorView: View {
             case .brand:
                 PetBrandSelectionSheet(brand: $brand)
             }
+        }
+        .alert("可能是重复物品", isPresented: $showDuplicateAlert) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text("已存在品牌、名称、口味、包装形式和规格完全相同的物品。不同口味请分别建立产品。")
         }
     }
 
@@ -171,6 +198,21 @@ struct PetItemEditorView: View {
     }
 
     private var divider: some View { Divider().overlay(HomeTheme.line) }
+
+    private var packageTypeRow: some View {
+        HStack {
+            Text("包装形式").font(HomeTypography.body)
+            Spacer()
+            Picker("包装形式", selection: $packageType) {
+                Text("未设置").tag("")
+                Text("袋").tag("袋")
+                Text("罐").tag("罐")
+            }
+            .pickerStyle(.menu)
+            .labelsHidden()
+        }
+        .frame(minHeight: HomeMetrics.controlHeight)
+    }
 
     private func editorButtonRow(title: String, value: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -222,7 +264,9 @@ struct PetItemEditorView: View {
         secondaryID = store.categories(for: .pet, parentID: primaryID).first(where: { $0.name == item.resolvedSecondaryCategory })?.id
             ?? store.categories(for: .pet, parentID: primaryID).first?.id ?? ""
         name = item.name; brand = item.brand
-        variant = item.variant ?? item.model; spec = item.spec.isEmpty ? variant : item.spec; unit = item.unit
+        let storedVariant = item.variant ?? item.model
+        variant = storedVariant.caseInsensitiveCompare(item.spec) == .orderedSame ? "" : storedVariant
+        spec = item.spec; unit = item.unit
         packageType = item.packageType ?? ""
         notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
         conversion = item.unitConversionToBase ?? 0; imageReference = item.image
@@ -232,12 +276,26 @@ struct PetItemEditorView: View {
         let existing = itemID.flatMap { id in store.data.petItems.first { $0.id == id } }
         let now = Date().timeIntervalSince1970
         guard let selectedPrimary, let selectedSecondary else { return }
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanVariant = variant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSpec = spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBrand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanPackageType = packageType.trimmingCharacters(in: .whitespacesAndNewlines)
+        let duplicate = store.activePetItems.contains { candidate in
+            candidate.id != (itemID ?? "")
+                && candidate.brand.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(cleanBrand) == .orderedSame
+                && candidate.name.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(cleanName) == .orderedSame
+                && (candidate.variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(cleanVariant) == .orderedSame
+                && candidate.spec.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare(cleanSpec) == .orderedSame
+                && (candidate.packageType ?? "") == cleanPackageType
+        }
+        guard !duplicate else { showDuplicateAlert = true; NativeHaptics.warning(); return }
         var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: max(initialStock, 0), unit: unit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
         let savedSecondary = selectedSecondary.name
-        item.type = savedSecondary; item.name = name.trimmingCharacters(in: .whitespacesAndNewlines); item.brand = brand; item.model = spec; item.spec = spec
-        item.unit = unit.trimmingCharacters(in: .whitespacesAndNewlines); item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
-        item.variant = spec.isEmpty ? nil : spec; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes
-        let cleanPackageType = packageType.trimmingCharacters(in: .whitespacesAndNewlines)
+        item.type = savedSecondary; item.name = cleanName; item.brand = cleanBrand; item.model = cleanVariant; item.spec = cleanSpec
+        item.unit = cleanPackageType.isEmpty ? unit.trimmingCharacters(in: .whitespacesAndNewlines) : cleanPackageType
+        item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
+        item.variant = cleanVariant.isEmpty ? nil : cleanVariant; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes
         item.packageType = cleanPackageType.isEmpty ? nil : cleanPackageType
         item.foodRole = nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
@@ -433,7 +491,7 @@ struct PetInventoryEditorView: View {
     let mode: Mode
     var quick = false
     @State private var quantity = 0.0
-    @State private var target = 0.0
+    @State private var targetText = ""
     @State private var date = Date()
     @State private var reason = ""
     @State private var totalPriceText = ""
@@ -441,6 +499,7 @@ struct PetInventoryEditorView: View {
     @State private var note = ""
     @State private var hasExpiration = false
     @State private var expirationDate = Date()
+    @State private var localError: String?
 
     private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
     private var title: String { mode == .inbound ? "入库" : mode == .outbound ? (quick ? "快速出库" : "出库") : "修正库存" }
@@ -453,13 +512,30 @@ struct PetInventoryEditorView: View {
         guard let value = Double(normalized), value > 0 else { return nil }
         return value
     }
+    private var currentInventory: Double { store.petInventory(for: productID) }
+    private var targetValue: Double? {
+        let normalized = targetText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value >= 0 else { return nil }
+        return value
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 if let item { Section { LabeledContent("产品", value: item.name); LabeledContent("当前库存", value: "\(store.petInventory(for: productID).formatted())\(item.unit)") } }
                 Section(title) {
-                    if mode == .adjustment { TextField("调整后数量", value: $target, format: .number).keyboardType(.decimalPad) }
+                    if mode == .adjustment {
+                        TextField("调整后数量", text: $targetText).keyboardType(.decimalPad)
+                        if let targetValue, let item {
+                            let change = targetValue - currentInventory
+                            LabeledContent("库存变化", value: "\(change > 0 ? "+" : "")\(change.formatted(.number.precision(.fractionLength(0...4))))\(item.unit)")
+                                .foregroundStyle(change == 0 ? HomeTheme.muted : change > 0 ? HomeTheme.success : HomeTheme.orange)
+                        } else {
+                            Text("请输入大于或等于 0 的有效数字")
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.danger)
+                        }
+                    }
                     else { TextField("数量", value: $quantity, format: .number).keyboardType(.decimalPad) }
                     DatePicker("日期", selection: $date, displayedComponents: .date)
                     TextField(mode == .outbound ? "出库原因" : "原因（可选）", text: $reason).font(HomeTypography.body)
@@ -480,22 +556,39 @@ struct PetInventoryEditorView: View {
             .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("完成", action: save).disabled(mode == .adjustment ? target < 0 : quantity <= 0) }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成", action: save)
+                        .disabled(mode == .adjustment ? (targetValue == nil || targetValue == currentInventory) : quantity <= 0)
+                }
             }
         }
         .presentationDetents(quick ? [.medium] : [.medium, .large])
-        .task { if mode == .adjustment { target = store.petInventory(for: productID) } }
+        .task {
+            if mode == .adjustment {
+                targetText = currentInventory.formatted(.number.precision(.fractionLength(0...4)))
+            }
+        }
+        .alert("库存操作失败", isPresented: Binding(
+            get: { localError != nil },
+            set: { if !$0 { localError = nil } }
+        )) {
+            Button("知道了") { localError = nil }
+        } message: {
+            Text(localError ?? "请检查输入后重试。")
+        }
     }
 
     private func save() {
         let dateString = LitterPredictionService.format(date)
         let success: Bool
         if mode == .adjustment {
-            success = store.adjustPetInventory(productID: productID, target: target, occurrenceDate: dateString, reason: reason)
+            guard let targetValue else { localError = "请输入有效的修正后库存"; NativeHaptics.error(); return }
+            success = store.adjustPetInventory(productID: productID, target: targetValue, occurrenceDate: dateString, reason: reason)
         } else {
             success = store.recordPetInventory(productID: productID, type: mode == .inbound ? .inbound : .outbound, quantity: quantity, occurrenceDate: dateString, reason: reason.isEmpty ? (mode == .inbound ? "购买入库" : "日常使用") : reason, totalPrice: totalPrice, purchaseChannel: channel, expirationDate: hasExpiration ? LitterPredictionService.format(expirationDate) : nil, note: note)
         }
         if success { dismiss() }
+        else { localError = store.lastError ?? "库存修正没有保存，请重试。" }
     }
 }
 
@@ -520,17 +613,19 @@ struct PetProductReviewEditorView: View {
                 }
                 Section("评分维度") {
                     ForEach(dimensions, id: \.self) { dimension in
-                        VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
                             Text(dimension)
-                                .font(HomeTypography.body.weight(.semibold))
+                                .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(HomeTheme.ink)
+                                .frame(width: 62, alignment: .leading)
                             Picker(dimension, selection: scoreBinding(for: dimension)) {
-                                ForEach(1...5, id: \.self) { Text("\($0)分").tag($0) }
+                                ForEach(1...5, id: \.self) { Text("\($0)").tag($0) }
                             }
                             .pickerStyle(.segmented)
                             .labelsHidden()
+                            .frame(height: 34)
                         }
-                        .padding(.vertical, 3)
+                        .frame(minHeight: 40)
                     }
                     LabeledContent("本次综合评分", value: overallScore.formatted(.number.precision(.fractionLength(1))))
                 }

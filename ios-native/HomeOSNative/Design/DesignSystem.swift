@@ -48,12 +48,36 @@ enum HomeDateText {
     }
 }
 
+@MainActor
 enum NativeHaptics {
-    static func selection() { UISelectionFeedbackGenerator().selectionChanged() }
-    static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.72) }
-    static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
-    static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
-    static func error() { UINotificationFeedbackGenerator().notificationOccurred(.error) }
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static let tapGenerator = UIImpactFeedbackGenerator(style: .light)
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
+
+    static func selection() {
+        selectionGenerator.prepare()
+        selectionGenerator.selectionChanged()
+    }
+
+    static func tap() {
+        tapGenerator.prepare()
+        tapGenerator.impactOccurred(intensity: 0.72)
+    }
+
+    static func success() {
+        notificationGenerator.prepare()
+        notificationGenerator.notificationOccurred(.success)
+    }
+
+    static func warning() {
+        notificationGenerator.prepare()
+        notificationGenerator.notificationOccurred(.warning)
+    }
+
+    static func error() {
+        notificationGenerator.prepare()
+        notificationGenerator.notificationOccurred(.error)
+    }
 }
 
 struct HomeCard<Content: View>: View {

@@ -15,6 +15,7 @@ struct PetView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
                     header
+                    itemStatistics
                     PetItemsListView()
                     PetRatingsListView()
                     timelineSection
@@ -36,6 +37,35 @@ struct PetView: View {
 
     private var header: some View {
         PageTitle(title: "宠物")
+    }
+
+    private var itemStatistics: some View {
+        let allCount = store.activePetItems.count
+        let foodName = store.petRootCategory(capabilityKey: "petFood")?.name
+        let supplyName = store.petRootCategory(capabilityKey: "petSupply")?.name
+        let foodCount = foodName.map { name in store.activePetItems.filter { $0.resolvedPrimaryCategory == name }.count } ?? 0
+        let supplyCount = supplyName.map { name in store.activePetItems.filter { $0.resolvedPrimaryCategory == name }.count } ?? 0
+        return HomeCard(padding: 0) {
+            HStack(spacing: 0) {
+                itemStatistic(title: "全部物品", count: allCount)
+                Divider().frame(height: 52)
+                itemStatistic(title: "宠物食品", count: foodCount)
+                Divider().frame(height: 52)
+                itemStatistic(title: "宠物用品", count: supplyCount)
+            }
+            .padding(.vertical, 12)
+        }
+    }
+
+    private func itemStatistic(title: String, count: Int) -> some View {
+        VStack(spacing: 5) {
+            Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("\(count)").font(.system(size: 24, weight: .semibold)).foregroundStyle(HomeTheme.blue)
+                Text("款").font(HomeTypography.supporting).foregroundStyle(HomeTheme.blue)
+            }
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var litterSection: some View {
@@ -140,6 +170,7 @@ struct PetView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(HomePressButtonStyle())
+                .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                 .accessibilityLabel("添加宠物事项")
             }
         }

@@ -34,7 +34,8 @@ settings{}
 - `litterOperations[]`：初始化、补砂和换砂操作及各产品分配明细。
 - `settings.petEventCollapsedDateGroups`：日期分组的展开/折叠记忆。
 - `petItems[].unitConversionToBase`：非 kg/g 单位换算到 kg 的倍率。
-- `petItems[].packageType`：可选包装形式，例如袋、罐、盒；与 `spec` 单件规格及 `unit` 库存单位分别保存。
+- `petItems[].packageType`：可选包装形式，当前预设仅为袋或罐；与 `spec` 单件规格及 `unit` 库存单位分别保存。
+- `petItems[].variant`：宠物食品保存口味，宠物用品保存型号或款式；不得再写入 `spec` 的副本。品牌、名称、口味、包装形式和规格完全相同时视为疑似重复产品。
 - `petInventoryTransactions[]`：宠物物品入库、出库、调整和猫砂联动流水；当前库存由 `quantityChange` 求和。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
 - `petProductReviews[].dimensionScores`：本次评价各维度的 1～5 整数分数字典；综合分不重复存储，由维度算术平均得到。旧记录缺少时使用原 `repurchaseLevel` 作为兼容评分。

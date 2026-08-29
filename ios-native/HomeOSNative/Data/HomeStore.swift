@@ -533,6 +533,7 @@ final class HomeStore: ObservableObject {
 
     func adjustPetInventory(productID: String, target: Double, occurrenceDate: String, reason: String?) -> Bool {
         guard target >= 0 else { return fail("库存不能小于 0") }
+        guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
         var next = data
         guard let index = next.petItems.firstIndex(where: { $0.id == productID && !$0.isArchived }) else { return fail("找不到该宠物物品") }
         let before = petInventory(for: productID, in: next)

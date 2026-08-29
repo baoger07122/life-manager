@@ -73,6 +73,7 @@ struct PetItemsListView: View {
                         EmptyState(icon: "shippingbox.fill", title: "暂无宠物物品", message: "按具体产品添加食品、猫砂或其他用品。")
                         NavigationLink("添加宠物物品") { PetItemEditorView() }
                             .buttonStyle(HomeSecondaryButtonStyle())
+                            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                             .padding(.horizontal, 14)
                             .padding(.bottom, 14)
                     }
@@ -104,17 +105,19 @@ struct PetItemsListView: View {
                 NavigationLink { PetItemDetailView(itemID: item.id) } label: {
                     HStack(spacing: 11) {
                         productImage(item)
-                        VStack(alignment: .leading, spacing: 3) {
+                        VStack(alignment: .leading, spacing: 6) {
                             Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
                                 .font(.system(size: 12))
                                 .foregroundStyle(HomeTheme.muted)
                                 .lineLimit(1)
-                            Text(item.name)
+                            Text(productNameAndFlavor(item))
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(HomeTheme.ink)
-                                .fixedSize(horizontal: false, vertical: true)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.84)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(HomePressButtonStyle())
@@ -129,25 +132,27 @@ struct PetItemsListView: View {
                     }
                     NativeHaptics.selection()
                 } label: {
-                    VStack(alignment: .trailing, spacing: 3) {
-                        Text("\(store.petInventory(for: item.id).formatted())\(item.unit)")
-                            .font(.system(size: 15, weight: .regular))
-                            .foregroundStyle(HomeTheme.ink)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(specificationAndStock(item))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
                         if let rating = store.petProductRating(productID: item.id) {
                             Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundStyle(HomeTheme.orange)
                         } else {
-                            Text("暂无评价").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
                         }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
+                    .frame(width: 118, alignment: .trailing)
+                    .frame(minHeight: 48, alignment: .trailing)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
 
             if expandedItemID == item.id {
                 compactQuickManager(item)
@@ -177,6 +182,7 @@ struct PetItemsListView: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(HomePressButtonStyle())
+            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
             .accessibilityLabel("新增宠物物品")
         }
     }
@@ -294,6 +300,20 @@ struct PetItemsListView: View {
         return quickTotalPrice / quickQuantity
     }
 
+    private func productNameAndFlavor(_ item: PetItem) -> String {
+        let flavor = (item.variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !flavor.isEmpty, flavor.caseInsensitiveCompare(item.spec) != .orderedSame else { return item.name }
+        return "\(item.name) · \(flavor)"
+    }
+
+    private func specificationAndStock(_ item: PetItem) -> String {
+        let quantity = store.petInventory(for: item.id).formatted()
+        let package = (item.packageType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stockText = "\(quantity)\(package.isEmpty ? item.unit : package)"
+        let spec = item.spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
+    }
+
     @ViewBuilder private func productImage(_ item: PetItem) -> some View {
         if let image = item.image, !image.isEmpty {
             PetStoredImage(reference: image).frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -343,7 +363,10 @@ struct PetRatingsListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            HomeSectionHeader(title: "物品评价", actionTitle: "添加评价") { sheet = .productPicker }
+            HomeSectionHeader(title: "物品评价", actionTitle: "添加评价") {
+                NativeHaptics.tap()
+                sheet = .productPicker
+            }
             HomeCard(padding: 0) {
                 VStack(spacing: 0) {
                     HStack(spacing: 22) {
@@ -570,7 +593,7 @@ struct PetItemDetailView: View {
                     Text(item.brand.isEmpty ? "无品牌" : item.brand)
                         .font(HomeTypography.supporting)
                         .foregroundStyle(HomeTheme.muted)
-                    Text(item.name)
+                    Text(detailProductName(item))
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(HomeTheme.ink)
                     Text(productSpecification(item))
@@ -678,7 +701,7 @@ struct PetItemDetailView: View {
                 HStack {
                     Text("物品评价").font(HomeTypography.cardTitle)
                     Spacer()
-                    Button("添加评价") { sheet = .productReview }
+                    Button("添加评价") { NativeHaptics.tap(); sheet = .productReview }
                         .font(HomeTypography.supporting.weight(.medium))
                 }
                 if let item, let summary = store.petProductRating(productID: itemID) {
@@ -805,6 +828,12 @@ struct PetItemDetailView: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return values.isEmpty ? "规格未记录" : values.joined(separator: " · ")
+    }
+
+    private func detailProductName(_ item: PetItem) -> String {
+        let flavor = (item.variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !flavor.isEmpty, flavor.caseInsensitiveCompare(item.spec) != .orderedSame else { return item.name }
+        return "\(item.name) · \(flavor)"
     }
 
     private func isPetFood(_ item: PetItem) -> Bool {

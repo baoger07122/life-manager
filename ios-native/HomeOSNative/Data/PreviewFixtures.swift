@@ -20,13 +20,13 @@ enum PreviewFixtures {
         let catB = PetProfile(id: "preview-pet-2", name: "汤圆", image: nil, breed: "英国短毛猫", birthDate: "2023-02-06", isDeleted: false, createdAt: nowValue - 100, updatedAt: nowValue)
 
         let petItems = [
-            petItem(id: "preview-pet-food-1", type: "猫粮", name: "六种鱼", brand: "Orijen", spec: "5.4kg", quantity: 2.4, unit: "kg", primary: "宠物食品", secondary: "猫粮"),
-            petItem(id: "preview-pet-food-2", type: "主食罐", name: "牛肉罐", brand: "巅峰", spec: "185g", quantity: 12, unit: "罐", primary: "宠物食品", secondary: "主食罐"),
-            petItem(id: "preview-pet-food-3", type: "冻干", name: "冻干鸡胸肉", brand: "领先", spec: "120g", quantity: 3, unit: "袋", primary: "宠物食品", secondary: "冻干"),
-            petItem(id: "preview-pet-supply-1", type: "猫砂", name: "矿砂", brand: "喵洁客", spec: "8kg", quantity: 8, unit: "kg", primary: "宠物用品", secondary: "猫砂", conversion: 1)
+            petItem(id: "preview-pet-food-1", type: "猫粮", name: "六种鱼猫粮", brand: "Orijen", flavor: "六种鱼味", spec: "80g", quantity: 4, unit: "袋", primary: "宠物食品", secondary: "猫粮", packageType: "袋"),
+            petItem(id: "preview-pet-food-2", type: "主食罐", name: "牛肉主食罐", brand: "巅峰", flavor: "牛肉味", spec: "185g", quantity: 12, unit: "罐", primary: "宠物食品", secondary: "主食罐", packageType: "罐"),
+            petItem(id: "preview-pet-food-3", type: "冻干", name: "冻干鸡胸肉", brand: "领先", flavor: "原味", spec: "120g", quantity: 3, unit: "袋", primary: "宠物食品", secondary: "冻干", packageType: "袋"),
+            petItem(id: "preview-pet-supply-1", type: "猫砂", name: "矿砂", brand: "喵洁客", spec: "8kg", quantity: 1, unit: "袋", primary: "宠物用品", secondary: "猫砂", conversion: 8, packageType: "袋")
         ]
 
-        var transactions = petItems.map { item in
+        var transactions = petItems.filter { $0.id != "preview-pet-food-1" }.map { item in
             PetInventoryTransaction(
                 id: "preview-stock-\(item.id)", productID: item.id, type: .inbound,
                 quantityChange: item.quantity, quantityBefore: 0, quantityAfter: item.quantity,
@@ -40,16 +40,24 @@ enum PreviewFixtures {
         }
         transactions.append(contentsOf: [
             PetInventoryTransaction(
+                id: "preview-stock-food-1-current", productID: "preview-pet-food-1", type: .inbound,
+                quantityChange: 3, quantityBefore: 2, quantityAfter: 5, unit: "袋",
+                occurrenceDate: day(-5), reason: "购买入库", source: .manual,
+                linkedOperationID: nil, totalPrice: 268, unitPrice: 268 / 3,
+                purchaseChannel: "官方旗舰店", expirationDate: nil, note: nil,
+                createdAt: nowValue - 50, updatedAt: nowValue - 50
+            ),
+            PetInventoryTransaction(
                 id: "preview-stock-food-1-earlier", productID: "preview-pet-food-1", type: .inbound,
-                quantityChange: 1, quantityBefore: 1.4, quantityAfter: 2.4, unit: "kg",
+                quantityChange: 2, quantityBefore: 0, quantityAfter: 2, unit: "袋",
                 occurrenceDate: day(-42), reason: "补充库存", source: .manual,
-                linkedOperationID: nil, totalPrice: 128, unitPrice: 128,
+                linkedOperationID: nil, totalPrice: 128, unitPrice: 64,
                 purchaseChannel: "官方旗舰店", expirationDate: nil, note: nil,
                 createdAt: nowValue - 420, updatedAt: nowValue - 420
             ),
             PetInventoryTransaction(
                 id: "preview-stock-food-1-out", productID: "preview-pet-food-1", type: .outbound,
-                quantityChange: -0.3, quantityBefore: 2.7, quantityAfter: 2.4, unit: "kg",
+                quantityChange: -1, quantityBefore: 5, quantityAfter: 4, unit: "袋",
                 occurrenceDate: day(-1), reason: "日常使用", source: .manual,
                 linkedOperationID: nil, totalPrice: nil, unitPrice: nil,
                 purchaseChannel: nil, expirationDate: nil, note: nil,
@@ -110,9 +118,9 @@ enum PreviewFixtures {
     }
 
     private static func petItem(
-        id: String, type: String, name: String, brand: String, spec: String,
+        id: String, type: String, name: String, brand: String, flavor: String? = nil, spec: String,
         quantity: Double, unit: String, primary: String, secondary: String,
-        conversion: Double? = nil
+        conversion: Double? = nil, packageType: String? = nil
     ) -> PetItem {
         PetItem(
             id: id, type: type, name: name, brand: brand, model: "", spec: spec,
@@ -120,8 +128,8 @@ enum PreviewFixtures {
             lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil,
             feedback: nil, price: nil, cat: "", preference: "", image: nil,
             unitConversionToBase: conversion, primaryCategory: primary,
-            secondaryCategory: secondary, variant: nil, lowStockThreshold: nil,
-            notes: "预览测试数据", packageType: secondary.contains("罐") ? "罐" : "袋", isArchived: false,
+            secondaryCategory: secondary, variant: flavor, lowStockThreshold: nil,
+            notes: "预览测试数据", packageType: packageType, isArchived: false,
             foodRole: nil,
             expirationDate: nil, litterKind: secondary == "猫砂" ? "矿砂" : nil,
             createdAt: Date().timeIntervalSince1970, updatedAt: Date().timeIntervalSince1970

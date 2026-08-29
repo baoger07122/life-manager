@@ -39,6 +39,27 @@ enum PreviewFixtures {
             )
         }
 
+        let productReviews = [
+            PetProductReview(
+                id: "preview-review-1", productID: "preview-pet-food-1", reviewDate: day(-4),
+                repurchaseLevel: 5, reviewText: "适口性稳定，会继续回购。",
+                createdAt: nowValue - 40, updatedAt: nowValue - 40,
+                dimensionScores: ["适口性": 5, "品质": 5, "性价比": 4, "回购意愿": 5]
+            ),
+            PetProductReview(
+                id: "preview-review-2", productID: "preview-pet-food-1", reviewDate: day(-1),
+                repurchaseLevel: 5, reviewText: "颗粒和气味都比较稳定。",
+                createdAt: nowValue - 10, updatedAt: nowValue - 10,
+                dimensionScores: ["适口性": 5, "品质": 4, "性价比": 4, "回购意愿": 5]
+            ),
+            PetProductReview(
+                id: "preview-review-3", productID: "preview-pet-food-2", reviewDate: day(-2),
+                repurchaseLevel: 4, reviewText: "开罐方便，接受度不错。",
+                createdAt: nowValue - 20, updatedAt: nowValue - 20,
+                dimensionScores: ["适口性": 5, "品质": 4, "性价比": 4, "回购意愿": 4]
+            )
+        ]
+
         let litterOperations = [
             LitterOperation(id: "preview-litter-op-1", type: .replace, occurrenceDate: day(-28), allocations: [], totalBaseAmount: 6, amountBeforeOperation: 0, amountAfterOperation: 6, linkedEventID: nil, createdAt: nowValue - 280, updatedAt: nowValue - 280),
             LitterOperation(id: "preview-litter-op-2", type: .replace, occurrenceDate: day(-14), allocations: [], totalBaseAmount: 6, amountBeforeOperation: 0, amountAfterOperation: 6, linkedEventID: nil, createdAt: nowValue - 140, updatedAt: nowValue - 140)
@@ -64,7 +85,7 @@ enum PreviewFixtures {
             plans: [MealPlan(id: "preview-plan-1", date: day(0), meal: "晚餐", recipeId: recipe.id, note: nil)],
             prepChecks: [], petItems: petItems, pets: [catA, catB], petEventCategories: [eventCategory],
             petEvents: events, litterBoxState: litterState, litterOperations: litterOperations,
-            petInventoryTransactions: transactions, petProductReviews: [], petPalatabilityReviews: [],
+            petInventoryTransactions: transactions, petProductReviews: productReviews, petPalatabilityReviews: [],
             activities: [ActivityItem(id: "preview-activity-1", text: "牛奶即将到期", time: "今天", type: "food", targetId: "preview-food-2")],
             settings: .standard
         )

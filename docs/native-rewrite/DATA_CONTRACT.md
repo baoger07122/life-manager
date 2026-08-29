@@ -35,6 +35,7 @@ settings{}
 - `petItems[].unitConversionToBase`：非 kg/g 单位换算到 kg 的倍率。
 - `petInventoryTransactions[]`：宠物物品入库、出库、调整和猫砂联动流水；当前库存由 `quantityChange` 求和。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
+- `petProductReviews[].dimensionScores`：本次评价各维度的 1～5 整数分数字典；综合分不重复存储，由维度算术平均得到。旧记录缺少时使用原 `repurchaseLevel` 作为兼容评分。
 - `petPalatabilityReviews[]`：仅食品使用的分宠物适口性评价，保留宠物名称快照。
 - `settings.managedBrands[]`：可用于宠物或食品模块的品牌库，包含适用范围与停用状态；旧备份缺少时由已有品牌和默认品牌生成。
 - `petInventoryTransactions[].totalPrice` 与 `unitPrice`：新建物品的初始库存也作为入库流水记录可选购入总额和自动折算单价。

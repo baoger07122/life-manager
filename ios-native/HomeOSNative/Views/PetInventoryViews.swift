@@ -437,6 +437,10 @@ struct PetInventoryEditorView: View {
 
     private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
     private var title: String { mode == .inbound ? "入库" : mode == .outbound ? (quick ? "快速出库" : "出库") : "修正库存" }
+    private var calculatedUnitPrice: Double? {
+        guard mode == .inbound, quantity > 0, totalPrice > 0 else { return nil }
+        return totalPrice / quantity
+    }
 
     var body: some View {
         NavigationStack {
@@ -451,6 +455,8 @@ struct PetInventoryEditorView: View {
                 if mode == .inbound {
                     Section("购买信息") {
                         TextField("购买总价（可选）", value: $totalPrice, format: .currency(code: "CNY")).keyboardType(.decimalPad)
+                        LabeledContent("折算单价", value: calculatedUnitPrice.map { "¥\($0.formatted(.number.precision(.fractionLength(2))))/\(item?.unit ?? "单位")" } ?? "自动计算")
+                            .foregroundStyle(HomeTheme.muted)
                         TextField("购买渠道（可选）", text: $channel).font(HomeTypography.body)
                         Toggle("记录到期日期", isOn: $hasExpiration)
                         if hasExpiration { DatePicker("到期日期", selection: $expirationDate, displayedComponents: .date) }
@@ -484,22 +490,49 @@ struct PetProductReviewEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let productID: String
-    @State private var level = 3
+    @State private var scores: [String: Int] = [:]
     @State private var review = ""
     @State private var date = Date()
+    private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
+    private var dimensions: [String] { item.map(petRatingDimensions) ?? ["使用体验", "品质", "性价比", "回购意愿"] }
+    private var overallScore: Double {
+        let values = dimensions.map { scores[$0] ?? 3 }
+        return Double(values.reduce(0, +)) / Double(max(values.count, 1))
+    }
     var body: some View {
         NavigationStack {
             Form {
-                Picker("回购指数", selection: $level) { ForEach(1...5, id: \.self) { Text(repurchaseText($0)).tag($0) } }
+                if let item {
+                    Section { LabeledContent("物品", value: item.displayTitle) }
+                }
+                Section("评分维度") {
+                    ForEach(dimensions, id: \.self) { dimension in
+                        Picker(dimension, selection: scoreBinding(for: dimension)) {
+                            ForEach(1...5, id: \.self) { Text("\($0)").tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    LabeledContent("本次综合评分", value: overallScore.formatted(.number.precision(.fractionLength(1))))
+                }
                 DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("产品评价", text: $review, axis: .vertical).font(HomeTypography.body)
             }
             .navigationTitle("添加产品评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { if store.addPetProductReview(productID: productID, date: LitterPredictionService.format(date), level: level, text: review) { dismiss() } } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        let values = Dictionary(uniqueKeysWithValues: dimensions.map { ($0, scores[$0] ?? 3) })
+                        if store.addPetProductReview(productID: productID, date: LitterPredictionService.format(date), scores: values, text: review) { dismiss() }
+                    }
+                }
             }
-        }.presentationDetents([.medium])
+            .task { dimensions.forEach { if scores[$0] == nil { scores[$0] = 3 } } }
+        }.presentationDetents([.large])
+    }
+
+    private func scoreBinding(for dimension: String) -> Binding<Int> {
+        Binding(get: { scores[dimension] ?? 3 }, set: { scores[dimension] = $0; NativeHaptics.selection() })
     }
 }
 

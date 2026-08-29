@@ -17,6 +17,7 @@ struct PetView: View {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
                     header
                     PetItemsListView()
+                    PetRatingsListView()
                     timelineSection
                 }
                 .padding(.horizontal, HomeMetrics.pageInset)

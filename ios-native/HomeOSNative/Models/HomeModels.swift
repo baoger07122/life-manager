@@ -199,6 +199,26 @@ struct PetProductReview: Codable, Identifiable, Hashable {
     var reviewText: String
     var createdAt: Double
     var updatedAt: Double
+    var dimensionScores: [String: Int]? = nil
+}
+
+extension PetProductReview {
+    var resolvedDimensionScores: [String: Int] {
+        guard let dimensionScores, !dimensionScores.isEmpty else { return ["回购意愿": repurchaseLevel] }
+        return dimensionScores
+    }
+
+    var overallScore: Double {
+        let values = resolvedDimensionScores.values
+        guard !values.isEmpty else { return Double(repurchaseLevel) }
+        return Double(values.reduce(0, +)) / Double(values.count)
+    }
+}
+
+struct PetRatingSummary: Hashable {
+    var overall: Double
+    var count: Int
+    var dimensionAverages: [String: Double]
 }
 
 struct PetPalatabilityReview: Codable, Identifiable, Hashable {

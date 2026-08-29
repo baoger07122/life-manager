@@ -553,14 +553,32 @@ final class HomeStore: ObservableObject {
         return true
     }
 
-    func addPetProductReview(productID: String, date: String, level: Int, text: String) -> Bool {
-        guard (1...5).contains(level) else { return fail("回购指数无效") }
+    func addPetProductReview(productID: String, date: String, scores: [String: Int], text: String) -> Bool {
+        guard !scores.isEmpty, scores.values.allSatisfy({ (1...5).contains($0) }) else { return fail("评分必须为 1 到 5 的整数") }
         let now = Date().timeIntervalSince1970
         var next = data
-        next.petProductReviews.append(PetProductReview(id: UUID().uuidString, productID: productID, reviewDate: date, repurchaseLevel: level, reviewText: text.trimmingCharacters(in: .whitespacesAndNewlines), createdAt: now, updatedAt: now))
+        let repurchase = scores["回购意愿"] ?? Int((Double(scores.values.reduce(0, +)) / Double(scores.count)).rounded())
+        next.petProductReviews.append(PetProductReview(id: UUID().uuidString, productID: productID, reviewDate: date, repurchaseLevel: repurchase, reviewText: text.trimmingCharacters(in: .whitespacesAndNewlines), createdAt: now, updatedAt: now, dimensionScores: scores))
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true
+    }
+
+    func petProductRating(productID: String) -> PetRatingSummary? {
+        let reviews = data.petProductReviews.filter { $0.productID == productID }
+        guard !reviews.isEmpty else { return nil }
+        var valuesByDimension: [String: [Int]] = [:]
+        reviews.forEach { review in
+            review.resolvedDimensionScores.forEach { key, value in valuesByDimension[key, default: []].append(value) }
+        }
+        let averages = valuesByDimension.mapValues { values in
+            Double(values.reduce(0, +)) / Double(values.count)
+        }
+        return PetRatingSummary(
+            overall: reviews.map(\.overallScore).reduce(0, +) / Double(reviews.count),
+            count: reviews.count,
+            dimensionAverages: averages
+        )
     }
 
     func addPetPalatabilityReview(productID: String, petID: String, date: String, preference: String, note: String?) -> Bool {

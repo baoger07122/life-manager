@@ -2,12 +2,12 @@
 
 本目录是 Home OS 原生版本的开发、设计和验收依据。Web 版继续独立运行，用于快速验证需求；确认后的功能再由原生 App 复现。
 
-## 当前基线（2026-08-27）
+## 当前基线（2026-08-29）
 
 - Web 功能基线：`v8.25.1`。
 - 原生分支：`codex/ios-native-rewrite`。
 - 原生 Bundle ID：`com.bao.homeos.native`，可与旧 Capacitor App 并存。
-- 最近一次云端成功构建 IPA：`0.1.11 (13)`，GitHub Actions 运行 `33233845797`。
+- 最近一次云端成功构建 IPA：`0.1.12 (14)`，GitHub Actions 运行 `33249451669`。
 - 当前原生代码已使用 macOS 26 / 新版 Apple SDK 编译，系统 `TabView` 采用 iPhone 原生 Liquid Glass 外观。
 - 已确认主导航：系统 `TabView`；首页 `house.fill`、食品 `takeoutbag.and.cup.and.straw.fill`、菜谱 `list.bullet.clipboard.fill`、宠物 `cat.fill`、设置 `gearshape.fill`。
 

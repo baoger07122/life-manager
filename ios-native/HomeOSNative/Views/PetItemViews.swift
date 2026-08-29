@@ -4,6 +4,10 @@ import PhotosUI
 extension PetItem {
     var resolvedPrimaryCategory: String { primaryCategory ?? (type.contains("食品") ? "宠物食品" : "宠物用品") }
     var resolvedSecondaryCategory: String { secondaryCategory ?? type }
+    var displayTitle: String {
+        let cleanBrand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleanBrand.isEmpty ? name : "\(cleanBrand) \(name)"
+    }
 }
 
 struct PetItemsListView: View {
@@ -88,15 +92,14 @@ struct PetItemsListView: View {
                 } label: {
                     HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
-                            Text(item.name).font(.system(size: 17, weight: .semibold)).foregroundStyle(HomeTheme.ink).lineLimit(1)
+                            Text(item.displayTitle).font(.system(size: 14, weight: .semibold)).foregroundStyle(HomeTheme.ink).lineLimit(1)
                             Text(item.resolvedSecondaryCategory).font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
                     }
                     Spacer(minLength: 4)
                     VStack(alignment: .trailing, spacing: 3) {
                         Text("\(store.petInventory(for: item.id).formatted())\(item.unit)")
                                 .font(.system(size: 15, weight: .regular))
-                            .foregroundStyle(isLowStock(item) ? HomeTheme.orange : HomeTheme.ink)
-                            if isLowStock(item) { Text("库存偏低").font(.system(size: 12)).foregroundStyle(HomeTheme.orange) }
+                            .foregroundStyle(HomeTheme.ink)
                     }
                         Image(systemName: expandedItemID == item.id ? "chevron.up" : "chevron.right")
                             .font(.system(size: 14, weight: .semibold))
@@ -242,10 +245,6 @@ struct PetItemsListView: View {
         }
     }
 
-    private func isLowStock(_ item: PetItem) -> Bool {
-        item.lowStockThreshold.map { store.petInventory(for: item.id) <= $0 } ?? false
-    }
-
 }
 
 struct PetItemDetailView: View {
@@ -260,7 +259,7 @@ struct PetItemDetailView: View {
         ScrollView {
             if let item {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
-                    PageTitle(title: item.name, subtitle: "\(item.resolvedPrimaryCategory) · \(item.resolvedSecondaryCategory)")
+                    PageTitle(title: item.displayTitle, subtitle: "\(item.resolvedPrimaryCategory) · \(item.resolvedSecondaryCategory)")
                     basicCard(item)
                     inventoryCard(item)
                     transactionCard(item)

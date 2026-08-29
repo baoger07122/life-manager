@@ -2,10 +2,9 @@ import SwiftUI
 
 struct FoodView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var search = ""
 
     private var foods: [FoodItem] {
-        search.isEmpty ? store.data.foods : store.data.foods.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        store.data.foods
     }
 
     var body: some View {
@@ -17,7 +16,7 @@ struct FoodView: View {
                     .padding(.bottom, 8)
                 List {
                 if foods.isEmpty {
-                    EmptyState(icon: "refrigerator.fill", title: search.isEmpty ? "还没有食品" : "没有搜索结果", message: "食品新增、详情和库存操作将在食品模块阶段完整实现。")
+                    EmptyState(icon: "refrigerator.fill", title: "还没有食品", message: "食品新增、详情和库存操作将在食品模块阶段完整实现。")
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 } else {
@@ -37,11 +36,6 @@ struct FoodView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .searchable(
-                    text: $search,
-                    placement: .navigationBarDrawer(displayMode: .automatic),
-                    prompt: "搜索食品"
-                )
             }
             .background(HomeTheme.background)
         }

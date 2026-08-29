@@ -2,12 +2,9 @@ import SwiftUI
 
 struct RecipesView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var search = ""
 
     private var recipes: [RecipeItem] {
-        search.isEmpty
-            ? store.data.recipes
-            : store.data.recipes.filter { $0.name.localizedCaseInsensitiveContains(search) }
+        store.data.recipes
     }
 
     var body: some View {
@@ -19,11 +16,7 @@ struct RecipesView: View {
                     .padding(.bottom, 8)
                 List {
                 if recipes.isEmpty {
-                    EmptyState(
-                        icon: "list.clipboard.fill",
-                        title: search.isEmpty ? "还没有菜谱" : "没有搜索结果",
-                        message: search.isEmpty ? "我的菜谱、收藏、食材库和三餐计划将在菜谱阶段完整实现。" : "请尝试其他菜谱名称。"
-                    )
+                    EmptyState(icon: "list.clipboard.fill", title: "还没有菜谱", message: "我的菜谱、收藏、食材库和三餐计划将在菜谱阶段完整实现。")
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 } else {
                     ForEach(recipes) { recipe in
@@ -36,11 +29,6 @@ struct RecipesView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .searchable(
-                    text: $search,
-                    placement: .navigationBarDrawer(displayMode: .automatic),
-                    prompt: "搜索菜谱"
-                )
             }
             .background(HomeTheme.background)
         }

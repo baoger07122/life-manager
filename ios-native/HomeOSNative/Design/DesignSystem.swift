@@ -68,7 +68,7 @@ struct HomeUnderlineTab: View {
     var body: some View {
         VStack(spacing: prominent ? 8 : 5) {
             Text(title)
-                .font(.system(size: prominent ? 17 : 14, weight: prominent ? .semibold : .regular))
+                .font(.system(size: prominent ? 16 : 14, weight: prominent ? .semibold : .regular))
                 .foregroundStyle(selected ? HomeTheme.ink : HomeTheme.muted)
                 .lineLimit(1)
             Capsule()

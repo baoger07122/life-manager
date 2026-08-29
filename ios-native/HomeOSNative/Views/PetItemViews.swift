@@ -78,9 +78,23 @@ struct PetItemsListView: View {
     private func itemRow(_ item: PetItem) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 11) {
-                NavigationLink { PetItemDetailView(itemID: item.id) } label: { productImage(item) }
-                    .buttonStyle(HomePressButtonStyle())
-                    .accessibilityLabel("查看\(item.name)详情")
+                NavigationLink { PetItemDetailView(itemID: item.id) } label: {
+                    HStack(spacing: 11) {
+                        productImage(item)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(item.displayTitle)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(HomeTheme.ink)
+                                .lineLimit(1)
+                            Text(item.resolvedSecondaryCategory)
+                                .font(.system(size: 13))
+                                .foregroundStyle(HomeTheme.muted)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(HomePressButtonStyle())
+                .accessibilityLabel("查看\(item.name)详情")
 
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) {
@@ -90,22 +104,13 @@ struct PetItemsListView: View {
                     }
                     NativeHaptics.selection()
                 } label: {
-                    HStack(spacing: 8) {
-                    VStack(alignment: .leading, spacing: 3) {
-                            Text(item.displayTitle).font(.system(size: 14, weight: .semibold)).foregroundStyle(HomeTheme.ink).lineLimit(1)
-                            Text(item.resolvedSecondaryCategory).font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
-                    }
-                    Spacer(minLength: 4)
-                    VStack(alignment: .trailing, spacing: 3) {
+                    HStack {
+                        Spacer(minLength: 8)
                         Text("\(store.petInventory(for: item.id).formatted())\(item.unit)")
-                                .font(.system(size: 15, weight: .regular))
+                            .font(.system(size: 15, weight: .regular))
                             .foregroundStyle(HomeTheme.ink)
                     }
-                        Image(systemName: expandedItemID == item.id ? "chevron.up" : "chevron.right")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(HomeTheme.muted)
-                            .frame(width: 22)
-                    }
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

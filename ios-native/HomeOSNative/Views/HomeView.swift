@@ -62,9 +62,11 @@ struct HomeView: View {
                     }
                     Divider()
                     HStack(spacing: 0) {
-                        petStockMetric(title: categoryName(id: "pet-food-1", fallback: "主食罐头"), items: petItems(categoryID: "pet-food-1"))
+                        petStockMetric(title: categoryName(id: "pet-food-1", fallback: "主食罐"), items: petItems(categoryID: "pet-food-1"))
                         Divider().frame(height: 58)
-                        petStockMetric(title: categoryName(id: "pet-food-2", fallback: "冻干零食"), items: petItems(categoryID: "pet-food-2"))
+                        petStockMetric(title: categoryName(id: "pet-food-3", fallback: "零食罐"), items: petItems(categoryID: "pet-food-3"))
+                        Divider().frame(height: 58)
+                        petStockMetric(title: categoryName(id: "pet-supply-0", fallback: "猫砂"), items: petItems(categoryID: "pet-supply-0"))
                     }
                     .padding(.vertical, 8)
                 }
@@ -178,8 +180,12 @@ struct HomeView: View {
     }
 
     private func categoryName(id: String, fallback: String) -> String {
-        let foodRootID = store.petRootCategory(capabilityKey: "petFood")?.id
-        return foodRootID.flatMap { rootID in store.categories(for: .pet, parentID: rootID).first(where: { $0.id == id })?.name } ?? fallback
+        for root in store.categories(for: .pet) {
+            if let category = store.categories(for: .pet, parentID: root.id).first(where: { $0.id == id }) {
+                return category.name
+            }
+        }
+        return fallback
     }
 
     private func petItems(categoryID: String) -> [PetItem] {

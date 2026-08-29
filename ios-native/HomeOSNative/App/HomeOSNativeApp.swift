@@ -9,6 +9,13 @@ struct HomeOSNativeApp: App {
             RootView()
                 .environmentObject(store)
                 .preferredColorScheme(.light)
+                .task {
+                    #if PLAYGROUND_PREVIEW
+                    if !store.data.hasUserContent {
+                        store.replace(with: PreviewFixtures.homeOS)
+                    }
+                    #endif
+                }
         }
     }
 }

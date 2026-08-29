@@ -5,6 +5,9 @@ struct SettingsView: View {
     @State private var exporting = false
     @State private var importing = false
     @State private var confirmClear = false
+    #if PLAYGROUND_PREVIEW
+    @State private var confirmPreviewReset = false
+    #endif
 
     var body: some View {
         NavigationStack {
@@ -47,12 +50,7 @@ struct SettingsView: View {
                     } label: {
                         Label("分类管理", systemImage: "folder.fill")
                     }
-                    NavigationLink {
-                        FoodNavigationIconPreviewView()
-                    } label: {
-                        Label("食品图标预览", systemImage: "square.grid.3x2.fill")
-                    }
-                } header: { settingsSectionTitle("分类与导航") }
+                } header: { settingsSectionTitle("分类") }
                 Section {
                     NavigationLink {
                         UIComponentLibraryView()
@@ -60,6 +58,11 @@ struct SettingsView: View {
                         Label("UI 组件库", systemImage: "square.grid.2x2.fill")
                     }
                 } header: { settingsSectionTitle("开发与设计") }
+                #if PLAYGROUND_PREVIEW
+                Section {
+                    Button("重新载入测试数据", role: .destructive) { confirmPreviewReset = true }
+                } header: { settingsSectionTitle("Playground 预览") }
+                #endif
                 Section {
                     LabeledContent("原生版本", value: "0.1.10 (11)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
@@ -83,6 +86,17 @@ struct SettingsView: View {
                 Button("清空全部数据", role: .destructive) { store.clearAll() }
                 Button("取消", role: .cancel) {}
             }
+            #if PLAYGROUND_PREVIEW
+            .confirmationDialog("重新载入测试数据？", isPresented: $confirmPreviewReset, titleVisibility: .visible) {
+                Button("覆盖当前预览数据", role: .destructive) {
+                    store.replace(with: PreviewFixtures.homeOS)
+                    NativeHaptics.success()
+                }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("只影响 Playground 预览沙盒，不影响正式 IPA 数据。")
+            }
+            #endif
             .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
                 Button("知道了") { store.lastError = nil }
             } message: { Text(store.lastError ?? "") }
@@ -94,40 +108,5 @@ struct SettingsView: View {
             .font(HomeTypography.sectionTitle)
             .foregroundStyle(HomeTheme.ink)
             .textCase(nil)
-    }
-}
-
-private struct FoodNavigationIconPreviewView: View {
-    private let candidates = [
-        ("F1", "refrigerator.fill"),
-        ("F2", "takeoutbag.and.cup.and.straw.fill"),
-        ("F3", "basket.fill"),
-        ("F4", "cart.fill"),
-        ("F5", "fork.knife"),
-        ("F6", "shippingbox.fill")
-    ]
-
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                ForEach(candidates, id: \.0) { candidate in
-                    VStack(spacing: 10) {
-                        Image(systemName: candidate.1)
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(HomeTheme.blue)
-                        Text(candidate.0).font(HomeTypography.cardTitle)
-                        Text(candidate.1).font(.system(size: 10)).foregroundStyle(HomeTheme.muted).lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(HomeTheme.line, lineWidth: 0.8) }
-                }
-            }
-            .padding(HomeMetrics.pageInset)
-        }
-        .background(HomeTheme.background)
-        .navigationTitle("食品图标预览")
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

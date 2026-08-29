@@ -98,7 +98,7 @@
 | 页面 | SF Symbol | 来源 | 状态 |
 | --- | --- | --- | --- |
 | 首页 | `house.fill` | A 组 | 已确认 |
-| 食品 | `takeoutbag.and.cup.and.straw.fill` | 候选 F4 | 已确认 |
+| 食品 | `fork.knife` | 候选 F5 | 已确认 |
 | 菜谱 | `list.bullet.clipboard.fill` | 候选 R4 | 已确认 |
 | 宠物 | `cat.fill` | C 组 | 已确认 |
 | 设置 | `gearshape.fill` | A 组 | 已确认 |

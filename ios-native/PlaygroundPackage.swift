@@ -29,7 +29,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "AppModule",
-            path: "."
+            path: ".",
+            swiftSettings: [
+                .define("PLAYGROUND_PREVIEW")
+            ]
         )
     ]
 )

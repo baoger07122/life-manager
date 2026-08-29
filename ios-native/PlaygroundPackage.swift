@@ -15,7 +15,7 @@ let package = Package(
             name: "Home OS 原生预览",
             targets: ["AppModule"],
             displayVersion: "0.1.11",
-            bundleVersion: "12",
+            bundleVersion: "13",
             appIcon: .placeholder(icon: .box),
             accentColor: .presetColor(.blue),
             supportedDeviceFamilies: [

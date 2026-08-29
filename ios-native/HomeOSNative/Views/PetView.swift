@@ -102,47 +102,19 @@ struct PetView: View {
 
     private var timelineSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("宠物事项").font(HomeTypography.sectionTitle)
-                Spacer()
-                NavigationLink { PetEventEditorView() } label: {
-                    Image(systemName: "plus.circle")
-                        .font(.system(size: 21, weight: .regular))
-                        .foregroundStyle(HomeTheme.blue)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(HomePressButtonStyle())
-                .accessibilityLabel("添加宠物事项")
-            }
-            filters
-            if groupedEvents.isEmpty {
-                HomeCard {
+            Text("宠物事项").font(HomeTypography.sectionTitle)
+            HomeCard(padding: 0) {
+                VStack(spacing: 0) {
+                    eventFilters
+                    Divider()
+                    if groupedEvents.isEmpty {
                     EmptyState(icon: "calendar.badge.clock", title: "暂无符合条件的事项", message: "当前筛选条件会保留，可以添加事项或切换筛选。")
-                }
-            } else {
-                ForEach(groupedEvents) { group in
-                    eventGroup(group.date, events: group.events)
-                }
-            }
-        }
-    }
-
-    private var filters: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    filterChip(title: "全部宠物", id: "all", selection: $selectedPetID)
-                    ForEach(store.activePets) { pet in
-                        filterChip(title: pet.name, id: pet.id, selection: $selectedPetID)
-                    }
-                }
-            }
-            if store.activePetEventCategories.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        filterChip(title: "全部分类", id: "all", selection: $selectedCategoryID)
-                        ForEach(store.activePetEventCategories) { category in
-                            filterChip(title: category.name, id: category.id, selection: $selectedCategoryID)
+                            .padding(.horizontal, 14)
+                    } else {
+                        ForEach(Array(groupedEvents.enumerated()), id: \.element.id) { index, group in
+                            eventGroup(group.date, events: group.events)
+                                .padding(.horizontal, 14)
+                            if index < groupedEvents.count - 1 { Divider() }
                         }
                     }
                 }
@@ -150,12 +122,48 @@ struct PetView: View {
         }
     }
 
-    private func filterChip(title: String, id: String, selection: Binding<String>) -> some View {
+    private var eventFilters: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 20) {
+                        filterTab(title: "全部宠物", id: "all", selection: $selectedPetID, prominent: true)
+                        ForEach(store.activePets) { pet in
+                            filterTab(title: pet.name, id: pet.id, selection: $selectedPetID, prominent: true)
+                        }
+                    }
+                }
+                NavigationLink { PetEventEditorView() } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 22, weight: .regular))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(HomePressButtonStyle())
+                .accessibilityLabel("添加宠物事项")
+            }
+            if store.activePetEventCategories.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 20) {
+                        filterTab(title: "全部分类", id: "all", selection: $selectedCategoryID)
+                        ForEach(store.activePetEventCategories) { category in
+                            filterTab(title: category.name, id: category.id, selection: $selectedCategoryID)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
+    }
+
+    private func filterTab(title: String, id: String, selection: Binding<String>, prominent: Bool = false) -> some View {
         Button {
             selection.wrappedValue = id
             NativeHaptics.selection()
         } label: {
-            HomeChip(title: title, selected: selection.wrappedValue == id)
+            HomeUnderlineTab(title: title, selected: selection.wrappedValue == id, prominent: prominent)
         }
         .buttonStyle(.plain)
     }
@@ -179,8 +187,7 @@ struct PetView: View {
 
     private func eventGroup(_ date: String, events: [PetEvent]) -> some View {
         let collapsed = store.data.settings.petEventCollapsedDateGroups?[date] == true
-        return HomeCard(padding: 14) {
-            VStack(spacing: 0) {
+        return VStack(spacing: 0) {
                 Button {
                     store.setPetDateGroup(date, collapsed: !collapsed)
                     NativeHaptics.selection()
@@ -223,7 +230,6 @@ struct PetView: View {
                     }
                 }
             }
-        }
     }
 
     private func relativeDateTitle(_ value: String) -> String {

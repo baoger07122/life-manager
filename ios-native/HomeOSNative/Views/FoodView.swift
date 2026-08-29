@@ -37,9 +37,13 @@ struct FoodView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .searchable(
+                    text: $search,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: "搜索食品"
+                )
             }
             .background(HomeTheme.background)
-            .searchable(text: $search, prompt: "搜索食品")
         }
     }
 }

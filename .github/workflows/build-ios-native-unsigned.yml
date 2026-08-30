@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: macos-26
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout native rewrite branch
         uses: actions/checkout@v4
@@ -30,6 +30,18 @@ jobs:
       - name: Generate the native Xcode project
         working-directory: ios-native
         run: xcodegen generate
+
+      - name: Read native version
+        id: version
+        working-directory: ios-native
+        shell: bash
+        run: |
+          VERSION="$(sed -n 's/^[[:space:]]*MARKETING_VERSION:[[:space:]]*//p' project.yml | head -n 1)"
+          BUILD_NUMBER="$(sed -n 's/^[[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*//p' project.yml | head -n 1)"
+          test -n "$VERSION"
+          test -n "$BUILD_NUMBER"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Build unsigned native app
         working-directory: ios-native
@@ -53,11 +65,35 @@ jobs:
           test -n "$APP_PATH"
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/HomeOSNative.app
-          ditto -c -k --sequesterRsrc --keepParent Payload HomeOSNative-unsigned.ipa
+          ditto -c -k --sequesterRsrc --keepParent Payload "HomeOSNative-${{ steps.version.outputs.version }}-unsigned.ipa"
 
       - name: Upload native IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: home-os-native-unsigned-ipa
-          path: ios-native/HomeOSNative-unsigned.ipa
+          path: ios-native/HomeOSNative-${{ steps.version.outputs.version }}-unsigned.ipa
           if-no-files-found: error
+
+      - name: Publish versioned IPA to GitHub Releases
+        working-directory: ios-native
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ steps.version.outputs.build_number }}
+        shell: bash
+        run: |
+          TAG="ios-native-v${VERSION}"
+          TITLE="Home OS Native ${VERSION} (${BUILD_NUMBER})"
+          ASSET="HomeOSNative-${VERSION}-unsigned.ipa"
+          NOTES=$'Home OS 原生 iOS 测试版本。\n\n此文件为未签名 IPA，需要使用第三方自签服务完成签名后安装。'
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" --prerelease
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" \
+              --target "$GITHUB_SHA" \
+              --title "$TITLE" \
+              --notes "$NOTES" \
+              --prerelease
+          fi

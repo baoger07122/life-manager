@@ -21,7 +21,7 @@
 - Playgrounds 只使用模拟数据，不证明持久化、备份、通知或前后台恢复正确。
 - 预览修改不递增版本号、不生成 ZIP、不提交为正式发布。
 - 只有需要生成新 IPA 时才确定并递增原生版本号。
-- IPA 构建成功后默认由 Codex 下载并解压，将 `.ipa` 直接交付到 iCloud“临时文件夹”；不把 Actions 下载步骤留给用户，也不保留 ZIP 备份。
+- IPA 构建成功后自动创建或更新对应的 GitHub Pre-release，并把未压缩的 `.ipa` 作为 Release Asset 上传；用户默认从 Releases 直接下载，Actions Artifact 仅作为构建备份。
 - 不修改 Web `main`，不在原生正式 App 中嵌入 Web 页面。
 
 ## 文档入口

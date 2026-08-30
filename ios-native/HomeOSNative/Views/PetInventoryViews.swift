@@ -596,9 +596,16 @@ struct PetProductReviewEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let productID: String
+    let reviewID: String?
     @State private var scores: [String: Int] = [:]
     @State private var review = ""
     @State private var date = Date()
+    @State private var loaded = false
+
+    init(productID: String, reviewID: String? = nil) {
+        self.productID = productID
+        self.reviewID = reviewID
+    }
     private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
     private var dimensions: [String] { item.map(petRatingDimensions) ?? ["使用体验", "品质", "性价比", "回购意愿"] }
     private var overallScore: Double {
@@ -632,18 +639,30 @@ struct PetProductReviewEditorView: View {
                 DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("产品评价", text: $review, axis: .vertical).font(HomeTypography.body)
             }
-            .navigationTitle("添加产品评价").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(reviewID == nil ? "添加产品评价" : "编辑产品评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         let values = Dictionary(uniqueKeysWithValues: dimensions.map { ($0, scores[$0] ?? 3) })
-                        if store.addPetProductReview(productID: productID, date: LitterPredictionService.format(date), scores: values, text: review) { dismiss() }
+                        if store.savePetProductReview(id: reviewID, productID: productID, date: LitterPredictionService.format(date), scores: values, text: review) { dismiss() }
                     }
                 }
             }
-            .task { dimensions.forEach { if scores[$0] == nil { scores[$0] = 3 } } }
+            .task { loadReview() }
         }.presentationDetents([.large])
+    }
+
+    private func loadReview() {
+        guard !loaded else { return }
+        defer { loaded = true }
+        if let reviewID,
+           let existing = store.data.petProductReviews.first(where: { $0.id == reviewID && $0.productID == productID }) {
+            scores = existing.resolvedDimensionScores
+            review = existing.reviewText
+            date = LitterPredictionService.parse(existing.reviewDate) ?? Date()
+        }
+        dimensions.forEach { if scores[$0] == nil { scores[$0] = 3 } }
     }
 
     private func scoreBinding(for dimension: String) -> Binding<Int> {

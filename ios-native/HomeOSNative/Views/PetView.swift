@@ -17,7 +17,6 @@ struct PetView: View {
                     header
                     itemStatistics
                     PetItemsListView()
-                    PetRatingsListView()
                     timelineSection
                 }
                 .padding(.horizontal, HomeMetrics.pageInset)
@@ -137,15 +136,17 @@ struct PetView: View {
                 VStack(spacing: 0) {
                     eventFilters
                     Divider()
-                    if groupedEvents.isEmpty {
-                    EmptyState(icon: "calendar.badge.clock", title: "暂无符合条件的事项", message: "当前筛选条件会保留，可以添加事项或切换筛选。")
+                    if filteredEvents.isEmpty {
+                        EmptyState(icon: "calendar.badge.clock", title: "暂无符合条件的事项", message: "可以添加事项或切换事项类型。")
                             .padding(.horizontal, 14)
                     } else {
-                        ForEach(Array(groupedEvents.enumerated()), id: \.element.id) { index, group in
-                            eventGroup(group.date, events: group.events)
-                                .padding(.horizontal, 14)
-                            if index < groupedEvents.count - 1 { Divider() }
+                        VStack(spacing: 0) {
+                            ForEach(Array(filteredEvents.enumerated()), id: \.element.id) { index, event in
+                                timelineRow(event, index: index, count: filteredEvents.count)
+                            }
                         }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -199,70 +200,60 @@ struct PetView: View {
         }
     }
 
-    private var groupedEvents: [PetEventDateGroup] {
-        let groups = Dictionary(grouping: filteredEvents, by: \.occurrenceDate)
-        return groups.keys.sorted(by: >).map { PetEventDateGroup(date: $0, events: groups[$0] ?? []) }
-    }
-
-    private func eventGroup(_ date: String, events: [PetEvent]) -> some View {
-        let collapsed = store.data.settings.petEventCollapsedDateGroups?[date] == true
-        return VStack(spacing: 0) {
-                Button {
-                    store.setPetDateGroup(date, collapsed: !collapsed)
-                    NativeHaptics.selection()
-                } label: {
-                    HStack {
-                        Text(relativeDateTitle(date)).font(HomeTypography.cardTitle)
-                        Spacer()
-                        Text("\(events.count) 项").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                        Image(systemName: collapsed ? "chevron.down" : "chevron.up")
-                            .font(.caption.weight(.semibold)).foregroundStyle(HomeTheme.muted)
+    private func timelineRow(_ event: PetEvent, index: Int, count: Int) -> some View {
+        NavigationLink { PetEventDetailView(eventID: event.id) } label: {
+            HStack(alignment: .center, spacing: 11) {
+                VStack(spacing: 0) {
+                    Rectangle()
+                        .fill(index == 0 ? Color.clear : HomeTheme.line)
+                        .frame(width: 1.5, height: 24)
+                    ZStack {
+                        Circle()
+                            .fill(index == 0 ? HomeTheme.blue : HomeTheme.line)
+                            .frame(width: index == 0 ? 10 : 8, height: index == 0 ? 10 : 8)
                     }
-                    .frame(minHeight: 36)
+                    .frame(width: 10, height: 10)
+                    Rectangle()
+                        .fill(index == count - 1 ? Color.clear : HomeTheme.line)
+                        .frame(width: 1.5, height: 24)
                 }
-                .buttonStyle(.plain)
+                .frame(width: 12)
 
-                if !collapsed {
-                    ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
-                        if index > 0 { Divider() }
-                        NavigationLink { PetEventDetailView(eventID: event.id) } label: {
-                            HStack(alignment: .top, spacing: 11) {
-                                VStack(spacing: 0) {
-                                    Circle().fill(HomeTheme.blue).frame(width: 9, height: 9)
-                                    if index < events.count - 1 {
-                                        Rectangle().fill(HomeTheme.line).frame(width: 1.5).frame(minHeight: 44)
-                                    }
-                                }
-                                .padding(.top, 5)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(event.name).font(HomeTypography.cardTitle)
-                                        Spacer()
-                                        Text(event.categoryNameSnapshot)
-                                            .font(HomeTypography.supporting)
-                                            .foregroundStyle(HomeTheme.blue)
-                                    }
-                                    if let note = event.note, !note.isEmpty {
-                                        Text(note).font(HomeTypography.body).foregroundStyle(HomeTheme.muted).lineLimit(2)
-                                    }
-                                }
-                                .padding(.bottom, 10)
-                            }
-                            .padding(.top, 9)
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(event.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(HomeTheme.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 6)
+                        if shouldShowType(for: event) {
+                            Text(event.categoryNameSnapshot)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(HomeTheme.blue)
+                                .lineLimit(1)
                         }
-                        .buttonStyle(.plain)
                     }
+                    Text(eventSecondaryLine(event))
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(minHeight: 58)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
-    private func relativeDateTitle(_ value: String) -> String {
-        return HomeDateText.display(value)
+    private func shouldShowType(for event: PetEvent) -> Bool {
+        event.name.caseInsensitiveCompare(event.categoryNameSnapshot) != .orderedSame
     }
-}
 
-private struct PetEventDateGroup: Identifiable {
-    let date: String
-    let events: [PetEvent]
-    var id: String { date }
+    private func eventSecondaryLine(_ event: PetEvent) -> String {
+        let cleanNote = (event.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleanNote.isEmpty
+            ? HomeDateText.display(event.occurrenceDate)
+            : "\(HomeDateText.display(event.occurrenceDate)) · \(cleanNote)"
+    }
 }

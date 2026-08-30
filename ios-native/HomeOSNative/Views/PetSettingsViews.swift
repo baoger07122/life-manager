@@ -152,7 +152,7 @@ struct PetEventCategorySettingsView: View {
     var body: some View {
         List {
             if store.activePetEventCategories.isEmpty {
-                EmptyState(icon: "tag.fill", title: "还没有事项分类", message: "新增事项必须选择分类，请先创建分类。")
+                EmptyState(icon: "tag.fill", title: "还没有事项类型", message: "新增事项必须选择类型，请先创建事项类型。")
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             } else {
@@ -176,7 +176,7 @@ struct PetEventCategorySettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(HomeTheme.background)
-        .navigationTitle("宠物事项设置")
+        .navigationTitle("宠物事项类型")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             Button {
@@ -185,8 +185,8 @@ struct PetEventCategorySettingsView: View {
                 showEditor = true
             } label: { Image(systemName: "plus") }
         }
-        .alert(editingID == nil ? "新增事项分类" : "修改分类名称", isPresented: $showEditor) {
-            TextField("分类名称", text: $draftName)
+        .alert(editingID == nil ? "新增事项类型" : "修改类型名称", isPresented: $showEditor) {
+            TextField("类型名称", text: $draftName)
             Button("取消", role: .cancel) {}
             Button("保存") {
                 if let editingID {
@@ -196,7 +196,7 @@ struct PetEventCategorySettingsView: View {
                 }
             }
         }
-        .alert("删除这个分类？", isPresented: Binding(
+        .alert("删除这个事项类型？", isPresented: Binding(
             get: { deleteID != nil },
             set: { if !$0 { deleteID = nil } }
         )) {
@@ -206,7 +206,7 @@ struct PetEventCategorySettingsView: View {
                 self.deleteID = nil
             }
         } message: {
-            Text("历史事项仍保留当前分类名称，新事项不再显示此分类。")
+            Text("历史事项仍保留当前类型名称，新事项不再显示此类型。")
         }
     }
 

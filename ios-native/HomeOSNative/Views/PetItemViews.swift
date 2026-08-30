@@ -175,6 +175,15 @@ struct PetItemsListView: View {
                 .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
+            NavigationLink { PetRatingsListView() } label: {
+                Label("评价", systemImage: "star")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(HomeTheme.muted)
+                    .frame(minWidth: 54, minHeight: 44)
+            }
+            .buttonStyle(HomePressButtonStyle())
+            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+            .accessibilityLabel("进入物品评价")
             NavigationLink { PetItemEditorView() } label: {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 22, weight: .regular))
@@ -362,11 +371,7 @@ struct PetRatingsListView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HomeSectionHeader(title: "物品评价", actionTitle: "添加评价") {
-                NativeHaptics.tap()
-                sheet = .productPicker
-            }
+        ScrollView {
             HomeCard(padding: 0) {
                 VStack(spacing: 0) {
                     HStack(spacing: 22) {
@@ -427,8 +432,33 @@ struct PetRatingsListView: View {
                     }
                 }
             }
+            .padding(.horizontal, HomeMetrics.pageInset)
+            .padding(.vertical, 16)
+        }
+        .background(HomeTheme.background)
+        .navigationTitle("物品评价")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    NativeHaptics.tap()
+                    sheet = .productPicker
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel("添加物品评价")
+            }
         }
         .sheet(item: $sheet) { _ in PetRatingProductPickerSheet() }
+        .onAppear {
+            if !primaryCategories.contains(where: { $0.id == primaryID }) {
+                primaryID = primaryCategories.first?.id ?? ""
+            }
+        }
+        .onChange(of: primaryID) { _, _ in
+            secondaryID = "all"
+            selectedBrand = "all"
+        }
     }
 
     private func ratingFilter(title: String, id: String) -> some View {
@@ -575,7 +605,7 @@ struct PetItemDetailView: View {
             case .inbound: PetInventoryEditorView(productID: itemID, mode: .inbound)
             case .outbound: PetInventoryEditorView(productID: itemID, mode: .outbound)
             case .adjustment: PetInventoryEditorView(productID: itemID, mode: .adjustment)
-            case .productReview: PetProductReviewEditorView(productID: itemID)
+            case .productReview(let reviewID): PetProductReviewEditorView(productID: itemID, reviewID: reviewID)
             case .palatability: PetPalatabilityEditorView(productID: itemID)
             }
         }
@@ -701,7 +731,7 @@ struct PetItemDetailView: View {
                 HStack {
                     Text("物品评价").font(HomeTypography.cardTitle)
                     Spacer()
-                    Button("添加评价") { NativeHaptics.tap(); sheet = .productReview }
+                    Button("添加评价") { NativeHaptics.tap(); sheet = .productReview(reviewID: nil) }
                         .font(HomeTypography.supporting.weight(.medium))
                 }
                 if let item, let summary = store.petProductRating(productID: itemID) {
@@ -738,13 +768,24 @@ struct PetItemDetailView: View {
                 }
                 ForEach(records.prefix(5)) { review in
                     Divider()
-                    HStack {
-                        Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                        Spacer()
-                        Text("本次 \(review.overallScore.formatted(.number.precision(.fractionLength(1))))")
-                            .font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.blue)
+                    Button {
+                        NativeHaptics.selection()
+                        sheet = .productReview(reviewID: review.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                                Spacer()
+                                Text("本次 \(review.overallScore.formatted(.number.precision(.fractionLength(1))))")
+                                    .font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.blue)
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                            if !review.reviewText.isEmpty { Text(review.reviewText).font(HomeTypography.body).foregroundStyle(HomeTheme.ink) }
+                        }
                     }
-                    if !review.reviewText.isEmpty { Text(review.reviewText).font(HomeTypography.body) }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -841,7 +882,23 @@ struct PetItemDetailView: View {
     }
 }
 
-private enum PetItemDetailSheet: String, Identifiable { case inbound, outbound, adjustment, productReview, palatability; var id: String { rawValue } }
+private enum PetItemDetailSheet: Identifiable {
+    case inbound
+    case outbound
+    case adjustment
+    case productReview(reviewID: String?)
+    case palatability
+
+    var id: String {
+        switch self {
+        case .inbound: "inbound"
+        case .outbound: "outbound"
+        case .adjustment: "adjustment"
+        case .productReview(let reviewID): "product-review-\(reviewID ?? "new")"
+        case .palatability: "palatability"
+        }
+    }
+}
 func preferenceColor(_ value: String) -> Color { value == "喜欢" ? HomeTheme.success : value == "不喜欢" ? HomeTheme.danger : HomeTheme.muted }
 func sourceText(_ value: PetInventorySource) -> String {
     switch value { case .manual: "手动"; case .migration: "旧数据迁移"; case .litterRefill: "猫砂补砂"; case .litterReplace: "猫砂换砂" }

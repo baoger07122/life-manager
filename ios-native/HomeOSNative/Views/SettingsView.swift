@@ -36,7 +36,7 @@ struct SettingsView: View {
                     NavigationLink {
                         PetEventCategorySettingsView()
                     } label: {
-                        Label("宠物事项设置", systemImage: "tag.fill")
+                        Label("宠物事项类型", systemImage: "tag.fill")
                     }
                     NavigationLink {
                         PetPreferenceSummaryView()
@@ -69,7 +69,7 @@ struct SettingsView: View {
                 } header: { settingsSectionTitle("Playground 预览") }
                 #endif
                 Section {
-                    LabeledContent("原生版本", value: "0.1.13 (15)")
+                    LabeledContent("原生版本", value: "0.1.14 (16)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
                     Text("当前为原生重写第一阶段，不包含 WebView。")
                         .font(.footnote).foregroundStyle(HomeTheme.muted)

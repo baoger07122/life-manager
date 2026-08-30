@@ -24,25 +24,25 @@ struct PetEventEditorView: View {
     var body: some View {
         Form {
             Section("事项") {
-                HomeFieldLabel(title: "事项名称", required: true)
-                TextField("例如：洗猫砂盆", text: $name)
-                    .font(HomeTypography.body)
-
                 if store.activePetEventCategories.isEmpty {
                     NavigationLink {
                         PetEventCategorySettingsView()
                     } label: {
-                        Label("请先创建事项分类", systemImage: "exclamationmark.circle.fill")
+                        Label("请先创建事项类型", systemImage: "exclamationmark.circle.fill")
                             .foregroundStyle(HomeTheme.orange)
                     }
                 } else {
-                    Picker("分类", selection: $categoryID) {
+                    Picker("事项类型", selection: $categoryID) {
                         Text("请选择").tag("")
                         ForEach(store.activePetEventCategories) { category in
                             Text(category.name).tag(category.id)
                         }
                     }
                 }
+
+                HomeFieldLabel(title: "具体事项（选填）")
+                TextField("例如：清洁饮水机；不填则显示事项类型", text: $name)
+                    .font(HomeTypography.body)
 
                 DatePicker("发生日期", selection: $occurrenceDate, displayedComponents: .date)
             }
@@ -95,7 +95,7 @@ struct PetEventEditorView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存", action: save)
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || categoryID.isEmpty)
+                    .disabled(categoryID.isEmpty)
             }
         }
         .task { loadExistingIfNeeded() }
@@ -119,7 +119,7 @@ struct PetEventEditorView: View {
     private func loadExistingIfNeeded() {
         guard !loaded else { return }
         if let eventID, let event = store.data.petEvents.first(where: { $0.id == eventID }) {
-            name = event.name
+            name = event.name.caseInsensitiveCompare(event.categoryNameSnapshot) == .orderedSame ? "" : event.name
             categoryID = event.categoryID
             occurrenceDate = LitterPredictionService.parse(event.occurrenceDate) ?? Date()
             note = event.note ?? ""
@@ -176,7 +176,9 @@ struct PetEventDetailView: View {
                     PageTitle(title: event.name, subtitle: HomeDateText.display(event.occurrenceDate))
                     HomeCard {
                         VStack(alignment: .leading, spacing: 10) {
-                            detailRow("分类", event.categoryNameSnapshot)
+                            if event.name.caseInsensitiveCompare(event.categoryNameSnapshot) != .orderedSame {
+                                detailRow("事项类型", event.categoryNameSnapshot)
+                            }
                             detailRow("来源", sourceTitle(event.source))
                         }
                     }

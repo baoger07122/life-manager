@@ -353,9 +353,9 @@ final class HomeStore: ObservableObject {
 
     func addPetEventCategory(name: String) -> Bool {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else { return fail("分类名称不能为空") }
+        guard !cleanName.isEmpty else { return fail("事项类型名称不能为空") }
         guard !activePetEventCategories.contains(where: { $0.name.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
-            return fail("分类名称不能重复")
+            return fail("事项类型名称不能重复")
         }
         var next = data
         next.petEventCategories.append(PetEventCategory(
@@ -369,9 +369,9 @@ final class HomeStore: ObservableObject {
 
     func renamePetEventCategory(id: String, name: String) -> Bool {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else { return fail("分类名称不能为空") }
+        guard !cleanName.isEmpty else { return fail("事项类型名称不能为空") }
         guard !activePetEventCategories.contains(where: { $0.id != id && $0.name.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
-            return fail("分类名称不能重复")
+            return fail("事项类型名称不能重复")
         }
         var next = data
         guard let index = next.petEventCategories.firstIndex(where: { $0.id == id }) else { return false }
@@ -396,11 +396,11 @@ final class HomeStore: ObservableObject {
         imageReferences: [String] = []
     ) -> Bool {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleanName.isEmpty else { return fail("事项名称不能为空") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("发生日期无效") }
         guard let category = activePetEventCategories.first(where: { $0.id == categoryID }) else {
-            return fail("请选择有效的事项分类")
+            return fail("请选择有效的事项类型")
         }
+        let displayName = cleanName.isEmpty ? category.name : cleanName
         let selectedPets = activePets.filter { petIDs.contains($0.id) }
         let now = Date().timeIntervalSince1970
         var next = data
@@ -409,7 +409,7 @@ final class HomeStore: ObservableObject {
             guard next.petEvents[index].litterOperationID == nil else {
                 return fail("猫砂操作事项必须通过关联操作统一修改")
             }
-            next.petEvents[index].name = cleanName
+            next.petEvents[index].name = displayName
             next.petEvents[index].categoryID = category.id
             next.petEvents[index].categoryNameSnapshot = category.name
             next.petEvents[index].petIDs = selectedPets.map(\.id)
@@ -421,7 +421,7 @@ final class HomeStore: ObservableObject {
         } else {
             next.petEvents.append(PetEvent(
                 id: UUID().uuidString,
-                name: cleanName,
+                name: displayName,
                 categoryID: category.id,
                 categoryNameSnapshot: category.name,
                 petIDs: selectedPets.map(\.id),
@@ -554,12 +554,25 @@ final class HomeStore: ObservableObject {
         return true
     }
 
-    func addPetProductReview(productID: String, date: String, scores: [String: Int], text: String) -> Bool {
+    func savePetProductReview(id: String? = nil, productID: String, date: String, scores: [String: Int], text: String) -> Bool {
         guard !scores.isEmpty, scores.values.allSatisfy({ (1...5).contains($0) }) else { return fail("评分必须为 1 到 5 的整数") }
+        guard LitterPredictionService.parse(date) != nil else { return fail("评价日期无效") }
+        guard data.petItems.contains(where: { $0.id == productID && !$0.isArchived }) else { return fail("找不到该宠物物品") }
         let now = Date().timeIntervalSince1970
         var next = data
         let repurchase = scores["回购意愿"] ?? Int((Double(scores.values.reduce(0, +)) / Double(scores.count)).rounded())
-        next.petProductReviews.append(PetProductReview(id: UUID().uuidString, productID: productID, reviewDate: date, repurchaseLevel: repurchase, reviewText: text.trimmingCharacters(in: .whitespacesAndNewlines), createdAt: now, updatedAt: now, dimensionScores: scores))
+        if let id {
+            guard let index = next.petProductReviews.firstIndex(where: { $0.id == id && $0.productID == productID }) else {
+                return fail("找不到要编辑的评价")
+            }
+            next.petProductReviews[index].reviewDate = date
+            next.petProductReviews[index].repurchaseLevel = repurchase
+            next.petProductReviews[index].reviewText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            next.petProductReviews[index].dimensionScores = scores
+            next.petProductReviews[index].updatedAt = now
+        } else {
+            next.petProductReviews.append(PetProductReview(id: UUID().uuidString, productID: productID, reviewDate: date, repurchaseLevel: repurchase, reviewText: text.trimmingCharacters(in: .whitespacesAndNewlines), createdAt: now, updatedAt: now, dimensionScores: scores))
+        }
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true

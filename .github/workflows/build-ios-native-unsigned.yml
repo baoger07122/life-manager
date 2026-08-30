@@ -3,11 +3,8 @@ name: Build Home OS Native unsigned IPA
 on:
   workflow_dispatch:
   push:
-    branches:
-      - codex/ios-native-rewrite
-    paths:
-      - "ios-native/**"
-      - ".github/workflows/build-ios-native-unsigned.yml"
+    tags:
+      - "ios-native-v*"
 
 jobs:
   build:
@@ -67,13 +64,6 @@ jobs:
           cp -R "$APP_PATH" Payload/HomeOSNative.app
           ditto -c -k --sequesterRsrc --keepParent Payload "HomeOSNative-${{ steps.version.outputs.version }}-unsigned.ipa"
 
-      - name: Upload native IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: home-os-native-unsigned-ipa
-          path: ios-native/HomeOSNative-${{ steps.version.outputs.version }}-unsigned.ipa
-          if-no-files-found: error
-
       - name: Publish versioned IPA to GitHub Releases
         working-directory: ios-native
         env:
@@ -86,6 +76,11 @@ jobs:
           TITLE="Home OS Native ${VERSION} (${BUILD_NUMBER})"
           ASSET="HomeOSNative-${VERSION}-unsigned.ipa"
           NOTES=$'Home OS 原生 iOS 测试版本。\n\n此文件为未签名 IPA，需要使用第三方自签服务完成签名后安装。'
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF_NAME" != "$TAG" ]]; then
+            echo "版本标签 $GITHUB_REF_NAME 与 project.yml 版本 $TAG 不一致。"
+            exit 1
+          fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "$TITLE" --notes "$NOTES" --prerelease

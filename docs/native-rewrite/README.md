@@ -21,7 +21,7 @@
 - Playgrounds 只使用模拟数据，不证明持久化、备份、通知或前后台恢复正确。
 - 预览修改不递增版本号、不生成 ZIP、不提交为正式发布。
 - 只有需要生成新 IPA 时才确定并递增原生版本号。
-- IPA 构建成功后自动创建或更新对应的 GitHub Pre-release，并把未压缩的 `.ipa` 作为 Release Asset 上传；用户默认从 Releases 直接下载，Actions Artifact 仅作为构建备份。
+- 普通代码提交不触发 IPA 构建；只有确认版本并推送 `ios-native-v版本号` 标签（或手动运行工作流）时才执行一次 macOS 构建，并把未压缩的 `.ipa` 直接上传到对应 GitHub Pre-release，不再额外生成 Actions Artifact ZIP。
 - 不修改 Web `main`，不在原生正式 App 中嵌入 Web 页面。
 
 ## 文档入口

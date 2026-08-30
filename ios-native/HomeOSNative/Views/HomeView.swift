@@ -44,7 +44,15 @@ struct HomeView: View {
                                     .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
                             }
                             Spacer()
-                            statusRing(prediction)
+                            NavigationLink {
+                                PetLitterManagementView()
+                            } label: {
+                                statusRing(prediction)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(HomePressButtonStyle())
+                            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+                            .accessibilityLabel("进入补猫砂和换猫砂")
                         }
                         .padding(16)
                     } else {
@@ -66,7 +74,7 @@ struct HomeView: View {
                         Divider().frame(height: 58)
                         petStockMetric(title: categoryName(id: "pet-food-3", fallback: "零食罐"), items: petItems(categoryID: "pet-food-3"))
                         Divider().frame(height: 58)
-                        petStockMetric(title: categoryName(id: "pet-supply-0", fallback: "猫砂"), items: petItems(categoryID: "pet-supply-0"))
+                        petStockMetric(title: "矿砂", items: mineralLitterItems)
                     }
                     .padding(.vertical, 8)
                 }
@@ -191,6 +199,13 @@ struct HomeView: View {
     private func petItems(categoryID: String) -> [PetItem] {
         let name = categoryName(id: categoryID, fallback: "")
         return store.activePetItems.filter { $0.resolvedSecondaryCategory == name }
+    }
+
+    private var mineralLitterItems: [PetItem] {
+        store.activePetItems.filter {
+            $0.resolvedSecondaryCategory == "猫砂"
+                && ($0.litterKind ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == "矿砂"
+        }
     }
 
     private func stockSummary(_ items: [PetItem]) -> String {

@@ -15,9 +15,7 @@ struct PetItemsListView: View {
     @State private var primaryID = "pet-root-food"
     @State private var secondaryID = "all"
     @State private var selectedBrand = "all"
-    @State private var stockFilter: PetItemStockFilter = .all
-    @State private var ratingFilter: PetItemRatingFilter = .all
-    @State private var sortMode: PetItemListSortMode = .name
+    @State private var sortMode: PetItemListSortMode = .createdNewest
     @State private var listSheet: PetItemListSheet?
     @State private var expandedItemID: String?
     @State private var quickMode: PetInventoryTransactionType = .outbound
@@ -37,26 +35,20 @@ struct PetItemsListView: View {
         let filtered = store.activePetItems.filter {
             guard let selectedPrimary else { return false }
             let secondaryName = secondaryCategories.first { $0.id == secondaryID }?.name
-            let inventory = store.petInventory(for: $0.id)
-            let rating = store.petProductRating(productID: $0.id)
             return $0.resolvedPrimaryCategory == selectedPrimary.name
                 && (secondaryName == nil || $0.resolvedSecondaryCategory == secondaryName)
                 && (selectedBrand == "all" || $0.brand == selectedBrand)
-                && (stockFilter == .all || (stockFilter == .inStock ? inventory > 0 : inventory <= 0))
-                && (ratingFilter == .all || (ratingFilter == .rated ? rating != nil : rating == nil))
         }
         return filtered.sorted { left, right in
             switch sortMode {
-            case .name:
-                return left.name.localizedStandardCompare(right.name) == .orderedAscending
+            case .createdNewest:
+                let leftDate = left.createdAt ?? left.updatedAt ?? 0
+                let rightDate = right.createdAt ?? right.updatedAt ?? 0
+                return leftDate == rightDate ? left.name < right.name : leftDate > rightDate
             case .stockHigh:
                 let leftStock = store.petInventory(for: left.id)
                 let rightStock = store.petInventory(for: right.id)
                 return leftStock == rightStock ? left.name < right.name : leftStock > rightStock
-            case .ratingHigh:
-                let leftRating = store.petProductRating(productID: left.id)?.overall ?? -1
-                let rightRating = store.petProductRating(productID: right.id)?.overall ?? -1
-                return leftRating == rightRating ? left.name < right.name : leftRating > rightRating
             }
         }
     }
@@ -75,12 +67,30 @@ struct PetItemsListView: View {
                 secondarySelector
                     .padding(.horizontal, 14)
                     .padding(.bottom, 6)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        filterButton(selectedBrand == "all" ? "品牌" : selectedBrand, icon: "tag", active: selectedBrand != "all")
-                        filterButton(stockFilter.title, icon: "shippingbox", active: stockFilter != .all)
-                        filterButton(ratingFilter.title, icon: "star", active: ratingFilter != .all)
-                        filterButton(sortMode.shortTitle, icon: "arrow.up.arrow.down", active: sortMode != .name)
+                HStack(spacing: 10) {
+                    filterButton(selectedBrand == "all" ? "品牌" : selectedBrand, icon: "tag", active: selectedBrand != "all")
+                    Spacer()
+                    Menu {
+                        ForEach(PetItemListSortMode.allCases) { option in
+                            Button {
+                                sortMode = option
+                                NativeHaptics.selection()
+                            } label: {
+                                if sortMode == option {
+                                    Label(option.title, systemImage: "checkmark")
+                                } else {
+                                    Text(option.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(sortMode.title, systemImage: "arrow.up.arrow.down")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(HomeTheme.muted)
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(HomeTheme.background, in: Capsule())
+                            .overlay { Capsule().stroke(HomeTheme.line, lineWidth: 0.8) }
                     }
                 }
                 .padding(.horizontal, 14)
@@ -116,12 +126,9 @@ struct PetItemsListView: View {
             expandedItemID = nil
         }
         .sheet(item: $listSheet) { _ in
-            PetItemFilterSheet(
+            PetBrandFilterSheet(
                 brands: availableBrands,
-                selectedBrand: $selectedBrand,
-                stockFilter: $stockFilter,
-                ratingFilter: $ratingFilter,
-                sortMode: $sortMode
+                selectedBrand: $selectedBrand
             )
         }
     }
@@ -203,10 +210,14 @@ struct PetItemsListView: View {
             }
             Spacer(minLength: 0)
             NavigationLink { PetRatingsListView() } label: {
-                Text("评价")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(HomeTheme.muted)
-                    .frame(minWidth: 46, minHeight: HomeMetrics.minimumTapTarget, alignment: .center)
+                VStack(spacing: 8) {
+                    Text("评价")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(height: 19, alignment: .center)
+                    Capsule().fill(Color.clear).frame(width: 28, height: 3)
+                }
+                .frame(minWidth: 46, minHeight: HomeMetrics.minimumTapTarget, alignment: .center)
             }
             .buttonStyle(HomePressButtonStyle())
             .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
@@ -250,7 +261,7 @@ struct PetItemsListView: View {
 
     private func filterButton(_ title: String, icon: String, active: Bool) -> some View {
         Button {
-            listSheet = .filters
+            listSheet = .brand
             NativeHaptics.selection()
         } label: {
             Label(title, systemImage: icon)
@@ -380,109 +391,47 @@ struct PetItemsListView: View {
 }
 
 private enum PetItemListSheet: String, Identifiable {
-    case filters
+    case brand
     var id: String { rawValue }
-}
-
-private enum PetItemStockFilter: String, CaseIterable, Identifiable {
-    case all, inStock, outOfStock
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .all: "库存"
-        case .inStock: "有库存"
-        case .outOfStock: "零库存"
-        }
-    }
-}
-
-private enum PetItemRatingFilter: String, CaseIterable, Identifiable {
-    case all, rated, unrated
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .all: "评分"
-        case .rated: "已评分"
-        case .unrated: "未评分"
-        }
-    }
 }
 
 private enum PetItemListSortMode: String, CaseIterable, Identifiable {
-    case name, stockHigh, ratingHigh
+    case createdNewest, stockHigh
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .name: "按名称排序"
+        case .createdNewest: "最近添加"
         case .stockHigh: "库存从高到低"
-        case .ratingHigh: "评分从高到低"
-        }
-    }
-    var shortTitle: String {
-        switch self {
-        case .name: "排序"
-        case .stockHigh: "库存↓"
-        case .ratingHigh: "评分↓"
         }
     }
 }
 
-private struct PetItemFilterSheet: View {
+private struct PetBrandFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
     let brands: [String]
     @Binding private var selectedBrand: String
-    @Binding private var stockFilter: PetItemStockFilter
-    @Binding private var ratingFilter: PetItemRatingFilter
-    @Binding private var sortMode: PetItemListSortMode
     @State private var draftBrand: String
-    @State private var draftStock: PetItemStockFilter
-    @State private var draftRating: PetItemRatingFilter
-    @State private var draftSort: PetItemListSortMode
 
     init(
         brands: [String],
-        selectedBrand: Binding<String>,
-        stockFilter: Binding<PetItemStockFilter>,
-        ratingFilter: Binding<PetItemRatingFilter>,
-        sortMode: Binding<PetItemListSortMode>
+        selectedBrand: Binding<String>
     ) {
         self.brands = brands
         _selectedBrand = selectedBrand
-        _stockFilter = stockFilter
-        _ratingFilter = ratingFilter
-        _sortMode = sortMode
         _draftBrand = State(initialValue: selectedBrand.wrappedValue)
-        _draftStock = State(initialValue: stockFilter.wrappedValue)
-        _draftRating = State(initialValue: ratingFilter.wrappedValue)
-        _draftSort = State(initialValue: sortMode.wrappedValue)
     }
 
     var body: some View {
         NavigationStack {
             List {
-                Section("品牌") {
+                Section {
                     selectionRow("全部品牌", selected: draftBrand == "all") { draftBrand = "all" }
                     ForEach(brands, id: \.self) { brand in
                         selectionRow(brand, selected: draftBrand == brand) { draftBrand = brand }
                     }
                 }
-                Section("库存") {
-                    ForEach(PetItemStockFilter.allCases) { option in
-                        selectionRow(option == .all ? "全部库存" : option.title, selected: draftStock == option) { draftStock = option }
-                    }
-                }
-                Section("评分") {
-                    ForEach(PetItemRatingFilter.allCases) { option in
-                        selectionRow(option == .all ? "全部评分" : option.title, selected: draftRating == option) { draftRating = option }
-                    }
-                }
-                Section("排序") {
-                    ForEach(PetItemListSortMode.allCases) { option in
-                        selectionRow(option.title, selected: draftSort == option) { draftSort = option }
-                    }
-                }
             }
-            .navigationTitle("筛选宠物物品")
+            .navigationTitle("选择品牌")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -492,9 +441,6 @@ private struct PetItemFilterSheet: View {
                 HStack(spacing: 12) {
                     Button("重置") {
                         draftBrand = "all"
-                        draftStock = .all
-                        draftRating = .all
-                        draftSort = .name
                         NativeHaptics.selection()
                     }
                     .buttonStyle(HomeSecondaryButtonStyle())
@@ -526,9 +472,6 @@ private struct PetItemFilterSheet: View {
 
     private func apply() {
         selectedBrand = draftBrand
-        stockFilter = draftStock
-        ratingFilter = draftRating
-        sortMode = draftSort
         NativeHaptics.success()
         dismiss()
     }

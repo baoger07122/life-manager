@@ -203,8 +203,9 @@ struct HomeView: View {
 
     private var mineralLitterItems: [PetItem] {
         store.activePetItems.filter {
-            $0.resolvedSecondaryCategory == "猫砂"
-                && ($0.litterKind ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == "矿砂"
+            let secondary = $0.resolvedSecondaryCategory.trimmingCharacters(in: .whitespacesAndNewlines)
+            let kind = ($0.litterKind ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            return secondary == "矿砂" || (secondary == "猫砂" && kind == "矿砂")
         }
     }
 

@@ -27,6 +27,7 @@ struct FoodView: View {
     @State private var sortMode: FoodSortMode = .newest
     @State private var showEditor = false
     @State private var showSearch = false
+    @State private var scrollOffset: CGFloat = 0
     @FocusState private var searchFocused: Bool
 
     private var categories: [String] {
@@ -72,13 +73,14 @@ struct FoodView: View {
             .simultaneousGesture(
                 DragGesture(minimumDistance: 12)
                     .onChanged { value in
-                        guard value.translation.height > 28, !showSearch else { return }
+                        guard scrollOffset > -8, value.translation.height > 28, !showSearch else { return }
                         withAnimation(.easeOut(duration: 0.18)) { showSearch = true }
                         NativeHaptics.selection()
                     }
             )
             .background(HomeTheme.background)
             .onPreferenceChange(FoodScrollOffsetPreferenceKey.self) { offset in
+                scrollOffset = offset
                 if offset > 44, !showSearch {
                     withAnimation(.easeOut(duration: 0.18)) { showSearch = true }
                     NativeHaptics.selection()

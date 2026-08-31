@@ -113,7 +113,13 @@ struct PetItemsListView: View {
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(items) { item in
-                            itemRow(item)
+                            PetSwipeActionRow(
+                                itemName: item.displayTitle,
+                                onDisable: { store.deletePetItem(id: item.id) },
+                                onDelete: { store.permanentlyDeletePetItem(id: item.id) }
+                            ) {
+                                itemRow(item)
+                            }
                             if item.id != items.last?.id { Divider() }
                         }
                     }
@@ -160,6 +166,7 @@ struct PetItemsListView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(HomePressButtonStyle())
+                .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                 .accessibilityLabel("查看\(item.name)详情")
 
                 Button {
@@ -233,10 +240,14 @@ struct PetItemsListView: View {
                     initialSecondaryID: secondaryID == "all" ? nil : secondaryID
                 )
             } label: {
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 22, weight: .regular))
-                    .foregroundStyle(HomeTheme.muted)
-                    .frame(width: 44, height: 44)
+                VStack(spacing: 8) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 19, weight: .regular))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(height: 19, alignment: .center)
+                    Capsule().fill(Color.clear).frame(width: 28, height: 3)
+                }
+                .frame(minWidth: 44, minHeight: HomeMetrics.minimumTapTarget, alignment: .center)
             }
             .buttonStyle(HomePressButtonStyle())
             .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
@@ -760,6 +771,7 @@ struct PetItemDetailView: View {
             case .productReview(let reviewID): PetProductReviewEditorView(productID: itemID, reviewID: reviewID)
             case .palatability: PetPalatabilityEditorView(productID: itemID)
             case .image: PetItemImageEditorSheet(itemID: itemID, initialImage: item?.image)
+            case .transaction(let transactionID): PetInventoryTransactionEditorView(transactionID: transactionID)
             }
         }
         .alert("停用这个宠物物品？", isPresented: $showArchive) {
@@ -835,23 +847,37 @@ struct PetItemDetailView: View {
                 if records.isEmpty { Text("暂无库存流水").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
                 ForEach(records) { record in
                     Divider()
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: record.quantityChange >= 0 ? "arrow.down.circle" : "arrow.up.circle")
-                            .font(.system(size: 20))
-                            .foregroundStyle(record.quantityChange >= 0 ? HomeTheme.blue : HomeTheme.orange)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(record.reason).font(HomeTypography.body.weight(.medium))
-                            Text("\(HomeDateText.display(record.occurrenceDate)) · \(sourceText(record.source))").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                            if record.type == .inbound, let totalPrice = record.totalPrice, let unitPrice = record.unitPrice {
-                                Text("总价 \(currency2(totalPrice)) · 单价 \(currency2(unitPrice))/\(record.unit)")
-                                    .font(HomeTypography.supporting)
-                                    .foregroundStyle(HomeTheme.muted)
+                    Button {
+                        guard record.type != .adjustment, record.linkedOperationID == nil else { return }
+                        NativeHaptics.tap()
+                        sheet = .transaction(transactionID: record.id)
+                    } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: record.quantityChange >= 0 ? "arrow.down.circle" : "arrow.up.circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(record.quantityChange >= 0 ? HomeTheme.blue : HomeTheme.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(record.reason).font(HomeTypography.body.weight(.medium))
+                                Text("\(HomeDateText.display(record.occurrenceDate)) · \(sourceText(record.source))").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                                if let totalPrice = record.totalPrice, let unitPrice = record.unitPrice {
+                                    Text("总价 \(currency2(totalPrice)) · 单价 \(currency2(unitPrice))/\(record.unit)")
+                                        .font(HomeTypography.supporting)
+                                        .foregroundStyle(HomeTheme.muted)
+                                }
+                            }
+                            Spacer()
+                            Text("\(record.quantityChange > 0 ? "+" : "")\(record.quantityChange.formatted())\(record.unit)")
+                                .font(HomeTypography.body.weight(.semibold)).foregroundStyle(record.quantityChange >= 0 ? HomeTheme.success : HomeTheme.orange)
+                            if record.type != .adjustment, record.linkedOperationID == nil {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 3)
                             }
                         }
-                        Spacer()
-                        Text("\(record.quantityChange > 0 ? "+" : "")\(record.quantityChange.formatted())\(record.unit)")
-                            .font(HomeTypography.body.weight(.semibold)).foregroundStyle(record.quantityChange >= 0 ? HomeTheme.success : HomeTheme.orange)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(record.type == .adjustment || record.linkedOperationID != nil)
                 }
             }
         }
@@ -1056,6 +1082,7 @@ private enum PetItemDetailSheet: Identifiable {
     case productReview(reviewID: String?)
     case palatability
     case image
+    case transaction(transactionID: String)
 
     var id: String {
         switch self {
@@ -1065,7 +1092,102 @@ private enum PetItemDetailSheet: Identifiable {
         case .productReview(let reviewID): "product-review-\(reviewID ?? "new")"
         case .palatability: "palatability"
         case .image: "image"
+        case .transaction(let transactionID): "transaction-\(transactionID)"
         }
+    }
+}
+
+private struct PetSwipeActionRow<Content: View>: View {
+    let itemName: String
+    let onDisable: () -> Void
+    let onDelete: () -> Void
+    let content: Content
+    @State private var offset: CGFloat = 0
+    @State private var dragStart: CGFloat = 0
+    @State private var confirmDelete = false
+
+    private let actionWidth: CGFloat = 72
+
+    init(
+        itemName: String,
+        onDisable: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.itemName = itemName
+        self.onDisable = onDisable
+        self.onDelete = onDelete
+        self.content = content()
+    }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            HStack(spacing: 0) {
+                Button {
+                    close()
+                    NativeHaptics.warning()
+                    onDisable()
+                } label: {
+                    actionLabel("停用", icon: "archivebox.fill")
+                        .background(HomeTheme.orange)
+                }
+                Button {
+                    confirmDelete = true
+                    NativeHaptics.warning()
+                } label: {
+                    actionLabel("删除", icon: "trash.fill")
+                        .background(HomeTheme.danger)
+                }
+            }
+            .frame(width: actionWidth * 2)
+
+            content
+                .background(HomeTheme.card)
+                .offset(x: offset)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 18)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            offset = min(0, max(-(actionWidth * 2), dragStart + value.translation.width))
+                        }
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            let shouldOpen = offset < -actionWidth * 0.72 || value.predictedEndTranslation.width < -actionWidth
+                            let target = shouldOpen ? -(actionWidth * 2) : 0
+                            withAnimation(.snappy(duration: 0.22)) {
+                                offset = target
+                            }
+                            dragStart = target
+                            NativeHaptics.selection()
+                        }
+                )
+        }
+        .clipped()
+        .alert("永久删除这个物品？", isPresented: $confirmDelete) {
+            Button("取消", role: .cancel) { close() }
+            Button("删除", role: .destructive) {
+                onDelete()
+                NativeHaptics.success()
+            }
+        } message: {
+            Text("“\(itemName)”及其库存、价格和评价记录会被永久删除，无法恢复。")
+        }
+    }
+
+    private func actionLabel(_ title: String, icon: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 15, weight: .semibold))
+            Text(title).font(.system(size: 12, weight: .semibold))
+        }
+        .foregroundStyle(.white)
+        .frame(width: actionWidth)
+        .frame(maxHeight: .infinity)
+    }
+
+    private func close() {
+        withAnimation(.snappy(duration: 0.22)) { offset = 0 }
+        dragStart = 0
     }
 }
 

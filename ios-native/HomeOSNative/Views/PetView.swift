@@ -331,7 +331,7 @@ private struct PetMonthlyExpenseView: View {
 
     private func expenseRow(_ transaction: PetInventoryTransaction) -> some View {
         let item = store.data.petItems.first { $0.id == transaction.productID }
-        let unitPrice = transaction.unitPrice ?? item?.price ?? 0
+        let unitPrice = transaction.unitPrice ?? store.latestPetUnitPrice(for: transaction.productID) ?? 0
         let total = transaction.totalPrice ?? abs(transaction.quantityChange) * unitPrice
         return HStack(spacing: 11) {
             Image(systemName: "arrow.up.circle.fill")
@@ -343,7 +343,9 @@ private struct PetMonthlyExpenseView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(HomeTheme.ink)
                     .lineLimit(1)
-                Text("\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · ¥\(unitPrice.formatted(.number.precision(.fractionLength(2))))/\(transaction.unit)")
+                Text(unitPrice > 0
+                    ? "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · ¥\(unitPrice.formatted(.number.precision(.fractionLength(2))))/\(transaction.unit)"
+                    : "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · 待补价格")
                     .font(HomeTypography.supporting)
                     .foregroundStyle(HomeTheme.muted)
                     .lineLimit(1)

@@ -465,10 +465,34 @@ final class HomeStore: ObservableObject {
                 return result + totalPrice
             }
             let fallbackUnitPrice = transaction.unitPrice
-                ?? data.petItems.first(where: { $0.id == transaction.productID })?.price
+                ?? latestPetUnitPrice(for: transaction.productID)
                 ?? 0
             return result + abs(transaction.quantityChange) * fallbackUnitPrice
         }
+    }
+
+    func latestPetUnitPrice(for productID: String, in backup: HomeBackup? = nil) -> Double? {
+        let source = backup ?? data
+        let transactions = source.petInventoryTransactions
+            .filter { $0.productID == productID && $0.type == .inbound }
+            .sorted { $0.occurrenceDate == $1.occurrenceDate ? $0.createdAt > $1.createdAt : $0.occurrenceDate > $1.occurrenceDate }
+        for transaction in transactions {
+            if let unitPrice = transaction.unitPrice, unitPrice > 0 { return unitPrice }
+            if let totalPrice = transaction.totalPrice, totalPrice > 0, transaction.quantityChange > 0 {
+                return totalPrice / transaction.quantityChange
+            }
+        }
+        if let item = source.petItems.first(where: { $0.id == productID }) {
+            let history = (item.purchaseHistory ?? []) + (item.replenishmentHistory ?? [])
+            if let record = history
+                .filter({ $0.price > 0 && $0.quantity > 0 })
+                .sorted(by: { $0.date > $1.date })
+                .first {
+                return record.price / record.quantity
+            }
+            if let price = item.price, price > 0 { return price }
+        }
+        return nil
     }
 
     func latestProductReview(for productID: String) -> PetProductReview? {
@@ -664,6 +688,16 @@ final class HomeStore: ObservableObject {
         commit(next)
     }
 
+    func permanentlyDeletePetItem(id: String) {
+        var next = data
+        next.petItems.removeAll { $0.id == id }
+        next.petInventoryTransactions.removeAll { $0.productID == id }
+        next.petProductReviews.removeAll { $0.productID == id }
+        next.petPalatabilityReviews.removeAll { $0.productID == id }
+        next.activities.removeAll { $0.type == "pet" && $0.targetId == id }
+        if commit(next) { NativeHaptics.success() }
+    }
+
     func recordPetInventory(
         productID: String,
         type: PetInventoryTransactionType,
@@ -685,7 +719,7 @@ final class HomeStore: ObservableObject {
         guard after >= 0 else { return fail("出库数量不能超过当前库存") }
         let now = Date().timeIntervalSince1970
         let resolvedUnitPrice: Double? = {
-            if type == .outbound { return next.petItems[index].price }
+            if type == .outbound { return latestPetUnitPrice(for: productID, in: next) }
             guard let totalPrice, totalPrice > 0 else { return nil }
             return totalPrice / quantity
         }()
@@ -719,6 +753,80 @@ final class HomeStore: ObservableObject {
             storedDate: occurrenceDate,
             occurredAt: now
         )
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func updatePetInventoryTransaction(
+        id: String,
+        quantity: Double,
+        occurrenceDate: String,
+        reason: String,
+        totalPrice: Double?
+    ) -> Bool {
+        guard quantity > 0 else { return fail("数量必须大于 0") }
+        guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
+        var next = data
+        guard let transactionIndex = next.petInventoryTransactions.firstIndex(where: { $0.id == id }) else {
+            return fail("找不到这条进出库记录")
+        }
+        let original = next.petInventoryTransactions[transactionIndex]
+        guard original.type != .adjustment else { return fail("库存修正记录请通过新的修正操作处理") }
+        guard original.linkedOperationID == nil else { return fail("关联猫砂操作的记录不能单独修改") }
+        guard let itemIndex = next.petItems.firstIndex(where: { $0.id == original.productID }) else {
+            return fail("找不到关联物品")
+        }
+
+        let now = Date().timeIntervalSince1970
+        let signedQuantity = original.type == .outbound ? -quantity : quantity
+        next.petInventoryTransactions[transactionIndex].quantityChange = signedQuantity
+        next.petInventoryTransactions[transactionIndex].occurrenceDate = occurrenceDate
+        next.petInventoryTransactions[transactionIndex].reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        next.petInventoryTransactions[transactionIndex].totalPrice = totalPrice
+        next.petInventoryTransactions[transactionIndex].unitPrice = totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil }
+        next.petInventoryTransactions[transactionIndex].updatedAt = now
+
+        let orderedIndices = next.petInventoryTransactions.indices
+            .filter { next.petInventoryTransactions[$0].productID == original.productID }
+            .sorted {
+                let left = next.petInventoryTransactions[$0]
+                let right = next.petInventoryTransactions[$1]
+                return left.occurrenceDate == right.occurrenceDate ? left.createdAt < right.createdAt : left.occurrenceDate < right.occurrenceDate
+            }
+        var running = 0.0
+        for index in orderedIndices {
+            var transaction = next.petInventoryTransactions[index]
+            transaction.quantityBefore = running
+            if transaction.type == .adjustment {
+                let target = max(0, transaction.quantityAfter)
+                transaction.quantityChange = target - running
+                transaction.quantityAfter = target
+                running = target
+            } else {
+                let after = running + transaction.quantityChange
+                guard after >= -0.000_001 else {
+                    return fail("修改后会使 \(HomeDateText.display(transaction.occurrenceDate)) 的库存变成负数")
+                }
+                transaction.quantityAfter = max(0, after)
+                running = max(0, after)
+            }
+            next.petInventoryTransactions[index] = transaction
+        }
+        next.petItems[itemIndex].quantity = running
+        if let latestPrice = latestPetUnitPrice(for: original.productID, in: next) {
+            next.petItems[itemIndex].price = latestPrice
+        }
+        next.petItems[itemIndex].updatedAt = now
+
+        let action = original.type == .inbound ? "入库" : "出库"
+        if let activityIndex = next.activities.firstIndex(where: {
+            ($0.id == "pet-inventory-\(id)") || ($0.type == "pet" && $0.targetId == original.productID && $0.action == action && abs(($0.occurredAt ?? 0) - original.createdAt) < 1)
+        }) {
+            next.activities[activityIndex].quantity = quantity
+            next.activities[activityIndex].totalPrice = totalPrice
+            next.activities[activityIndex].time = Self.activityDateText(occurrenceDate)
+        }
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true
@@ -988,6 +1096,10 @@ final class HomeStore: ObservableObject {
             let item = next.petItems[index]
             if next.petInventoryTransactions.contains(where: { $0.productID == item.id }) {
                 next.petItems[index].quantity = petInventory(for: item.id, in: next)
+                if (next.petItems[index].price ?? 0) <= 0,
+                   let recoveredPrice = latestPetUnitPrice(for: item.id, in: next) {
+                    next.petItems[index].price = recoveredPrice
+                }
                 continue
             }
 
@@ -1019,6 +1131,10 @@ final class HomeStore: ObservableObject {
             next.petItems[index].secondaryCategory = item.secondaryCategory ?? inferredSecondaryCategory(for: item)
             next.petItems[index].createdAt = item.createdAt ?? now
             next.petItems[index].updatedAt = item.updatedAt ?? now
+            if (next.petItems[index].price ?? 0) <= 0,
+               let recoveredPrice = latestPetUnitPrice(for: item.id, in: next) {
+                next.petItems[index].price = recoveredPrice
+            }
         }
 
         if next.petPalatabilityReviews.isEmpty {

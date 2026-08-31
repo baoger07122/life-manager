@@ -69,6 +69,14 @@ struct FoodView: View {
                 .padding(.bottom, 28)
             }
             .coordinateSpace(name: "food-scroll")
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12)
+                    .onChanged { value in
+                        guard value.translation.height > 28, !showSearch else { return }
+                        withAnimation(.easeOut(duration: 0.18)) { showSearch = true }
+                        NativeHaptics.selection()
+                    }
+            )
             .background(HomeTheme.background)
             .onPreferenceChange(FoodScrollOffsetPreferenceKey.self) { offset in
                 if offset > 44, !showSearch {
@@ -163,12 +171,6 @@ struct FoodView: View {
                                 .foregroundStyle(selectedLocation == location ? HomeTheme.blue : HomeTheme.muted)
                                 .frame(width: 82, height: 68)
                                 .background(HomeTheme.background, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                .overlay(alignment: .bottom) {
-                                    Capsule()
-                                        .fill(selectedLocation == location ? HomeTheme.blue : Color.clear)
-                                        .frame(width: 26, height: 3)
-                                        .padding(.bottom, 5)
-                                }
                             }
                             .buttonStyle(.plain)
                         }

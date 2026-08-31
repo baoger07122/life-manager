@@ -619,6 +619,114 @@ struct PetInventoryEditorView: View {
     }
 }
 
+struct PetInventoryTransactionEditorView: View {
+    @EnvironmentObject private var store: HomeStore
+    @Environment(\.dismiss) private var dismiss
+    let transactionID: String
+    @State private var quantityText = ""
+    @State private var totalPriceText = ""
+    @State private var date = Date()
+    @State private var reason = ""
+    @State private var loaded = false
+    @State private var localError: String?
+
+    private var transaction: PetInventoryTransaction? {
+        store.data.petInventoryTransactions.first { $0.id == transactionID }
+    }
+    private var item: PetItem? {
+        guard let transaction else { return nil }
+        return store.data.petItems.first { $0.id == transaction.productID }
+    }
+    private var quantity: Double? {
+        Double(quantityText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
+    }
+    private var totalPrice: Double? {
+        let clean = totalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard !clean.isEmpty, let value = Double(clean), value >= 0 else { return nil }
+        return value
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if let transaction, let item {
+                    Section {
+                        LabeledContent("物品", value: item.displayTitle)
+                        LabeledContent("类型", value: transaction.type == .inbound ? "入库" : "出库")
+                    }
+                    Section("记录内容") {
+                        TextField("数量", text: $quantityText)
+                            .keyboardType(.decimalPad)
+                        TextField("总价（选填）", text: $totalPriceText)
+                            .keyboardType(.decimalPad)
+                        if let quantity, quantity > 0, let totalPrice {
+                            LabeledContent("折算单价", value: "¥\((totalPrice / quantity).formatted(.number.precision(.fractionLength(2))))/\(item.unit)")
+                                .foregroundStyle(HomeTheme.muted)
+                        }
+                        DatePicker("日期", selection: $date, displayedComponents: .date)
+                        TextField("原因", text: $reason)
+                    }
+                    Section {
+                        Text("保存后会按时间顺序重新计算这件物品的全部库存流水和当前库存。")
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
+                    }
+                } else {
+                    Text("记录不存在")
+                }
+            }
+            .navigationTitle("编辑进出库记录")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存", action: save)
+                        .disabled((quantity ?? 0) <= 0 || transaction == nil)
+                }
+            }
+        }
+        .task { load() }
+        .alert("记录修改失败", isPresented: Binding(
+            get: { localError != nil },
+            set: { if !$0 { localError = nil } }
+        )) {
+            Button("知道了") { localError = nil }
+        } message: {
+            Text(localError ?? "请检查输入后重试。")
+        }
+    }
+
+    private func load() {
+        guard !loaded, let transaction else { return }
+        loaded = true
+        quantityText = abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...4)))
+        if let total = transaction.totalPrice, total > 0 {
+            totalPriceText = total.formatted(.number.precision(.fractionLength(2)))
+        } else if let unit = transaction.unitPrice, unit > 0 {
+            totalPriceText = (unit * abs(transaction.quantityChange)).formatted(.number.precision(.fractionLength(2)))
+        }
+        date = LitterPredictionService.parse(transaction.occurrenceDate) ?? Date()
+        reason = transaction.reason
+    }
+
+    private func save() {
+        guard let quantity, quantity > 0 else {
+            localError = "请输入大于 0 的数量"
+            NativeHaptics.error()
+            return
+        }
+        let success = store.updatePetInventoryTransaction(
+            id: transactionID,
+            quantity: quantity,
+            occurrenceDate: LitterPredictionService.format(date),
+            reason: reason.isEmpty ? (transaction?.type == .inbound ? "购买入库" : "日常使用") : reason,
+            totalPrice: totalPrice
+        )
+        if success { dismiss() }
+        else { localError = store.lastError ?? "记录没有保存，请重试。" }
+    }
+}
+
 struct PetProductReviewEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss

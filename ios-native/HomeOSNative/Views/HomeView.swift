@@ -1,7 +1,21 @@
 import SwiftUI
 
+private enum HomeActivityFilter: String, CaseIterable, Identifiable {
+    case all, food, pet, recipe
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .all: "全部"
+        case .food: "食品"
+        case .pet: "宠物"
+        case .recipe: "菜谱"
+        }
+    }
+}
+
 struct HomeView: View {
     @EnvironmentObject private var store: HomeStore
+    @State private var activityFilter: HomeActivityFilter = .all
 
     var body: some View {
         NavigationStack {
@@ -163,21 +177,109 @@ struct HomeView: View {
     private var activitiesSection: some View {
         VStack(alignment: .leading, spacing: 9) {
             HomeSectionHeader(title: "最近动态")
-            HomeCard {
-                if store.data.activities.isEmpty {
-                    Text("暂无动态").font(HomeTypography.body).foregroundStyle(HomeTheme.muted).frame(minHeight: 42)
-                } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(store.data.activities.prefix(3)) { item in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(item.text).font(HomeTypography.body)
-                                Text(item.time).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+            HomeCard(padding: 0) {
+                VStack(spacing: 0) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 22) {
+                            ForEach(HomeActivityFilter.allCases) { filter in
+                                Button {
+                                    activityFilter = filter
+                                    NativeHaptics.selection()
+                                } label: {
+                                    HomeUnderlineTab(title: filter.title, selected: activityFilter == filter, prominent: true)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                    }
+                    .frame(height: 48)
+                    Divider()
+                    if filteredActivities.isEmpty {
+                        Text("暂无动态")
+                            .font(HomeTypography.body)
+                            .foregroundStyle(HomeTheme.muted)
+                            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+                            .padding(.horizontal, 14)
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filteredActivities.prefix(5)) { item in
+                                activityLink(item)
+                                if item.id != filteredActivities.prefix(5).last?.id { Divider().padding(.leading, 52) }
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private var filteredActivities: [ActivityItem] {
+        store.data.activities.filter { item in
+            activityFilter == .all || item.type == activityFilter.rawValue
+        }
+    }
+
+    @ViewBuilder
+    private func activityLink(_ item: ActivityItem) -> some View {
+        if item.type == "food", let targetID = item.targetId,
+           store.data.foods.contains(where: { $0.id == targetID }) {
+            NavigationLink { FoodDetailView(itemID: targetID) } label: { activityRow(item) }
+                .buttonStyle(.plain)
+        } else if item.type == "pet", let targetID = item.targetId,
+                  store.activePetItems.contains(where: { $0.id == targetID }) {
+            NavigationLink { PetItemDetailView(itemID: targetID) } label: { activityRow(item) }
+                .buttonStyle(.plain)
+        } else {
+            activityRow(item)
+        }
+    }
+
+    private func activityRow(_ item: ActivityItem) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: activityIcon(item))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(activityColor(item))
+                .frame(width: 30, height: 30)
+                .background(activityColor(item).opacity(0.10), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.text).font(.system(size: 14, weight: .medium)).foregroundStyle(HomeTheme.ink).lineLimit(1)
+                Text(activityDetails(item)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if item.targetId != nil {
+                Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 56)
+        .contentShape(Rectangle())
+    }
+
+    private func activityDetails(_ item: ActivityItem) -> String {
+        var parts = [item.time]
+        if let quantity = item.quantity, let unit = item.unit {
+            parts.append("\(quantity.formatted(.number.precision(.fractionLength(0...2))))\(unit)")
+        }
+        if let totalPrice = item.totalPrice, totalPrice > 0 {
+            parts.append("¥\(totalPrice.formatted(.number.precision(.fractionLength(2))))")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func activityIcon(_ item: ActivityItem) -> String {
+        if item.action == "入库" { return "arrow.down.circle.fill" }
+        if item.action == "出库" { return "arrow.up.circle.fill" }
+        switch item.type {
+        case "food": return "refrigerator.fill"
+        case "pet": return "pawprint.fill"
+        case "recipe": return "list.bullet.clipboard.fill"
+        default: return "clock.fill"
+        }
+    }
+
+    private func activityColor(_ item: ActivityItem) -> Color {
+        item.action == "出库" ? HomeTheme.orange : HomeTheme.blue
     }
 
     private func statusRing(_ prediction: LitterPrediction) -> some View {

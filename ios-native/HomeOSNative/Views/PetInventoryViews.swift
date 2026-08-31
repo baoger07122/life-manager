@@ -6,15 +6,17 @@ struct PetItemEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let itemID: String?
-    @State private var primaryID = "pet-root-food"
-    @State private var secondaryID = "pet-food-0"
+    let initialPrimaryID: String?
+    let initialSecondaryID: String?
+    @State private var primaryID: String
+    @State private var secondaryID: String
     @State private var name = ""
     @State private var brand = ""
     @State private var variant = ""
     @State private var spec = ""
     @State private var packageType = ""
     @State private var unit = "件"
-    @State private var initialStock = 0.0
+    @State private var initialStockText = ""
     @State private var purchaseTotalText = ""
     @State private var notes = ""
     @State private var litterKind = ""
@@ -25,15 +27,31 @@ struct PetItemEditorView: View {
     @State private var sheet: PetItemEditorSheet?
     @State private var showDuplicateAlert = false
 
-    init(itemID: String? = nil) { self.itemID = itemID }
+    init(itemID: String? = nil, initialPrimaryID: String? = nil, initialSecondaryID: String? = nil) {
+        self.itemID = itemID
+        self.initialPrimaryID = initialPrimaryID
+        self.initialSecondaryID = initialSecondaryID
+        _primaryID = State(initialValue: initialPrimaryID ?? "")
+        _secondaryID = State(initialValue: initialSecondaryID ?? "")
+    }
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
-    private var selectedPrimary: ManagedCategory? { primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first }
+    private var selectedPrimary: ManagedCategory? { primaryCategories.first { $0.id == primaryID } }
     private var secondaryCategories: [ManagedCategory] { selectedPrimary.map { store.categories(for: .pet, parentID: $0.id) } ?? [] }
-    private var selectedSecondary: ManagedCategory? { secondaryCategories.first { $0.id == secondaryID } ?? secondaryCategories.first }
+    private var selectedSecondary: ManagedCategory? { secondaryCategories.first { $0.id == secondaryID } }
     private var purchaseTotal: Double? {
         let normalized = purchaseTotalText.replacingOccurrences(of: ",", with: ".")
         guard let value = Double(normalized), value > 0 else { return nil }
         return value
+    }
+    private var initialStock: Double {
+        let normalized = initialStockText.replacingOccurrences(of: ",", with: ".")
+        return max(Double(normalized) ?? 0, 0)
+    }
+    private var resolvedUnit: String {
+        let packaged = packageType.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !packaged.isEmpty { return packaged }
+        let stored = unit.trimmingCharacters(in: .whitespacesAndNewlines)
+        return stored.isEmpty ? "件" : stored
     }
     private var calculatedUnitPrice: Double? {
         guard let purchaseTotal, initialStock > 0 else { return nil }
@@ -45,7 +63,7 @@ struct PetItemEditorView: View {
             VStack(spacing: HomeMetrics.sectionSpacing) {
                 imageCard
 
-                Button { sheet = .category; NativeHaptics.selection() } label: {
+                Button { NativeHaptics.tap(); sheet = .category } label: {
                     HomeCard(padding: 0) {
                         HStack(spacing: 10) {
                             Text("分类").font(HomeTypography.cardTitle)
@@ -62,7 +80,10 @@ struct PetItemEditorView: View {
                 HomeCard {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("基本信息").font(HomeTypography.sectionTitle).padding(.bottom, 8)
-                        editorButtonRow(title: "品牌", value: brand.isEmpty ? "无品牌" : brand) { sheet = .brand }
+                        editorButtonRow(title: "品牌", value: brand.isEmpty ? "无品牌" : brand) {
+                            NativeHaptics.tap()
+                            sheet = .brand
+                        }
                         divider
                         editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
                         divider
@@ -71,41 +92,20 @@ struct PetItemEditorView: View {
                         packageTypeRow
                         divider
                         editorTextRow(title: "单件规格", placeholder: "例如5.4kg、185g", text: $spec)
-                        divider
-                        if packageType.isEmpty {
-                            editorTextRow(title: "库存单位", placeholder: "例如kg、件", text: $unit)
-                        } else {
-                            HStack {
-                                Text("库存单位").font(HomeTypography.body)
-                                Spacer()
-                                Text(packageType).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
-                            }
-                            .frame(minHeight: HomeMetrics.controlHeight)
-                        }
-                    }
-                }
-
-                HomeCard {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("库存设置").font(HomeTypography.sectionTitle).padding(.bottom, 8)
                         if itemID == nil {
-                            editorNumberRow(title: "初始库存", value: $initialStock)
                             divider
-                            editorTextRow(title: "本次购入总额（选填）", placeholder: "¥0", text: $purchaseTotalText, keyboard: .decimalPad)
+                            editorTextRow(title: "初始库存", placeholder: "0", text: $initialStockText, keyboard: .decimalPad)
+                            divider
+                            editorTextRow(title: "本次购入总额（选填）", placeholder: "¥0.00", text: $purchaseTotalText, keyboard: .decimalPad)
                             divider
                             HStack {
                                 Text("折算单价").font(HomeTypography.body)
                                 Spacer()
-                                Text(calculatedUnitPrice.map { "¥\($0.formatted(.number.precision(.fractionLength(2))))/\(unit.isEmpty ? "单位" : unit)" } ?? "自动计算")
+                                Text(calculatedUnitPrice.map { "¥\($0.formatted(.number.precision(.fractionLength(2))))/\(resolvedUnit)" } ?? "自动计算")
                                     .font(HomeTypography.body)
                                     .foregroundStyle(HomeTheme.muted)
                             }
                             .frame(minHeight: HomeMetrics.controlHeight)
-                        } else {
-                            Text("库存数量请通过入库、出库或修正库存进行调整。")
-                                .font(HomeTypography.supporting)
-                                .foregroundStyle(HomeTheme.muted)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
                 }
@@ -141,7 +141,7 @@ struct PetItemEditorView: View {
 
                 Button("保存", action: save)
                     .buttonStyle(HomePrimaryButtonStyle())
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSecondary == nil)
                     .padding(.horizontal, 42)
             }
             .padding(.horizontal, HomeMetrics.pageInset)
@@ -151,9 +151,13 @@ struct PetItemEditorView: View {
         .navigationTitle(itemID == nil ? "新增宠物物品" : "编辑宠物物品")
         .navigationBarTitleDisplayMode(.inline)
         .task { loadExisting() }
-        .onChange(of: selectedPhoto) { _, photo in Task { if let data = try? await photo?.loadTransferable(type: Data.self) { imageReference = "data:image/jpeg;base64," + data.base64EncodedString() } } }
-        .onChange(of: packageType) { _, value in
-            if !value.isEmpty { unit = value }
+        .onChange(of: selectedPhoto) { _, photo in
+            Task {
+                if let data = try? await photo?.loadTransferable(type: Data.self) {
+                    imageReference = "data:image/jpeg;base64," + data.base64EncodedString()
+                    NativeHaptics.selection()
+                }
+            }
         }
         .sheet(item: $sheet) { destination in
             switch destination {
@@ -194,6 +198,7 @@ struct PetItemEditorView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
         }
     }
 
@@ -203,7 +208,14 @@ struct PetItemEditorView: View {
         HStack {
             Text("包装形式").font(HomeTypography.body)
             Spacer()
-            Picker("包装形式", selection: $packageType) {
+            Picker("包装形式", selection: Binding(
+                get: { packageType },
+                set: { value in
+                    packageType = value
+                    if !value.isEmpty { unit = value }
+                    NativeHaptics.selection()
+                }
+            )) {
                 Text("未设置").tag("")
                 Text("袋").tag("袋")
                 Text("罐").tag("罐")
@@ -254,8 +266,18 @@ struct PetItemEditorView: View {
     private func loadExisting() {
         guard !loaded else { return }; defer { loaded = true }
         guard let itemID, let item = store.data.petItems.first(where: { $0.id == itemID }) else {
-            primaryID = primaryCategories.first?.id ?? ""
-            secondaryID = secondaryCategories.first?.id ?? ""
+            let rememberedPrimary = UserDefaults.standard.string(forKey: "HomeOS.lastPetPrimaryCategoryID")
+            let preferredPrimary = initialPrimaryID ?? rememberedPrimary
+            primaryID = primaryCategories.contains(where: { $0.id == preferredPrimary })
+                ? (preferredPrimary ?? "")
+                : (primaryCategories.first?.id ?? "")
+
+            let rememberedSecondary = UserDefaults.standard.string(forKey: "HomeOS.lastPetSecondaryCategoryID")
+            let preferredSecondary = initialSecondaryID ?? rememberedSecondary
+            let availableSecondary = store.categories(for: .pet, parentID: primaryID)
+            secondaryID = availableSecondary.contains(where: { $0.id == preferredSecondary })
+                ? (preferredSecondary ?? "")
+                : ""
             return
         }
         primaryID = primaryCategories.first(where: { $0.name == item.resolvedPrimaryCategory })?.id
@@ -290,10 +312,10 @@ struct PetItemEditorView: View {
                 && (candidate.packageType ?? "") == cleanPackageType
         }
         guard !duplicate else { showDuplicateAlert = true; NativeHaptics.warning(); return }
-        var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: max(initialStock, 0), unit: unit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
+        var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: initialStock, unit: resolvedUnit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
         let savedSecondary = selectedSecondary.name
         item.type = savedSecondary; item.name = cleanName; item.brand = cleanBrand; item.model = cleanVariant; item.spec = cleanSpec
-        item.unit = cleanPackageType.isEmpty ? unit.trimmingCharacters(in: .whitespacesAndNewlines) : cleanPackageType
+        item.unit = resolvedUnit
         item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
         item.variant = cleanVariant.isEmpty ? nil : cleanVariant; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes
         item.packageType = cleanPackageType.isEmpty ? nil : cleanPackageType
@@ -301,7 +323,11 @@ struct PetItemEditorView: View {
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
         if itemID == nil, let calculatedUnitPrice { item.price = calculatedUnitPrice }
         item.createdAt = item.createdAt ?? now; item.updatedAt = now
-        store.upsertPetItem(item, openingTotalPrice: itemID == nil ? purchaseTotal : nil); NativeHaptics.success(); dismiss()
+        UserDefaults.standard.set(primaryID, forKey: "HomeOS.lastPetPrimaryCategoryID")
+        UserDefaults.standard.set(secondaryID, forKey: "HomeOS.lastPetSecondaryCategoryID")
+        store.upsertPetItem(item, openingTotalPrice: itemID == nil ? purchaseTotal : nil)
+        NativeHaptics.success()
+        dismiss()
     }
 }
 
@@ -427,6 +453,7 @@ private struct PetBrandSelectionSheet: View {
                         if store.addManagedBrand(name: cleanQuery, modules: [.pet]) {
                             draftBrand = cleanQuery
                             query = ""
+                            NativeHaptics.success()
                         }
                     } label: {
                         Label("新增品牌“\(cleanQuery)”", systemImage: "plus.circle.fill")

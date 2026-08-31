@@ -321,6 +321,11 @@ struct ActivityItem: Codable, Identifiable, Hashable {
     var time: String
     var type: String?
     var targetId: String?
+    var action: String? = nil
+    var quantity: Double? = nil
+    var unit: String? = nil
+    var totalPrice: Double? = nil
+    var occurredAt: Double? = nil
 }
 
 struct CategoryDefinition: Codable, Hashable {

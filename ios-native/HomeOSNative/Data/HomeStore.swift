@@ -30,7 +30,7 @@ final class HomeStore: ObservableObject {
         }
         do {
             let decoded = try decoder.decode(HomeBackup.self, from: stored)
-            let migrated = normalizedCategories(in: migratedPetInventory(decoded))
+            let migrated = normalizedCategories(in: migratedActivities(migratedPetInventory(decoded)))
             data = migrated
             if migrated != decoded { _ = commit(migrated) }
         } catch {
@@ -40,7 +40,7 @@ final class HomeStore: ObservableObject {
     }
 
     func replace(with backup: HomeBackup) {
-        commit(normalizedCategories(in: backup))
+        commit(normalizedCategories(in: migratedActivities(migratedPetInventory(backup))))
     }
 
     func clearAll() {
@@ -81,11 +81,22 @@ final class HomeStore: ObservableObject {
 
     func upsertFood(_ item: FoodItem) {
         var next = data
+        let isNew = !next.foods.contains { $0.id == item.id }
         if let index = next.foods.firstIndex(where: { $0.id == item.id }) {
             next.foods[index] = item
         } else {
             next.foods.append(item)
         }
+        appendActivity(
+            to: &next,
+            type: "food",
+            action: isNew && item.quantity > 0 ? "入库" : (isNew ? "新增" : "编辑"),
+            text: "\(isNew && item.quantity > 0 ? "入库" : (isNew ? "新增" : "编辑")) · \(item.name)",
+            targetID: item.id,
+            quantity: isNew && item.quantity > 0 ? item.quantity : nil,
+            unit: isNew && item.quantity > 0 ? item.unit : nil,
+            totalPrice: isNew && item.quantity > 0 && item.price > 0 ? item.price : nil
+        )
         if commit(next) { NativeHaptics.success() }
     }
 
@@ -121,6 +132,17 @@ final class HomeStore: ObservableObject {
                 next.foods[index].priceHistory = history
             }
         }
+        let action = quantityChange > 0 ? "入库" : "出库"
+        appendActivity(
+            to: &next,
+            type: "food",
+            action: action,
+            text: "\(action) · \(next.foods[index].name)",
+            targetID: id,
+            quantity: abs(quantityChange),
+            unit: next.foods[index].unit,
+            totalPrice: quantityChange > 0 ? totalPrice : nil
+        )
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true
@@ -427,6 +449,28 @@ final class HomeStore: ObservableObject {
             .sorted { $0.occurrenceDate == $1.occurrenceDate ? $0.createdAt > $1.createdAt : $0.occurrenceDate > $1.occurrenceDate }
     }
 
+    func petMonthlyOutboundTransactions(referenceDate: Date = Date()) -> [PetInventoryTransaction] {
+        let calendar = Calendar.current
+        return data.petInventoryTransactions.filter { transaction in
+            guard transaction.type == .outbound,
+                  let date = LitterPredictionService.parse(transaction.occurrenceDate) else { return false }
+            return calendar.isDate(date, equalTo: referenceDate, toGranularity: .month)
+        }
+        .sorted { $0.occurrenceDate == $1.occurrenceDate ? $0.createdAt > $1.createdAt : $0.occurrenceDate > $1.occurrenceDate }
+    }
+
+    func petMonthlyExpense(referenceDate: Date = Date()) -> Double {
+        petMonthlyOutboundTransactions(referenceDate: referenceDate).reduce(0) { result, transaction in
+            if let totalPrice = transaction.totalPrice, totalPrice > 0 {
+                return result + totalPrice
+            }
+            let fallbackUnitPrice = transaction.unitPrice
+                ?? data.petItems.first(where: { $0.id == transaction.productID })?.price
+                ?? 0
+            return result + abs(transaction.quantityChange) * fallbackUnitPrice
+        }
+    }
+
     func latestProductReview(for productID: String) -> PetProductReview? {
         data.petProductReviews.filter { $0.productID == productID }
             .max { $0.reviewDate == $1.reviewDate ? $0.createdAt < $1.createdAt : $0.reviewDate < $1.reviewDate }
@@ -572,6 +616,7 @@ final class HomeStore: ObservableObject {
 
     func upsertPetItem(_ item: PetItem, openingTotalPrice: Double? = nil) {
         var next = data
+        let isNew = !next.petItems.contains { $0.id == item.id }
         if let index = next.petItems.firstIndex(where: { $0.id == item.id }) {
             var saved = item
             saved.quantity = petInventory(for: item.id, in: next)
@@ -597,6 +642,17 @@ final class HomeStore: ObservableObject {
                 ))
             }
         }
+        let activityAction = isNew && item.quantity > 0 ? "入库" : (isNew ? "新增" : "编辑")
+        appendActivity(
+            to: &next,
+            type: "pet",
+            action: activityAction,
+            text: "\(activityAction) · \(item.displayTitle)",
+            targetID: item.id,
+            quantity: isNew && item.quantity > 0 ? item.quantity : nil,
+            unit: isNew && item.quantity > 0 ? item.unit : nil,
+            totalPrice: isNew && item.quantity > 0 ? openingTotalPrice : nil
+        )
         commit(next)
     }
 
@@ -628,16 +684,41 @@ final class HomeStore: ObservableObject {
         let after = before + change
         guard after >= 0 else { return fail("出库数量不能超过当前库存") }
         let now = Date().timeIntervalSince1970
+        let resolvedUnitPrice: Double? = {
+            if type == .outbound { return next.petItems[index].price }
+            guard let totalPrice, totalPrice > 0 else { return nil }
+            return totalPrice / quantity
+        }()
+        let resolvedTotalPrice: Double? = {
+            if type == .outbound, let resolvedUnitPrice { return resolvedUnitPrice * quantity }
+            return totalPrice
+        }()
         next.petInventoryTransactions.append(PetInventoryTransaction(
             id: UUID().uuidString, productID: productID, type: type, quantityChange: change,
             quantityBefore: before, quantityAfter: after, unit: next.petItems[index].unit,
             occurrenceDate: occurrenceDate, reason: reason.trimmingCharacters(in: .whitespacesAndNewlines),
-            source: .manual, linkedOperationID: nil, totalPrice: totalPrice,
-            unitPrice: totalPrice.map { $0 / quantity }, purchaseChannel: purchaseChannel?.nilIfBlank,
+            source: .manual, linkedOperationID: nil, totalPrice: resolvedTotalPrice,
+            unitPrice: resolvedUnitPrice, purchaseChannel: purchaseChannel?.nilIfBlank,
             expirationDate: expirationDate, note: note?.nilIfBlank, createdAt: now, updatedAt: now
         ))
         next.petItems[index].quantity = after
+        if type == .inbound, let resolvedUnitPrice {
+            next.petItems[index].price = resolvedUnitPrice
+        }
         next.petItems[index].updatedAt = now
+        let action = type == .inbound ? "入库" : "出库"
+        appendActivity(
+            to: &next,
+            type: "pet",
+            action: action,
+            text: "\(action) · \(next.petItems[index].displayTitle)",
+            targetID: productID,
+            quantity: quantity,
+            unit: next.petItems[index].unit,
+            totalPrice: resolvedTotalPrice,
+            storedDate: occurrenceDate,
+            occurredAt: now
+        )
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true
@@ -661,6 +742,17 @@ final class HomeStore: ObservableObject {
         ))
         next.petItems[index].quantity = target
         next.petItems[index].updatedAt = now
+        appendActivity(
+            to: &next,
+            type: "pet",
+            action: "修正",
+            text: "库存修正 · \(next.petItems[index].displayTitle)",
+            targetID: productID,
+            quantity: abs(change),
+            unit: next.petItems[index].unit,
+            storedDate: occurrenceDate,
+            occurredAt: now
+        )
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true
@@ -945,6 +1037,75 @@ final class HomeStore: ObservableObject {
         return next
     }
 
+    private func migratedActivities(_ backup: HomeBackup) -> HomeBackup {
+        var next = backup
+        var knownIDs = Set(next.activities.map(\.id))
+
+        for transaction in next.petInventoryTransactions {
+            let activityID = "pet-inventory-\(transaction.id)"
+            let action: String
+            switch transaction.type {
+            case .inbound: action = "入库"
+            case .outbound: action = "出库"
+            case .adjustment: action = "修正"
+            }
+            let alreadyRecorded = next.activities.contains { activity in
+                activity.type == "pet"
+                    && activity.targetId == transaction.productID
+                    && activity.action == action
+                    && abs((activity.occurredAt ?? 0) - transaction.createdAt) < 1
+            }
+            guard !alreadyRecorded else { continue }
+            guard knownIDs.insert(activityID).inserted else { continue }
+            let item = next.petItems.first { $0.id == transaction.productID }
+            next.activities.append(ActivityItem(
+                id: activityID,
+                text: "\(action) · \(item?.displayTitle ?? "已删除物品")",
+                time: Self.activityDateText(transaction.occurrenceDate),
+                type: "pet",
+                targetId: transaction.productID,
+                action: action,
+                quantity: abs(transaction.quantityChange),
+                unit: transaction.unit,
+                totalPrice: transaction.totalPrice,
+                occurredAt: transaction.createdAt
+            ))
+        }
+
+        for food in next.foods {
+            for purchase in food.purchases ?? [] {
+                let activityID = "food-inventory-\(purchase.id)"
+                let purchaseDateText = Self.activityDateText(purchase.date)
+                let alreadyRecorded = next.activities.contains { activity in
+                    activity.type == "food"
+                        && activity.targetId == food.id
+                        && activity.action == "入库"
+                        && activity.time == purchaseDateText
+                        && activity.quantity == purchase.quantity
+                        && activity.unit == purchase.unit
+                }
+                guard !alreadyRecorded else { continue }
+                guard knownIDs.insert(activityID).inserted else { continue }
+                next.activities.append(ActivityItem(
+                    id: activityID,
+                    text: "入库 · \(food.name)",
+                    time: purchaseDateText,
+                    type: "food",
+                    targetId: food.id,
+                    action: "入库",
+                    quantity: purchase.quantity,
+                    unit: purchase.unit,
+                    totalPrice: purchase.price,
+                    occurredAt: LitterPredictionService.parse(purchase.date)?.timeIntervalSince1970
+                ))
+            }
+        }
+
+        next.activities.sort { ($0.occurredAt ?? 0) > ($1.occurredAt ?? 0) }
+        if next.activities.count > 200 { next.activities = Array(next.activities.prefix(200)) }
+        return next
+    }
+
     private func inferredSecondaryCategory(for item: PetItem) -> String {
         let value = "\(item.type) \(item.name)".lowercased()
         if value.contains("猫砂") { return "猫砂" }
@@ -1053,6 +1214,52 @@ final class HomeStore: ObservableObject {
         case .recipe:
             return data.recipes.filter { $0.collection == category.name }.count
         }
+    }
+
+    private func appendActivity(
+        to backup: inout HomeBackup,
+        type: String,
+        action: String,
+        text: String,
+        targetID: String?,
+        quantity: Double? = nil,
+        unit: String? = nil,
+        totalPrice: Double? = nil,
+        storedDate: String? = nil,
+        occurredAt: Double = Date().timeIntervalSince1970
+    ) {
+        let dateText = Self.activityDateText(storedDate)
+        backup.activities.insert(
+            ActivityItem(
+                id: UUID().uuidString,
+                text: text,
+                time: dateText,
+                type: type,
+                targetId: targetID,
+                action: action,
+                quantity: quantity,
+                unit: unit,
+                totalPrice: totalPrice,
+                occurredAt: occurredAt
+            ),
+            at: 0
+        )
+        if backup.activities.count > 200 {
+            backup.activities.removeLast(backup.activities.count - 200)
+        }
+    }
+
+    private static func activityDateText(_ storedDate: String?) -> String {
+        let storage = DateFormatter()
+        storage.locale = Locale(identifier: "zh_CN")
+        storage.calendar = Calendar(identifier: .gregorian)
+        storage.dateFormat = "yyyy-MM-dd"
+        let date = storedDate.flatMap { storage.date(from: $0) } ?? Date()
+        let display = DateFormatter()
+        display.locale = Locale(identifier: "zh_CN")
+        display.calendar = Calendar(identifier: .gregorian)
+        display.dateFormat = "yyyy年M月d日"
+        return display.string(from: date)
     }
 
     @discardableResult

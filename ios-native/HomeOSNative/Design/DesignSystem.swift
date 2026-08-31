@@ -54,6 +54,10 @@ enum NativeHaptics {
     private static let tapGenerator = UIImpactFeedbackGenerator(style: .light)
     private static let notificationGenerator = UINotificationFeedbackGenerator()
 
+    static func prepareSelection() {
+        selectionGenerator.prepare()
+    }
+
     static func selection() {
         selectionGenerator.prepare()
         selectionGenerator.selectionChanged()
@@ -83,13 +87,24 @@ enum NativeHaptics {
 struct HomeCard<Content: View>: View {
     let content: Content
     var padding: CGFloat
+    var elevated: Bool
 
-    init(padding: CGFloat = HomeMetrics.cardPadding, @ViewBuilder content: () -> Content) {
+    init(padding: CGFloat = HomeMetrics.cardPadding, elevated: Bool = false, @ViewBuilder content: () -> Content) {
         self.padding = padding
+        self.elevated = elevated
         self.content = content()
     }
 
+    @ViewBuilder
     var body: some View {
+        if elevated {
+            cardSurface.shadow(color: HomeTheme.ink.opacity(0.035), radius: 8, y: 2)
+        } else {
+            cardSurface
+        }
+    }
+
+    private var cardSurface: some View {
         content
             .padding(padding)
             .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous))
@@ -97,7 +112,6 @@ struct HomeCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous)
                     .stroke(HomeTheme.line.opacity(0.82), lineWidth: 0.7)
             }
-            .shadow(color: HomeTheme.ink.opacity(0.035), radius: 10, y: 3)
     }
 }
 

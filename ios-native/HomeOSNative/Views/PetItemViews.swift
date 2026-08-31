@@ -12,7 +12,7 @@ extension PetItem {
 
 struct PetItemsListView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var primaryID = "pet-root-food"
+    @Binding var primaryID: String
     @State private var secondaryID = "all"
     @State private var selectedBrand = "all"
     @State private var sortMode: PetItemListSortMode = .createdNewest
@@ -99,17 +99,22 @@ struct PetItemsListView: View {
                 if items.isEmpty {
                     VStack(spacing: 12) {
                         EmptyState(icon: "shippingbox.fill", title: "暂无宠物物品", message: "按具体产品添加食品、猫砂或其他用品。")
-                        NavigationLink("添加宠物物品") { PetItemEditorView() }
+                        NavigationLink("添加宠物物品") {
+                            PetItemEditorView(
+                                initialPrimaryID: primaryID,
+                                initialSecondaryID: secondaryID == "all" ? nil : secondaryID
+                            )
+                        }
                             .buttonStyle(HomeSecondaryButtonStyle())
                             .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                             .padding(.horizontal, 14)
                             .padding(.bottom, 14)
                     }
                 } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    LazyVStack(spacing: 0) {
+                        ForEach(items) { item in
                             itemRow(item)
-                            if index < items.count - 1 { Divider() }
+                            if item.id != items.last?.id { Divider() }
                         }
                     }
                 }
@@ -222,7 +227,12 @@ struct PetItemsListView: View {
             .buttonStyle(HomePressButtonStyle())
             .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
             .accessibilityLabel("进入物品评价")
-            NavigationLink { PetItemEditorView() } label: {
+            NavigationLink {
+                PetItemEditorView(
+                    initialPrimaryID: primaryID,
+                    initialSecondaryID: secondaryID == "all" ? nil : secondaryID
+                )
+            } label: {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 22, weight: .regular))
                     .foregroundStyle(HomeTheme.muted)

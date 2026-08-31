@@ -43,9 +43,8 @@ struct RootView: View {
             tab(SettingsView(), for: .settings)
         }
         .tint(HomeTheme.blue)
-        .onChange(of: selection) { _, _ in
-            NativeHaptics.selection()
-        }
+        .sensoryFeedback(.selection, trigger: selection)
+        .onAppear { NativeHaptics.prepareSelection() }
     }
 
     private func tab<Content: View>(_ content: Content, for tab: RootTab) -> some View {

@@ -14,6 +14,11 @@ private enum FoodSortMode: String, CaseIterable, Identifiable {
     }
 }
 
+private struct FoodScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
 struct FoodView: View {
     @EnvironmentObject private var store: HomeStore
     @State private var query = ""
@@ -21,6 +26,8 @@ struct FoodView: View {
     @State private var selectedCategory = "全部"
     @State private var sortMode: FoodSortMode = .newest
     @State private var showEditor = false
+    @State private var showSearch = false
+    @FocusState private var searchFocused: Bool
 
     private var categories: [String] {
         ["全部"] + store.categories(for: .food).map(\.name)
@@ -45,6 +52,13 @@ struct FoodView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: FoodScrollOffsetPreferenceKey.self,
+                        value: proxy.frame(in: .named("food-scroll")).minY
+                    )
+                }
+                .frame(height: 0)
                 VStack(spacing: HomeMetrics.sectionSpacing) {
                     header
                     locationCard
@@ -54,8 +68,22 @@ struct FoodView: View {
                 .padding(.top, 18)
                 .padding(.bottom, 28)
             }
+            .coordinateSpace(name: "food-scroll")
             .background(HomeTheme.background)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "搜索食品")
+            .onPreferenceChange(FoodScrollOffsetPreferenceKey.self) { offset in
+                if offset > 44, !showSearch {
+                    withAnimation(.easeOut(duration: 0.18)) { showSearch = true }
+                    NativeHaptics.selection()
+                } else if offset < -100, showSearch, query.isEmpty, !searchFocused {
+                    withAnimation(.easeOut(duration: 0.16)) { showSearch = false }
+                }
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if showSearch {
+                    foodSearchField
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
             .sheet(isPresented: $showEditor) { NavigationStack { FoodEditorView() } }
             .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
                 Button("知道了") { store.lastError = nil }
@@ -65,6 +93,38 @@ struct FoodView: View {
 
     private var header: some View {
         PageTitle(title: "食品")
+    }
+
+    private var foodSearchField: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass").foregroundStyle(HomeTheme.muted)
+            TextField("搜索食品", text: $query)
+                .font(HomeTypography.body)
+                .focused($searchFocused)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                    NativeHaptics.tap()
+                } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            Button("收起") {
+                query = ""
+                searchFocused = false
+                withAnimation(.easeOut(duration: 0.16)) { showSearch = false }
+                NativeHaptics.tap()
+            }
+            .font(HomeTypography.supporting.weight(.semibold))
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 42)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 13, style: .continuous).stroke(HomeTheme.line, lineWidth: 0.7) }
+        .padding(.horizontal, HomeMetrics.pageInset)
+        .padding(.vertical, 6)
+        .background(HomeTheme.background.opacity(0.96))
     }
 
     private var locationCard: some View {
@@ -280,7 +340,7 @@ struct FoodEditorView: View {
     @State private var brand = ""
     @State private var category = ""
     @State private var spec = ""
-    @State private var quantity = 0.0
+    @State private var quantityText = ""
     @State private var unit = "个"
     @State private var location = "冷藏区"
     @State private var expiry = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
@@ -304,6 +364,10 @@ struct FoodEditorView: View {
         guard let total = Double(value), total > 0 else { return nil }
         return total
     }
+    private var quantity: Double {
+        let normalized = quantityText.replacingOccurrences(of: ",", with: ".")
+        return max(Double(normalized) ?? 0, 0)
+    }
     private var calculatedUnitPrice: Double? {
         guard let purchaseTotal, quantity > 0 else { return nil }
         return purchaseTotal / quantity
@@ -318,7 +382,7 @@ struct FoodEditorView: View {
             VStack(spacing: HomeMetrics.sectionSpacing) {
                 imageCard
 
-                Button { sheet = .category; NativeHaptics.selection() } label: {
+                Button { NativeHaptics.tap(); sheet = .category } label: {
                     HomeCard(padding: 0) {
                         HStack(spacing: 10) {
                             Text("分类").font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.ink)
@@ -335,7 +399,10 @@ struct FoodEditorView: View {
                 HomeCard {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("基本信息").font(HomeTypography.sectionTitle).padding(.bottom, 8)
-                        editorButtonRow(title: "品牌", value: brand.isEmpty ? "无品牌" : brand) { sheet = .brand }
+                        editorButtonRow(title: "品牌", value: brand.isEmpty ? "无品牌" : brand) {
+                            NativeHaptics.tap()
+                            sheet = .brand
+                        }
                         divider
                         editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
                         divider
@@ -381,7 +448,7 @@ struct FoodEditorView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("库存设置").font(HomeTypography.sectionTitle).padding(.bottom, 8)
                         if itemID == nil {
-                            editorNumberRow(title: "初始库存", value: $quantity)
+                            editorTextRow(title: "初始库存", placeholder: "0", text: $quantityText, keyboard: .decimalPad)
                             divider
                             editorTextRow(title: "本次购入总额（选填）", placeholder: "¥0.00", text: $purchaseTotalText, keyboard: .decimalPad)
                             divider
@@ -439,6 +506,7 @@ struct FoodEditorView: View {
             Task {
                 if let data = try? await photo?.loadTransferable(type: Data.self) {
                     imageReference = "data:image/jpeg;base64," + data.base64EncodedString()
+                    NativeHaptics.selection()
                 }
             }
         }
@@ -468,6 +536,7 @@ struct FoodEditorView: View {
                 }
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
         }
     }
 
@@ -516,7 +585,13 @@ struct FoodEditorView: View {
         HStack {
             Text(title).font(HomeTypography.body)
             Spacer()
-            Picker(title, selection: selection) { ForEach(values, id: \.self) { Text($0).tag($0) } }
+            Picker(title, selection: Binding(
+                get: { selection.wrappedValue },
+                set: { value in
+                    selection.wrappedValue = value
+                    NativeHaptics.selection()
+                }
+            )) { ForEach(values, id: \.self) { Text($0).tag($0) } }
                 .pickerStyle(.menu).labelsHidden()
         }.frame(minHeight: HomeMetrics.controlHeight)
     }
@@ -527,7 +602,8 @@ struct FoodEditorView: View {
         if !locations.contains(location) { location = locations.first ?? "冷藏区" }
         guard let item = existing else { return }
         name = item.name; brand = item.brand; category = item.category; spec = item.spec
-        quantity = item.quantity; unit = item.unit; location = item.location; icon = item.icon
+        quantityText = item.quantity.formatted(.number.precision(.fractionLength(0...2)))
+        unit = item.unit; location = item.location; icon = item.icon
         imageReference = item.thumb; addToQuickManagement = item.quick; expiryMode = .date
         productionDate = parse(item.productionDate) ?? Date(); expiry = parse(item.expiry) ?? expiry
     }
@@ -632,7 +708,11 @@ private struct FoodBrandSelectionSheet: View {
                 }
                 if canAdd {
                     Button {
-                        if store.addManagedBrand(name: cleanQuery, modules: [.food]) { draft = cleanQuery; query = "" }
+                        if store.addManagedBrand(name: cleanQuery, modules: [.food]) {
+                            draft = cleanQuery
+                            query = ""
+                            NativeHaptics.success()
+                        }
                     } label: { Label("新增品牌“\(cleanQuery)”", systemImage: "plus.circle.fill").font(HomeTypography.body) }
                 }
                 Spacer()

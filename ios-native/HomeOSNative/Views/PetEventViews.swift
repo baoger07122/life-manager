@@ -257,6 +257,7 @@ struct PetEventDetailView: View {
 
 struct PetStoredImage: View {
     let reference: String
+    private static let cache = NSCache<NSString, UIImage>()
 
     var body: some View {
         if let image = decodedImage {
@@ -270,8 +271,12 @@ struct PetStoredImage: View {
     }
 
     private var decodedImage: UIImage? {
+        let key = reference as NSString
+        if let cached = Self.cache.object(forKey: key) { return cached }
         guard let comma = reference.firstIndex(of: ","),
               let data = Data(base64Encoded: String(reference[reference.index(after: comma)...])) else { return nil }
-        return UIImage(data: data)
+        guard let image = UIImage(data: data) else { return nil }
+        Self.cache.setObject(image, forKey: key, cost: data.count)
+        return image
     }
 }

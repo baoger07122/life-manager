@@ -99,8 +99,8 @@ enum PreviewFixtures {
         ]
 
         let foods = [
-            FoodItem(id: "preview-food-1", name: "鸡蛋", quantity: 12, unit: "个", expiry: day(5), productionDate: day(-2), location: "冷藏区", category: "包装食品", tags: ["早餐"], brand: "", spec: "12枚", price: 18, icon: "🥚", thumb: nil, quick: true, quickAddedAt: nowValue, quickReducePresets: [1, 2], purchases: nil, priceHistory: nil),
-            FoodItem(id: "preview-food-2", name: "牛奶", quantity: 1, unit: "盒", expiry: day(2), productionDate: day(-3), location: "冷藏区", category: "乳制品", tags: ["早餐"], brand: "", spec: "950ml", price: 16, icon: "🥛", thumb: nil, quick: true, quickAddedAt: nowValue - 20, quickReducePresets: [1], purchases: nil, priceHistory: nil),
+            FoodItem(id: "preview-food-1", name: "鲜鸡蛋", quantity: 12, unit: "个", expiry: day(5), productionDate: day(-2), location: "冷藏区", category: "包装食品", tags: ["早餐"], brand: "正大", spec: "12枚", price: 18, icon: "🥚", thumb: nil, quick: true, quickAddedAt: nowValue, quickReducePresets: [1, 2], purchases: nil, priceHistory: nil),
+            FoodItem(id: "preview-food-2", name: "鲜牛奶", quantity: 1, unit: "盒", expiry: day(2), productionDate: day(-3), location: "冷藏区", category: "乳制品", tags: ["早餐"], brand: "光明", spec: "950ml", price: 16, icon: "🥛", thumb: nil, quick: true, quickAddedAt: nowValue - 20, quickReducePresets: [1], purchases: nil, priceHistory: nil),
             FoodItem(id: "preview-food-3", name: "生菜", quantity: 1, unit: "颗", expiry: day(3), productionDate: nil, location: "冷藏区", category: "蔬菜", tags: [], brand: "", spec: "", price: 5, icon: "🥬", thumb: nil, quick: true, quickAddedAt: nowValue - 40, quickReducePresets: [1], purchases: nil, priceHistory: nil)
         ]
         let recipe = RecipeItem(id: "preview-recipe-1", name: "番茄炒蛋", main: ["番茄", "鸡蛋"], ingredients: ["盐", "食用油"], steps: "鸡蛋炒熟后加入番茄翻炒。", stepImage: nil, favorite: true, collection: "家常菜", link: "", image: "")

@@ -46,6 +46,11 @@ struct SettingsView: View {
                 } header: { settingsSectionTitle("宠物设置") }
                 Section {
                     NavigationLink {
+                        FoodLocationManagementView()
+                    } label: {
+                        Label("存放位置管理", systemImage: "refrigerator.fill")
+                    }
+                    NavigationLink {
                         CategoryManagementView()
                     } label: {
                         Label("分类管理", systemImage: "folder.fill")
@@ -55,7 +60,7 @@ struct SettingsView: View {
                     } label: {
                         Label("品牌管理", systemImage: "tag.fill")
                     }
-                } header: { settingsSectionTitle("分类与品牌") }
+                } header: { settingsSectionTitle("食品、分类与品牌") }
                 Section {
                     NavigationLink {
                         UIComponentLibraryView()
@@ -69,12 +74,16 @@ struct SettingsView: View {
                 } header: { settingsSectionTitle("Playground 预览") }
                 #endif
                 Section {
-                    LabeledContent("原生版本", value: "0.1.16 (18)")
+                    LabeledContent("原生版本", value: "0.1.17 (19)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
                     Text("当前为原生重写第一阶段，不包含 WebView。")
                         .font(.footnote).foregroundStyle(HomeTheme.muted)
                 } header: { settingsSectionTitle("版本") }
                 }
+                .listStyle(.insetGrouped)
+                .listSectionSpacing(14)
+                .environment(\.defaultMinListRowHeight, 48)
+                .tint(HomeTheme.blue)
                 .scrollContentBackground(.hidden)
             }
             .background(HomeTheme.background)

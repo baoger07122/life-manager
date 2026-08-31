@@ -31,7 +31,7 @@ struct RootView: View {
     @State private var selection: RootTab = .home
 
     init() {
-        UITabBar.appearance().unselectedItemTintColor = .black
+        UITabBar.appearance().unselectedItemTintColor = .secondaryLabel
     }
 
     var body: some View {

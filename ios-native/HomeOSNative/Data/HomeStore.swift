@@ -79,6 +79,118 @@ final class HomeStore: ObservableObject {
         }.sorted { $0.expiry < $1.expiry }
     }
 
+    func upsertFood(_ item: FoodItem) {
+        var next = data
+        if let index = next.foods.firstIndex(where: { $0.id == item.id }) {
+            next.foods[index] = item
+        } else {
+            next.foods.append(item)
+        }
+        if commit(next) { NativeHaptics.success() }
+    }
+
+    func deleteFood(id: String) {
+        var next = data
+        next.foods.removeAll { $0.id == id }
+        if commit(next) { NativeHaptics.success() }
+    }
+
+    func adjustFoodInventory(id: String, quantityChange: Double, totalPrice: Double? = nil) -> Bool {
+        guard quantityChange != 0 else { return fail("数量不能为 0") }
+        var next = data
+        guard let index = next.foods.firstIndex(where: { $0.id == id }) else { return fail("找不到食品") }
+        let current = next.foods[index].quantity
+        guard current + quantityChange >= 0 else { return fail("出库数量不能超过当前库存") }
+        next.foods[index].quantity = current + quantityChange
+        if quantityChange > 0 {
+            let record = PurchaseRecord(
+                id: UUID().uuidString,
+                date: Self.storageDate(Date()),
+                quantity: quantityChange,
+                unit: next.foods[index].unit,
+                price: max(0, totalPrice ?? 0),
+                expiry: next.foods[index].expiry
+            )
+            var purchases = next.foods[index].purchases ?? []
+            purchases.insert(record, at: 0)
+            next.foods[index].purchases = purchases
+            if let totalPrice, totalPrice > 0 {
+                next.foods[index].price = totalPrice
+                var history = next.foods[index].priceHistory ?? []
+                history.insert(record, at: 0)
+                next.foods[index].priceHistory = history
+            }
+        }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    var foodLocations: [String] {
+        var values: [String] = []
+        for value in data.settings.locations + data.foods.map(\.location) {
+            let clean = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !clean.isEmpty && !values.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame }) {
+                values.append(clean)
+            }
+        }
+        return values
+    }
+
+    func addFoodLocation(_ name: String) -> Bool {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return fail("位置名称不能为空") }
+        guard !foodLocations.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame }) else {
+            return fail("位置名称不能重复")
+        }
+        var next = data
+        next.settings.locations.append(clean)
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func renameFoodLocation(_ oldName: String, to newName: String) -> Bool {
+        let clean = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return fail("位置名称不能为空") }
+        guard !foodLocations.contains(where: { $0.caseInsensitiveCompare(clean) == .orderedSame && $0.caseInsensitiveCompare(oldName) != .orderedSame }) else {
+            return fail("位置名称不能重复")
+        }
+        var next = data
+        next.settings.locations = next.settings.locations.map { $0.caseInsensitiveCompare(oldName) == .orderedSame ? clean : $0 }
+        for index in next.foods.indices where next.foods[index].location.caseInsensitiveCompare(oldName) == .orderedSame {
+            next.foods[index].location = clean
+        }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func deleteFoodLocation(_ name: String) -> Bool {
+        guard !data.foods.contains(where: { $0.location.caseInsensitiveCompare(name) == .orderedSame }) else {
+            return fail("该位置仍有食品，请先移动食品后再删除")
+        }
+        var next = data
+        next.settings.locations.removeAll { $0.caseInsensitiveCompare(name) == .orderedSame }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func reorderFoodLocations(_ orderedNames: [String]) {
+        var next = data
+        next.settings.locations = orderedNames
+        if commit(next) { NativeHaptics.selection() }
+    }
+
+    private static func storageDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
     var activePets: [PetProfile] {
         data.pets.filter { !$0.isDeleted }.sorted { $0.createdAt < $1.createdAt }
     }

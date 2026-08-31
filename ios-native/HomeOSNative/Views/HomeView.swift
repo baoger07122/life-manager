@@ -20,17 +20,15 @@ struct HomeView: View {
             }
             .background(HomeTheme.background)
             .scrollIndicators(.hidden)
+            .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
+                Button("知道了") { store.lastError = nil }
+            } message: { Text(store.lastError ?? "") }
         }
     }
 
     private var petStatusSection: some View {
         VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("宠物状态").font(HomeTypography.sectionTitle)
-                Spacer()
-                NavigationLink("查看全部") { PetLitterManagementView() }
-                    .font(HomeTypography.supporting.weight(.semibold))
-            }
+            Text("宠物状态").font(HomeTypography.sectionTitle)
             HomeCard(padding: 0) {
                 VStack(spacing: 0) {
                     if let prediction = store.litterPrediction {
@@ -39,7 +37,7 @@ struct HomeView: View {
                                 Text("猫砂余量").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                                 Text(prediction.hasEnoughData ? "\(prediction.daysRemaining ?? 0) 天" : "数据积累中")
                                     .font(HomeTypography.metric)
-                            Text(prediction.shouldRefill ? "建议尽快补充" : "预计 \(HomeDateText.display(prediction.thresholdDate)) 前补充")
+                                Text(prediction.shouldRefill ? "建议尽快补充" : "预计 \(HomeDateText.display(prediction.thresholdDate)) 前补充")
                                     .font(HomeTypography.supporting)
                                     .foregroundStyle(prediction.shouldRefill ? HomeTheme.orange : HomeTheme.muted)
                             }
@@ -56,17 +54,21 @@ struct HomeView: View {
                         }
                         .padding(16)
                     } else {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Text("猫砂余量").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
-                                Text("暂无数据").font(HomeTypography.sectionTitle)
-                                Text("点击“查看全部”进行初始化").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        NavigationLink { PetLitterManagementView() } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    Text("猫砂余量").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+                                    Text("暂无数据").font(HomeTypography.sectionTitle).foregroundStyle(HomeTheme.ink)
+                                    Text("点击进入补猫砂和换猫砂").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                                }
+                                Spacer()
+                                Image(systemName: "gauge.with.dots.needle.33percent")
+                                    .font(.system(size: 30)).foregroundStyle(HomeTheme.muted)
                             }
-                            Spacer()
-                            Image(systemName: "gauge.with.dots.needle.33percent")
-                                .font(.system(size: 30)).foregroundStyle(HomeTheme.muted)
+                            .padding(16)
                         }
-                        .padding(16)
+                        .buttonStyle(HomePressButtonStyle())
+                        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                     }
                     Divider()
                     HStack(spacing: 0) {
@@ -84,19 +86,41 @@ struct HomeView: View {
 
     private var expirySection: some View {
         VStack(alignment: .leading, spacing: 9) {
-            HomeSectionHeader(title: "临期提醒")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(store.dueFoods.prefix(6)) { item in
-                        VStack(alignment: .leading, spacing: 7) {
-                            Text(item.name).font(HomeTypography.cardTitle)
-                            Text(HomeDateText.display(item.expiry)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.orange)
+            HStack(alignment: .firstTextBaseline) {
+                Text("临期提醒").font(HomeTypography.sectionTitle)
+                Spacer()
+                if store.dueFoods.count > 3 {
+                    NavigationLink("查看更多") { FoodExpiryListView() }
+                        .font(HomeTypography.supporting.weight(.semibold))
+                }
+            }
+            HStack(spacing: 8) {
+                ForEach(store.dueFoods.prefix(3)) { item in
+                    NavigationLink { FoodDetailView(itemID: item.id) } label: {
+                        HStack(spacing: 7) {
+                            FoodItemThumbnail(item: item, size: 30)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.name)
+                                    .font(HomeTypography.supporting.weight(.semibold))
+                                    .foregroundStyle(HomeTheme.ink)
+                                    .lineLimit(1)
+                                Text(HomeDateText.display(item.expiry))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(HomeTheme.orange)
+                                    .lineLimit(1)
+                            }
                         }
-                        .frame(width: 130, alignment: .leading)
-                        .padding(13)
-                        .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(HomeTheme.line, lineWidth: 0.8) }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 9)
+                        .frame(height: 58)
+                        .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                                .stroke(HomeTheme.line.opacity(0.82), lineWidth: 0.7)
+                        }
                     }
+                    .buttonStyle(HomePressButtonStyle())
+                    .frame(maxWidth: .infinity)
                 }
             }
         }
@@ -105,22 +129,13 @@ struct HomeView: View {
     private var quickFoodsSection: some View {
         VStack(alignment: .leading, spacing: 9) {
             HomeSectionHeader(title: "食品快捷管理")
-            HomeCard {
+            HomeCard(padding: 0) {
                 let items = store.data.foods.filter(\.quick)
                 if items.isEmpty {
                     EmptyState(icon: "refrigerator.fill", title: "还没有快捷食品", message: "在食品详情中可加入首页快捷管理。")
+                        .padding(.vertical, 12)
                 } else {
-                    VStack(spacing: 0) {
-                        ForEach(Array(items.prefix(6).enumerated()), id: \.element.id) { index, item in
-                            HStack {
-                                Text(item.name).font(HomeTypography.body.weight(.medium))
-                                Spacer()
-                                Text(item.quantity.formatted()).font(HomeTypography.body.weight(.semibold))
-                            }
-                            .frame(minHeight: 42)
-                            if index < min(items.count, 6) - 1 { Divider() }
-                        }
-                    }
+                    FoodInventoryRows(items: Array(items.prefix(6)))
                 }
             }
         }
@@ -180,11 +195,21 @@ struct HomeView: View {
     }
 
     private func petStockMetric(title: String, items: [PetItem]) -> some View {
-        VStack(spacing: 5) {
-            Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-            Text(stockSummary(items)).font(HomeTypography.body.weight(.semibold))
+        NavigationLink {
+            if items.count == 1, let item = items.first {
+                PetItemDetailView(itemID: item.id)
+            } else {
+                PetStockItemsView(title: title, itemIDs: items.map(\.id))
+            }
+        } label: {
+            VStack(spacing: 5) {
+                Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                Text(stockSummary(items)).font(HomeTypography.body.weight(.semibold)).foregroundStyle(HomeTheme.ink)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(HomePressButtonStyle())
+        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
     }
 
     private func categoryName(id: String, fallback: String) -> String {
@@ -215,5 +240,32 @@ struct HomeView: View {
         guard units.count == 1, let unit = units.first else { return "\(items.count)种" }
         let total = items.reduce(0) { $0 + store.petInventory(for: $1.id) }
         return "\(total.formatted())\(unit)"
+    }
+}
+
+private struct PetStockItemsView: View {
+    @EnvironmentObject private var store: HomeStore
+    let title: String
+    let itemIDs: [String]
+
+    private var items: [PetItem] { store.activePetItems.filter { itemIDs.contains($0.id) } }
+
+    var body: some View {
+        List(items) { item in
+            NavigationLink { PetItemDetailView(itemID: item.id) } label: {
+                HStack(spacing: 11) {
+                    PetStoredImage(reference: item.image ?? "")
+                        .frame(width: 44, height: 44)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.displayTitle).font(HomeTypography.cardTitle)
+                        Text("\(item.spec) · \(store.petInventory(for: item.id).formatted())\(item.unit)")
+                            .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                    }
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

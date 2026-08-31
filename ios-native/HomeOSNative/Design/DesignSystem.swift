@@ -15,9 +15,9 @@ enum HomeTheme {
 
 enum HomeMetrics {
     static let pageInset: CGFloat = 18
-    static let sectionSpacing: CGFloat = 16
+    static let sectionSpacing: CGFloat = 18
     static let cardPadding: CGFloat = 16
-    static let cardRadius: CGFloat = 22
+    static let cardRadius: CGFloat = 20
     static let controlRadius: CGFloat = 14
     static let controlHeight: CGFloat = 44
     static let minimumTapTarget: CGFloat = 44
@@ -95,8 +95,9 @@ struct HomeCard<Content: View>: View {
             .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous)
-                    .stroke(HomeTheme.line.opacity(0.9), lineWidth: 0.8)
+                    .stroke(HomeTheme.line.opacity(0.82), lineWidth: 0.7)
             }
+            .shadow(color: HomeTheme.ink.opacity(0.035), radius: 10, y: 3)
     }
 }
 
@@ -143,8 +144,16 @@ struct HomeSectionHeader: View {
             Text(title).font(HomeTypography.sectionTitle)
             Spacer()
             if let actionTitle, let action {
-                Button(actionTitle, action: action)
+                Button(action: action) {
+                    HStack(spacing: 3) {
+                        Text(actionTitle)
+                        Image(systemName: actionTitle.contains("新增") || actionTitle.contains("添加") ? "plus" : "chevron.right")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
                     .font(HomeTypography.supporting.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(HomeTheme.blue)
             }
         }
     }

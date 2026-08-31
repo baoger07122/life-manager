@@ -20,14 +20,31 @@ struct RecipesView: View {
                         .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 } else {
                     ForEach(recipes) { recipe in
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(recipe.name).font(.body.weight(.semibold))
-                            Text(recipe.main.joined(separator: "、")).font(.caption).foregroundStyle(HomeTheme.muted)
-                        }.padding(.vertical, 5)
+                        HomeCard(padding: 14) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "fork.knife")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundStyle(HomeTheme.blue)
+                                    .frame(width: 38, height: 38)
+                                    .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(recipe.name).font(HomeTypography.cardTitle)
+                                    Text(recipe.main.joined(separator: "、"))
+                                        .font(HomeTypography.supporting)
+                                        .foregroundStyle(HomeTheme.muted)
+                                        .lineLimit(1)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                        }
+                        .listRowInsets(.init(top: 5, leading: HomeMetrics.pageInset, bottom: 5, trailing: HomeMetrics.pageInset))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
                 }
                 }
                 .listStyle(.plain)
+                .environment(\.defaultMinListRowHeight, 1)
                 .scrollContentBackground(.hidden)
             }
             .background(HomeTheme.background)

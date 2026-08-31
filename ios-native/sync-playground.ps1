@@ -28,12 +28,30 @@ foreach ($previewRoot in $previewRoots) {
     # opening a cached or conflicted older copy.
     New-Item -ItemType Directory -Path $resolvedPreview -Force | Out-Null
 
+    $updatedFiles = 0
     foreach ($swiftFile in $swiftFiles) {
         $destination = Join-Path $resolvedPreview $swiftFile.Name
-        Copy-Item -LiteralPath $swiftFile.FullName -Destination $destination -Force
+        $needsUpdate = -not (Test-Path -LiteralPath $destination)
+        if (-not $needsUpdate) {
+            $sourceHash = (Get-FileHash -LiteralPath $swiftFile.FullName -Algorithm SHA256).Hash
+            $destinationHash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+            $needsUpdate = $sourceHash -ne $destinationHash
+        }
+        if ($needsUpdate) {
+            Copy-Item -LiteralPath $swiftFile.FullName -Destination $destination -Force
+            $updatedFiles++
+        }
     }
 
-    Copy-Item -LiteralPath $packageTemplate -Destination (Join-Path $resolvedPreview 'Package.swift') -Force
+    $packageDestination = Join-Path $resolvedPreview 'Package.swift'
+    $packageNeedsUpdate = -not (Test-Path -LiteralPath $packageDestination)
+    if (-not $packageNeedsUpdate) {
+        $packageNeedsUpdate = (Get-FileHash -LiteralPath $packageTemplate -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $packageDestination -Algorithm SHA256).Hash
+    }
+    if ($packageNeedsUpdate) {
+        Copy-Item -LiteralPath $packageTemplate -Destination $packageDestination -Force
+        $updatedFiles++
+    }
 
-    Write-Output $resolvedPreview
+    Write-Output "$resolvedPreview ($updatedFiles file(s) updated)"
 }

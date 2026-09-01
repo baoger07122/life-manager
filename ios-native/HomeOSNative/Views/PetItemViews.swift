@@ -25,7 +25,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     @State private var quickMode: PetInventoryTransactionType = .outbound
     @State private var quickQuantity = 1.0
     @State private var quickTotalPrice = 0.0
-    @State private var pendingExpanded = false
     @State private var deleteCandidate: PetItem?
     @State private var route: PetItemsRoute?
 
@@ -61,7 +60,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         }
     }
     private var items: [PetItem] { matchingItems.filter { store.petInventory(for: $0.id) > 0 } }
-    private var pendingItems: [PetItem] { matchingItems.filter { store.petInventory(for: $0.id) <= 0 } }
     private var availableBrands: [String] {
         Array(Set(store.data.petItems.filter { item in
             item.resolvedWillRepurchase
@@ -83,7 +81,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
 
     var body: some View {
         List {
-            headerContent
+            pageHeader
                 .listRowInsets(.init(top: 18, leading: HomeMetrics.pageInset, bottom: 7, trailing: HomeMetrics.pageInset))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
@@ -129,51 +127,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 }
             }
 
-            if !pendingItems.isEmpty {
-                Button {
-                    withAnimation(.snappy(duration: 0.22)) { pendingExpanded.toggle() }
-                    NativeHaptics.selection()
-                } label: {
-                    HStack {
-                        Label("待回购", systemImage: "cart.badge.plus")
-                            .font(.system(size: 14, weight: .semibold))
-                        Spacer()
-                        Text("\(pendingItems.count) 项").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .rotationEffect(.degrees(pendingExpanded ? 90 : 0))
-                            .foregroundStyle(HomeTheme.muted)
-                    }
-                    .foregroundStyle(HomeTheme.ink)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 14)
-                .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .listRowInsets(itemListInsets)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                if pendingExpanded {
-                    ForEach(pendingItems) { item in
-                        itemRow(item)
-                            .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(HomeTheme.line, lineWidth: 0.6)
-                            }
-                            .listRowInsets(itemListInsets)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                nativeItemActions(item)
-                            }
-                        if expandedItemID == item.id {
-                            quickManagerRow(item)
-                        }
-                    }
-                }
-            }
-
             footerContent
                 .listRowInsets(.init(top: 13, leading: HomeMetrics.pageInset, bottom: 24, trailing: HomeMetrics.pageInset))
                 .listRowBackground(Color.clear)
@@ -193,7 +146,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         .onChange(of: primaryID) { _, _ in
             selectedBrand = "all"
             expandedItemID = nil
-            pendingExpanded = false
             selectDefaultSecondary()
         }
         .sheet(item: $listSheet) { _ in
@@ -222,7 +174,40 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 PetRatingsListView()
             case .editor(let primaryID, let secondaryID):
                 PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
+            case .pendingRepurchase:
+                PetPendingRepurchaseView()
+            case .noRepurchase:
+                PetNoRepurchaseLibraryView()
             }
+        }
+    }
+
+    private var pageHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            headerContent
+            Spacer(minLength: 12)
+            Menu {
+                Button {
+                    route = .pendingRepurchase
+                    NativeHaptics.selection()
+                } label: {
+                    Label("待回购", systemImage: "cart.badge.plus")
+                }
+                Button {
+                    route = .noRepurchase
+                    NativeHaptics.selection()
+                } label: {
+                    Label("不回购库", systemImage: "archivebox")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(HomeTheme.muted.opacity(0.72))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("宠物物品管理")
         }
     }
 
@@ -571,6 +556,8 @@ private enum PetItemsRoute: Hashable {
     case detail(itemID: String)
     case ratings
     case editor(primaryID: String, secondaryID: String)
+    case pendingRepurchase
+    case noRepurchase
 }
 
 private enum PetItemListSheet: String, Identifiable {
@@ -888,6 +875,76 @@ private struct PetRatingProductPickerSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { dismiss() } } }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+struct PetPendingRepurchaseView: View {
+    @EnvironmentObject private var store: HomeStore
+
+    private var items: [PetItem] {
+        store.activePetItems
+            .filter { $0.resolvedWillRepurchase && store.petInventory(for: $0.id) <= 0 }
+            .sorted {
+                let left = $0.updatedAt ?? $0.createdAt ?? 0
+                let right = $1.updatedAt ?? $1.createdAt ?? 0
+                return left == right ? $0.name < $1.name : left > right
+            }
+    }
+
+    var body: some View {
+        List {
+            if items.isEmpty {
+                EmptyState(icon: "cart.badge.plus", title: "暂无待回购商品", message: "库存归零且仍计划回购的商品会出现在这里。")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 28)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else {
+                ForEach(items) { item in
+                    NavigationLink {
+                        PetItemDetailView(itemID: item.id)
+                    } label: {
+                        HStack(spacing: 11) {
+                            pendingImage(item)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.displayTitle)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(HomeTheme.ink)
+                                    .lineLimit(1)
+                                Text("\(item.resolvedPrimaryCategory) · \(item.resolvedSecondaryCategory)")
+                                    .font(HomeTypography.supporting)
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                        }
+                    }
+                    .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        Button {
+                            store.setPetItemRepurchase(id: item.id, willRepurchase: false)
+                        } label: {
+                            Label("不回购", systemImage: "cart.badge.minus")
+                        }
+                        .tint(HomeTheme.orange)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("待回购")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder private func pendingImage(_ item: PetItem) -> some View {
+        if let image = item.image, !image.isEmpty {
+            PetStoredImage(reference: image)
+                .frame(width: 46, height: 46)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        } else {
+            Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "shippingbox.fill")
+                .foregroundStyle(HomeTheme.blue)
+                .frame(width: 46, height: 46)
+                .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
     }
 }
 

@@ -28,20 +28,6 @@ struct PetView: View {
                 case .replace: LitterOperationView(type: .replace)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        NavigationLink {
-                            PetNoRepurchaseLibraryView()
-                        } label: {
-                            Label("不回购库", systemImage: "archivebox")
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel("宠物物品管理")
-                }
-            }
             .navigationDestination(isPresented: $showMonthlyExpense) {
                 PetMonthlyExpenseView()
             }

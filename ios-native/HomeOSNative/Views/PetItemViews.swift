@@ -24,6 +24,7 @@ struct PetItemsListView: View {
     @State private var quickTotalPrice = 0.0
     @State private var pendingExpanded = false
     @State private var deleteCandidate: PetItem?
+    @State private var route: PetItemsRoute?
 
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
     private var selectedPrimary: ManagedCategory? {
@@ -109,11 +110,8 @@ struct PetItemsListView: View {
             if items.isEmpty {
                 VStack(spacing: 12) {
                     EmptyState(icon: "shippingbox.fill", title: "暂无当前库存", message: "可以新增物品，或查看下方待回购商品。")
-                    NavigationLink("添加宠物物品") {
-                        PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
-                    }
+                    Button("添加宠物物品") { openEditor() }
                     .buttonStyle(HomeSecondaryButtonStyle())
-                    .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
                 }
                 .padding(.vertical, 10)
                 .listRowSeparator(.hidden)
@@ -125,6 +123,9 @@ struct PetItemsListView: View {
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             nativeItemActions(item)
                         }
+                    if expandedItemID == item.id {
+                        quickManagerRow(item)
+                    }
                 }
             }
 
@@ -155,6 +156,9 @@ struct PetItemsListView: View {
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 nativeItemActions(item)
                             }
+                        if expandedItemID == item.id {
+                            quickManagerRow(item)
+                        }
                     }
                 }
             }
@@ -189,6 +193,21 @@ struct PetItemsListView: View {
         } message: { item in
             Text("“\(item.displayTitle)”及其库存、价格和评价记录会被永久删除，无法恢复。")
         }
+        .navigationDestination(item: $route) { route in
+            switch route {
+            case .detail(let itemID):
+                PetItemDetailView(itemID: itemID)
+            case .ratings:
+                PetRatingsListView()
+            case .editor(let primaryID, let secondaryID):
+                PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
+            }
+        }
+    }
+
+    private func openEditor() {
+        NativeHaptics.tap()
+        route = .editor(primaryID: primaryID, secondaryID: secondaryID)
     }
 
     @ViewBuilder private func nativeItemActions(_ item: PetItem) -> some View {
@@ -206,68 +225,69 @@ struct PetItemsListView: View {
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 11) {
-                NavigationLink { PetItemDetailView(itemID: item.id) } label: {
-                    HStack(spacing: 11) {
-                        productImage(item)
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                                .font(.system(size: 12))
-                                .foregroundStyle(HomeTheme.muted)
-                                .lineLimit(1)
-                            Text(productNameAndFlavor(item))
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(HomeTheme.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.84)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(HomePressButtonStyle())
-                .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
-                .accessibilityLabel("查看\(item.name)详情")
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        expandedItemID = expandedItemID == item.id ? nil : item.id
-                        quickMode = store.petInventory(for: item.id) <= 0 ? .inbound : .outbound
-                        quickQuantity = quickStep(for: item)
-                        quickTotalPrice = 0
-                    }
-                    NativeHaptics.selection()
-                } label: {
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text(specificationAndStock(item))
+        HStack(spacing: 11) {
+            Button {
+                NativeHaptics.tap()
+                route = .detail(itemID: item.id)
+            } label: {
+                HStack(spacing: 11) {
+                    productImage(item)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
-                        if let rating = store.petProductRating(productID: item.id) {
-                            Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(HomeTheme.orange)
-                        } else {
-                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
-                        }
+                        Text(productNameAndFlavor(item))
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(HomeTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.84)
                     }
-                    .frame(width: 118, alignment: .trailing)
-                    .frame(minHeight: 48, alignment: .trailing)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .buttonStyle(.plain)
+            .accessibilityLabel("查看\(item.name)详情")
 
-            if expandedItemID == item.id {
-                compactQuickManager(item)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 10)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+            Button {
+                expandedItemID = expandedItemID == item.id ? nil : item.id
+                quickMode = store.petInventory(for: item.id) <= 0 ? .inbound : .outbound
+                quickQuantity = quickStep(for: item)
+                quickTotalPrice = 0
+                NativeHaptics.selection()
+            } label: {
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(specificationAndStock(item))
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                    if let rating = store.petProductRating(productID: item.id) {
+                        Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(HomeTheme.orange)
+                    } else {
+                        Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                    }
+                }
+                .frame(width: 118, alignment: .trailing)
+                .frame(minHeight: 48, alignment: .trailing)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func quickManagerRow(_ item: PetItem) -> some View {
+        compactQuickManager(item)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .listRowInsets(.init())
+            .listRowBackground(HomeTheme.background)
+            .listRowSeparator(.hidden)
+            .id("quick-manager-\(item.id)")
     }
 
     private var primarySelector: some View {
@@ -282,7 +302,10 @@ struct PetItemsListView: View {
                 .buttonStyle(.plain)
             }
             Spacer(minLength: 0)
-            NavigationLink { PetRatingsListView() } label: {
+            Button {
+                NativeHaptics.tap()
+                route = .ratings
+            } label: {
                 VStack(spacing: 8) {
                     Text("评价")
                         .font(.system(size: 13, weight: .medium))
@@ -292,15 +315,9 @@ struct PetItemsListView: View {
                 }
                 .frame(minWidth: 46, minHeight: HomeMetrics.minimumTapTarget, alignment: .center)
             }
-            .buttonStyle(HomePressButtonStyle())
-            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+            .buttonStyle(.plain)
             .accessibilityLabel("进入物品评价")
-            NavigationLink {
-                PetItemEditorView(
-                    initialPrimaryID: primaryID,
-                    initialSecondaryID: secondaryID
-                )
-            } label: {
+            Button(action: openEditor) {
                 VStack(spacing: 8) {
                     Image(systemName: "plus.circle")
                         .font(.system(size: 19, weight: .regular))
@@ -310,8 +327,7 @@ struct PetItemsListView: View {
                 }
                 .frame(minWidth: 44, minHeight: HomeMetrics.minimumTapTarget, alignment: .center)
             }
-            .buttonStyle(HomePressButtonStyle())
-            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+            .buttonStyle(.plain)
             .accessibilityLabel("新增宠物物品")
         }
     }
@@ -442,7 +458,7 @@ struct PetItemsListView: View {
             totalPrice: quickMode == .inbound && quickTotalPrice > 0 ? quickTotalPrice : nil
         )
         if success {
-            withAnimation(.easeInOut(duration: 0.18)) { expandedItemID = nil }
+            expandedItemID = nil
         }
     }
 
@@ -479,6 +495,12 @@ struct PetItemsListView: View {
         }
     }
 
+}
+
+private enum PetItemsRoute: Hashable {
+    case detail(itemID: String)
+    case ratings
+    case editor(primaryID: String, secondaryID: String)
 }
 
 private enum PetItemListSheet: String, Identifiable {

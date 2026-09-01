@@ -8,12 +8,13 @@ extension PetItem {
         let cleanBrand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
         return cleanBrand.isEmpty ? name : "\(cleanBrand) \(name)"
     }
+    var resolvedWillRepurchase: Bool { willRepurchase ?? !isArchived }
 }
 
 struct PetItemsListView: View {
     @EnvironmentObject private var store: HomeStore
     @Binding var primaryID: String
-    @State private var secondaryID = "all"
+    @State private var secondaryID = ""
     @State private var selectedBrand = "all"
     @State private var sortMode: PetItemListSortMode = .createdNewest
     @State private var listSheet: PetItemListSheet?
@@ -21,6 +22,8 @@ struct PetItemsListView: View {
     @State private var quickMode: PetInventoryTransactionType = .outbound
     @State private var quickQuantity = 1.0
     @State private var quickTotalPrice = 0.0
+    @State private var pendingExpanded = false
+    @State private var deleteCandidate: PetItem?
 
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
     private var selectedPrimary: ManagedCategory? {
@@ -31,12 +34,13 @@ struct PetItemsListView: View {
         return store.categories(for: .pet, parentID: selectedPrimary.id)
     }
 
-    private var items: [PetItem] {
-        let filtered = store.activePetItems.filter {
+    private var matchingItems: [PetItem] {
+        let filtered = store.data.petItems.filter {
             guard let selectedPrimary else { return false }
             let secondaryName = secondaryCategories.first { $0.id == secondaryID }?.name
-            return $0.resolvedPrimaryCategory == selectedPrimary.name
-                && (secondaryName == nil || $0.resolvedSecondaryCategory == secondaryName)
+            return $0.resolvedWillRepurchase
+                && $0.resolvedPrimaryCategory == selectedPrimary.name
+                && $0.resolvedSecondaryCategory == secondaryName
                 && (selectedBrand == "all" || $0.brand == selectedBrand)
         }
         return filtered.sorted { left, right in
@@ -52,14 +56,17 @@ struct PetItemsListView: View {
             }
         }
     }
+    private var items: [PetItem] { matchingItems.filter { store.petInventory(for: $0.id) > 0 } }
+    private var pendingItems: [PetItem] { matchingItems.filter { store.petInventory(for: $0.id) <= 0 } }
     private var availableBrands: [String] {
-        Array(Set(store.activePetItems.filter { item in
-            selectedPrimary.map { item.resolvedPrimaryCategory == $0.name } ?? true
+        Array(Set(store.data.petItems.filter { item in
+            item.resolvedWillRepurchase
+                && (selectedPrimary.map { item.resolvedPrimaryCategory == $0.name } ?? true)
         }.map(\.brand).filter { !$0.isEmpty })).sorted()
     }
 
     var body: some View {
-        HomeCard(padding: 0) {
+        Section {
             VStack(spacing: 0) {
                 primarySelector
                     .padding(.horizontal, 14)
@@ -95,33 +102,59 @@ struct PetItemsListView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.bottom, 8)
-                Divider()
-                if items.isEmpty {
-                    VStack(spacing: 12) {
-                        EmptyState(icon: "shippingbox.fill", title: "暂无宠物物品", message: "按具体产品添加食品、猫砂或其他用品。")
-                        NavigationLink("添加宠物物品") {
-                            PetItemEditorView(
-                                initialPrimaryID: primaryID,
-                                initialSecondaryID: secondaryID == "all" ? nil : secondaryID
-                            )
-                        }
-                            .buttonStyle(HomeSecondaryButtonStyle())
-                            .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
-                            .padding(.horizontal, 14)
-                            .padding(.bottom, 14)
+            }
+            .listRowInsets(.init())
+            .listRowSeparator(.hidden)
+
+            if items.isEmpty {
+                VStack(spacing: 12) {
+                    EmptyState(icon: "shippingbox.fill", title: "暂无当前库存", message: "可以新增物品，或查看下方待回购商品。")
+                    NavigationLink("添加宠物物品") {
+                        PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
                     }
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(items) { item in
-                            PetSwipeActionRow(
-                                itemName: item.displayTitle,
-                                onDisable: { store.deletePetItem(id: item.id) },
-                                onDelete: { store.permanentlyDeletePetItem(id: item.id) }
-                            ) {
-                                itemRow(item)
-                            }
-                            if item.id != items.last?.id { Divider() }
+                    .buttonStyle(HomeSecondaryButtonStyle())
+                    .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+                }
+                .padding(.vertical, 10)
+                .listRowSeparator(.hidden)
+            } else {
+                ForEach(items) { item in
+                    itemRow(item)
+                        .listRowInsets(.init())
+                        .listRowBackground(HomeTheme.card)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            nativeItemActions(item)
                         }
+                }
+            }
+
+            if !pendingItems.isEmpty {
+                Button {
+                    withAnimation(.snappy(duration: 0.22)) { pendingExpanded.toggle() }
+                    NativeHaptics.selection()
+                } label: {
+                    HStack {
+                        Label("待回购", systemImage: "cart.badge.plus")
+                            .font(.system(size: 14, weight: .semibold))
+                        Spacer()
+                        Text("\(pendingItems.count) 项").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .rotationEffect(.degrees(pendingExpanded ? 90 : 0))
+                            .foregroundStyle(HomeTheme.muted)
+                    }
+                    .foregroundStyle(HomeTheme.ink)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                if pendingExpanded {
+                    ForEach(pendingItems) { item in
+                        itemRow(item)
+                            .listRowInsets(.init())
+                            .listRowBackground(HomeTheme.card)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                nativeItemActions(item)
+                            }
                     }
                 }
             }
@@ -130,17 +163,45 @@ struct PetItemsListView: View {
             if !primaryCategories.contains(where: { $0.id == primaryID }) {
                 primaryID = primaryCategories.first?.id ?? ""
             }
+            selectDefaultSecondary()
         }
         .onChange(of: primaryID) { _, _ in
-            secondaryID = "all"
             selectedBrand = "all"
             expandedItemID = nil
+            pendingExpanded = false
+            selectDefaultSecondary()
         }
         .sheet(item: $listSheet) { _ in
             PetBrandFilterSheet(
                 brands: availableBrands,
                 selectedBrand: $selectedBrand
             )
+        }
+        .alert("永久删除这个物品？", isPresented: Binding(
+            get: { deleteCandidate != nil },
+            set: { if !$0 { deleteCandidate = nil } }
+        ), presenting: deleteCandidate) { item in
+            Button("取消", role: .cancel) { deleteCandidate = nil }
+            Button("删除", role: .destructive) {
+                store.permanentlyDeletePetItem(id: item.id)
+                deleteCandidate = nil
+            }
+        } message: { item in
+            Text("“\(item.displayTitle)”及其库存、价格和评价记录会被永久删除，无法恢复。")
+        }
+    }
+
+    @ViewBuilder private func nativeItemActions(_ item: PetItem) -> some View {
+        Button {
+            store.setPetItemRepurchase(id: item.id, willRepurchase: false)
+        } label: {
+            Label("不回购", systemImage: "cart.badge.minus")
+        }
+        .tint(HomeTheme.orange)
+        Button(role: .destructive) {
+            deleteCandidate = item
+        } label: {
+            Label("删除", systemImage: "trash")
         }
     }
 
@@ -172,7 +233,7 @@ struct PetItemsListView: View {
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) {
                         expandedItemID = expandedItemID == item.id ? nil : item.id
-                        quickMode = .outbound
+                        quickMode = store.petInventory(for: item.id) <= 0 ? .inbound : .outbound
                         quickQuantity = quickStep(for: item)
                         quickTotalPrice = 0
                     }
@@ -237,7 +298,7 @@ struct PetItemsListView: View {
             NavigationLink {
                 PetItemEditorView(
                     initialPrimaryID: primaryID,
-                    initialSecondaryID: secondaryID == "all" ? nil : secondaryID
+                    initialSecondaryID: secondaryID
                 )
             } label: {
                 VStack(spacing: 8) {
@@ -258,14 +319,6 @@ struct PetItemsListView: View {
     private var secondarySelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 20) {
-                Button {
-                    secondaryID = "all"
-                    expandedItemID = nil
-                    NativeHaptics.selection()
-                } label: {
-                    HomeUnderlineTab(title: "全部", selected: secondaryID == "all")
-                }
-                .buttonStyle(.plain)
                 ForEach(secondaryCategories) { category in
                     Button {
                         secondaryID = category.id
@@ -278,6 +331,23 @@ struct PetItemsListView: View {
                 }
             }
         }
+    }
+
+    private func selectDefaultSecondary() {
+        guard !secondaryCategories.isEmpty else {
+            secondaryID = ""
+            return
+        }
+        if secondaryCategories.contains(where: { $0.id == secondaryID }) { return }
+        let preferredNames: [String]
+        if selectedPrimary?.capabilityKey == "petFood" {
+            preferredNames = ["主食罐"]
+        } else {
+            preferredNames = ["矿砂", "猫砂"]
+        }
+        secondaryID = preferredNames.compactMap { name in
+            secondaryCategories.first { $0.name == name }?.id
+        }.first ?? secondaryCategories.first?.id ?? ""
     }
 
     private func filterButton(_ title: String, icon: String, active: Bool) -> some View {
@@ -729,6 +799,108 @@ private struct PetRatingProductPickerSheet: View {
     }
 }
 
+struct PetNoRepurchaseLibraryView: View {
+    @EnvironmentObject private var store: HomeStore
+    @State private var primaryID = "pet-root-food"
+    @State private var deleteCandidate: PetItem?
+
+    private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
+    private var selectedPrimary: ManagedCategory? {
+        primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first
+    }
+    private var items: [PetItem] {
+        guard let selectedPrimary else { return [] }
+        return store.data.petItems
+            .filter { !$0.resolvedWillRepurchase && $0.resolvedPrimaryCategory == selectedPrimary.name }
+            .sorted {
+                let left = $0.updatedAt ?? $0.createdAt ?? 0
+                let right = $1.updatedAt ?? $1.createdAt ?? 0
+                return left == right ? $0.name < $1.name : left > right
+            }
+    }
+
+    var body: some View {
+        List {
+            Section {
+                Picker("类型", selection: $primaryID) {
+                    ForEach(primaryCategories) { category in
+                        Text(category.name).tag(category.id)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: primaryID) { _, _ in NativeHaptics.selection() }
+            }
+            if items.isEmpty {
+                Section {
+                    EmptyState(icon: "archivebox", title: "不回购库为空", message: "将商品设为不回购后会保留在这里。")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                }
+            } else {
+                Section("不回购商品") {
+                    ForEach(items) { item in
+                        NavigationLink { PetItemDetailView(itemID: item.id) } label: {
+                            HStack(spacing: 11) {
+                                libraryImage(item)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(item.displayTitle).font(.system(size: 14, weight: .semibold)).foregroundStyle(HomeTheme.ink)
+                                    Text("\(item.resolvedSecondaryCategory) · 库存 \(store.petInventory(for: item.id).formatted())\(item.unit)")
+                                        .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                                }
+                            }
+                        }
+                        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button {
+                                store.setPetItemRepurchase(id: item.id, willRepurchase: true)
+                            } label: {
+                                Label("恢复回购", systemImage: "cart.badge.plus")
+                            }
+                            .tint(HomeTheme.success)
+                            Button(role: .destructive) { deleteCandidate = item } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("不回购库")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if !primaryCategories.contains(where: { $0.id == primaryID }) {
+                primaryID = primaryCategories.first?.id ?? ""
+            }
+        }
+        .alert("永久删除这个物品？", isPresented: Binding(
+            get: { deleteCandidate != nil },
+            set: { if !$0 { deleteCandidate = nil } }
+        ), presenting: deleteCandidate) { item in
+            Button("取消", role: .cancel) { deleteCandidate = nil }
+            Button("删除", role: .destructive) {
+                store.permanentlyDeletePetItem(id: item.id)
+                deleteCandidate = nil
+            }
+        } message: { item in
+            Text("“\(item.displayTitle)”及其历史记录会被永久删除。")
+        }
+    }
+
+    @ViewBuilder private func libraryImage(_ item: PetItem) -> some View {
+        if let image = item.image, !image.isEmpty {
+            PetStoredImage(reference: image)
+                .frame(width: 46, height: 46)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        } else {
+            Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "shippingbox.fill")
+                .foregroundStyle(HomeTheme.blue)
+                .frame(width: 46, height: 46)
+                .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        }
+    }
+}
+
 struct PetItemDetailView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
@@ -759,7 +931,10 @@ struct PetItemDetailView: View {
             if let item {
                 ToolbarItemGroup(placement: .primaryAction) {
                     NavigationLink("编辑") { PetItemEditorView(itemID: item.id) }
-                    Button(role: .destructive) { showArchive = true } label: { Image(systemName: "archivebox") }
+                    Button { showArchive = true } label: {
+                        Image(systemName: item.resolvedWillRepurchase ? "cart.badge.minus" : "cart.badge.plus")
+                    }
+                    .accessibilityLabel(item.resolvedWillRepurchase ? "设为不回购" : "恢复回购")
                 }
             }
         }
@@ -774,10 +949,17 @@ struct PetItemDetailView: View {
             case .transaction(let transactionID): PetInventoryTransactionEditorView(transactionID: transactionID)
             }
         }
-        .alert("停用这个宠物物品？", isPresented: $showArchive) {
+        .alert(item?.resolvedWillRepurchase == false ? "恢复回购这个物品？" : "设为不回购？", isPresented: $showArchive) {
             Button("取消", role: .cancel) {}
-            Button("停用", role: .destructive) { store.deletePetItem(id: itemID); dismiss() }
-        } message: { Text("产品会从日常列表隐藏，但库存、价格和评价历史会保留。") }
+            Button(item?.resolvedWillRepurchase == false ? "恢复回购" : "不回购") {
+                store.setPetItemRepurchase(id: itemID, willRepurchase: item?.resolvedWillRepurchase == false)
+                dismiss()
+            }
+        } message: {
+            Text(item?.resolvedWillRepurchase == false
+                ? "恢复后，有库存时回到当前列表；库存为 0 时进入待回购。"
+                : "产品会移入不回购库，但库存、价格、评价和历史记录都会保留。")
+        }
     }
 
     private func productHeroCard(_ item: PetItem) -> some View {
@@ -1094,100 +1276,6 @@ private enum PetItemDetailSheet: Identifiable {
         case .image: "image"
         case .transaction(let transactionID): "transaction-\(transactionID)"
         }
-    }
-}
-
-private struct PetSwipeActionRow<Content: View>: View {
-    let itemName: String
-    let onDisable: () -> Void
-    let onDelete: () -> Void
-    let content: Content
-    @State private var offset: CGFloat = 0
-    @State private var dragStart: CGFloat = 0
-    @State private var confirmDelete = false
-
-    private let actionWidth: CGFloat = 72
-
-    init(
-        itemName: String,
-        onDisable: @escaping () -> Void,
-        onDelete: @escaping () -> Void,
-        @ViewBuilder content: () -> Content
-    ) {
-        self.itemName = itemName
-        self.onDisable = onDisable
-        self.onDelete = onDelete
-        self.content = content()
-    }
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            HStack(spacing: 0) {
-                Button {
-                    close()
-                    NativeHaptics.warning()
-                    onDisable()
-                } label: {
-                    actionLabel("停用", icon: "archivebox.fill")
-                        .background(HomeTheme.orange)
-                }
-                Button {
-                    confirmDelete = true
-                    NativeHaptics.warning()
-                } label: {
-                    actionLabel("删除", icon: "trash.fill")
-                        .background(HomeTheme.danger)
-                }
-            }
-            .frame(width: actionWidth * 2)
-
-            content
-                .background(HomeTheme.card)
-                .offset(x: offset)
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 18)
-                        .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            offset = min(0, max(-(actionWidth * 2), dragStart + value.translation.width))
-                        }
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            let shouldOpen = offset < -actionWidth * 0.72 || value.predictedEndTranslation.width < -actionWidth
-                            let target = shouldOpen ? -(actionWidth * 2) : 0
-                            withAnimation(.snappy(duration: 0.22)) {
-                                offset = target
-                            }
-                            dragStart = target
-                            NativeHaptics.selection()
-                        }
-                )
-        }
-        .clipped()
-        .alert("永久删除这个物品？", isPresented: $confirmDelete) {
-            Button("取消", role: .cancel) { close() }
-            Button("删除", role: .destructive) {
-                onDelete()
-                NativeHaptics.success()
-            }
-        } message: {
-            Text("“\(itemName)”及其库存、价格和评价记录会被永久删除，无法恢复。")
-        }
-    }
-
-    private func actionLabel(_ title: String, icon: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 15, weight: .semibold))
-            Text(title).font(.system(size: 12, weight: .semibold))
-        }
-        .foregroundStyle(.white)
-        .frame(width: actionWidth)
-        .frame(maxHeight: .infinity)
-    }
-
-    private func close() {
-        withAnimation(.snappy(duration: 0.22)) { offset = 0 }
-        dragStart = 0
     }
 }
 

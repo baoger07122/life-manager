@@ -13,16 +13,24 @@ struct PetView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
-                    header
-                    itemStatistics
-                    PetItemsListView(primaryID: $selectedInventoryPrimaryID)
-                    timelineSection
-                }
-                .padding(.horizontal, HomeMetrics.pageInset)
-                .padding(.vertical, 18)
+            List {
+                header
+                    .listRowInsets(.init(top: 12, leading: 4, bottom: 4, trailing: 4))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                itemStatistics
+                    .listRowInsets(.init())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                PetItemsListView(primaryID: $selectedInventoryPrimaryID)
+                timelineSection
+                    .listRowInsets(.init())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
+            .listStyle(.insetGrouped)
+            .environment(\.defaultMinListRowHeight, 1)
+            .scrollContentBackground(.hidden)
             .background(HomeTheme.background)
             .scrollIndicators(.hidden)
             .sheet(item: $litterSheet) { sheet in
@@ -30,6 +38,20 @@ struct PetView: View {
                 case .initialize: LitterInitializeView()
                 case .refill: LitterOperationView(type: .refill)
                 case .replace: LitterOperationView(type: .replace)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        NavigationLink {
+                            PetNoRepurchaseLibraryView()
+                        } label: {
+                            Label("不回购库", systemImage: "archivebox")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("宠物物品管理")
                 }
             }
         }

@@ -46,7 +46,7 @@ struct LitterOperationView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let type: LitterOperationType
-    @State private var quantities: [String: Double] = [:]
+    @State private var quantityTexts: [String: String] = [:]
     @State private var date = Date()
 
     var body: some View {
@@ -70,7 +70,8 @@ struct LitterOperationView: View {
                                         }
                                         Spacer()
                                         Button("全部") {
-                                            quantities[item.id] = store.petInventory(for: item.id)
+                                            quantityTexts[item.id] = store.petInventory(for: item.id)
+                                                .formatted(.number.grouping(.never).precision(.fractionLength(0...2)))
                                             NativeHaptics.selection()
                                         }
                                         .font(HomeTypography.supporting.weight(.semibold))
@@ -78,7 +79,7 @@ struct LitterOperationView: View {
                                     HStack {
                                         Text("加入数量").font(HomeTypography.body)
                                         Spacer()
-                                        TextField("0", value: quantityBinding(for: item), format: .number.precision(.fractionLength(0...2)))
+                                        TextField("0.00", text: quantityBinding(for: item))
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.trailing)
                                             .font(HomeTypography.body)
@@ -110,7 +111,7 @@ struct LitterOperationView: View {
                     Button("确认") {
                         if store.performLitterOperation(
                             type: type,
-                            quantities: quantities,
+                            quantities: selectedQuantities,
                             occurrenceDate: LitterPredictionService.format(date)
                         ) {
                             dismiss()
@@ -130,15 +131,27 @@ struct LitterOperationView: View {
 
     private var selectedLines: [String] {
         store.litterProducts.compactMap { item in
-            let value = quantities[item.id] ?? 0
+            let value = parsedQuantity(for: item)
             return value > 0 ? "\(item.name) · \(value.formatted())\(item.unit)" : nil
         }
     }
 
-    private func quantityBinding(for item: PetItem) -> Binding<Double> {
+    private var selectedQuantities: [String: Double] {
+        Dictionary(uniqueKeysWithValues: store.litterProducts.compactMap { item in
+            let value = parsedQuantity(for: item)
+            return value > 0 ? (item.id, value) : nil
+        })
+    }
+
+    private func parsedQuantity(for item: PetItem) -> Double {
+        let text = (quantityTexts[item.id] ?? "").replacingOccurrences(of: ",", with: ".")
+        return min(max(Double(text) ?? 0, 0), store.petInventory(for: item.id))
+    }
+
+    private func quantityBinding(for item: PetItem) -> Binding<String> {
         Binding(
-            get: { quantities[item.id] ?? 0 },
-            set: { quantities[item.id] = min(max($0, 0), store.petInventory(for: item.id)) }
+            get: { quantityTexts[item.id] ?? "" },
+            set: { quantityTexts[item.id] = $0 }
         )
     }
 }

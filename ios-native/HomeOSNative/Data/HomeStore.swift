@@ -223,9 +223,13 @@ final class HomeStore: ObservableObject {
 
     var litterProducts: [PetItem] {
         data.petItems.filter { item in
-            !item.isArchived && (item.secondaryCategory == "猫砂"
-                || item.type.localizedCaseInsensitiveContains("猫砂")
-                || item.name.localizedCaseInsensitiveContains("猫砂"))
+            let secondary = item.resolvedSecondaryCategory.trimmingCharacters(in: .whitespacesAndNewlines)
+            let kind = (item.litterKind ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let knownLitterCategories = ["猫砂", "矿砂", "木薯", "木薯砂", "豆腐砂", "膨润土砂", "混合砂"]
+            return !item.isArchived
+                && item.resolvedPrimaryCategory == (petRootCategory(capabilityKey: "petSupply")?.name ?? "宠物用品")
+                && (!kind.isEmpty || knownLitterCategories.contains(secondary))
+                && petInventory(for: item.id) > 0
         }
     }
 
@@ -686,6 +690,15 @@ final class HomeStore: ObservableObject {
         next.petItems[index].isArchived = true
         next.petItems[index].updatedAt = Date().timeIntervalSince1970
         commit(next)
+    }
+
+    func setPetItemRepurchase(id: String, willRepurchase: Bool) {
+        var next = data
+        guard let index = next.petItems.firstIndex(where: { $0.id == id }) else { return }
+        next.petItems[index].willRepurchase = willRepurchase
+        next.petItems[index].isArchived = false
+        next.petItems[index].updatedAt = Date().timeIntervalSince1970
+        if commit(next) { NativeHaptics.success() }
     }
 
     func permanentlyDeletePetItem(id: String) {

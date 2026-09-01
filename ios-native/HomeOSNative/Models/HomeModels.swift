@@ -110,6 +110,7 @@ struct PetItem: Codable, Identifiable, Hashable {
     var foodRole: String? = nil
     var expirationDate: String? = nil
     var litterKind: String? = nil
+    var willRepurchase: Bool? = nil
     var createdAt: Double? = nil
     var updatedAt: Double? = nil
 }
@@ -120,7 +121,7 @@ extension PetItem {
         case lastReplenishedAt, purchaseHistory, replenishmentHistory, feedback, price
         case cat, preference, image, unitConversionToBase
         case primaryCategory, secondaryCategory, variant, lowStockThreshold, notes, packageType, isArchived
-        case foodRole, expirationDate, litterKind, createdAt, updatedAt
+        case foodRole, expirationDate, litterKind, willRepurchase, createdAt, updatedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -154,6 +155,7 @@ extension PetItem {
         foodRole = try values.decodeIfPresent(String.self, forKey: .foodRole)
         expirationDate = try values.decodeIfPresent(String.self, forKey: .expirationDate)
         litterKind = try values.decodeIfPresent(String.self, forKey: .litterKind)
+        willRepurchase = try values.decodeIfPresent(Bool.self, forKey: .willRepurchase)
         createdAt = try values.decodeIfPresent(Double.self, forKey: .createdAt)
         updatedAt = try values.decodeIfPresent(Double.self, forKey: .updatedAt)
     }

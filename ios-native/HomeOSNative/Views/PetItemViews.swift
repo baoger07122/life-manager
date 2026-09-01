@@ -11,9 +11,12 @@ extension PetItem {
     var resolvedWillRepurchase: Bool { willRepurchase ?? !isArchived }
 }
 
-struct PetItemsListView: View {
+struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterContent: View>: View {
     @EnvironmentObject private var store: HomeStore
     @Binding var primaryID: String
+    private let headerContent: HeaderContent
+    private let statisticsContent: StatisticsContent
+    private let footerContent: FooterContent
     @State private var secondaryID = ""
     @State private var selectedBrand = "all"
     @State private var sortMode: PetItemListSortMode = .createdNewest
@@ -66,46 +69,34 @@ struct PetItemsListView: View {
         }.map(\.brand).filter { !$0.isEmpty })).sorted()
     }
 
+    init(
+        primaryID: Binding<String>,
+        @ViewBuilder header: () -> HeaderContent,
+        @ViewBuilder statistics: () -> StatisticsContent,
+        @ViewBuilder footer: () -> FooterContent
+    ) {
+        _primaryID = primaryID
+        headerContent = header()
+        statisticsContent = statistics()
+        footerContent = footer()
+    }
+
     var body: some View {
-        Section {
-            VStack(spacing: 0) {
-                primarySelector
-                    .padding(.horizontal, 14)
-                    .padding(.top, 10)
-                secondarySelector
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
-                HStack(spacing: 10) {
-                    filterButton(selectedBrand == "all" ? "品牌" : selectedBrand, icon: "tag", active: selectedBrand != "all")
-                    Spacer()
-                    Menu {
-                        ForEach(PetItemListSortMode.allCases) { option in
-                            Button {
-                                sortMode = option
-                                NativeHaptics.selection()
-                            } label: {
-                                if sortMode == option {
-                                    Label(option.title, systemImage: "checkmark")
-                                } else {
-                                    Text(option.title)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label(sortMode.title, systemImage: "arrow.up.arrow.down")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(HomeTheme.muted)
-                            .padding(.horizontal, 10)
-                            .frame(height: 32)
-                            .background(HomeTheme.background, in: Capsule())
-                            .overlay { Capsule().stroke(HomeTheme.line, lineWidth: 0.8) }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.bottom, 8)
-            }
-            .listRowInsets(.init())
-            .listRowSeparator(.hidden)
+        List {
+            headerContent
+                .listRowInsets(.init(top: 18, leading: HomeMetrics.pageInset, bottom: 7, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+            statisticsContent
+                .listRowInsets(.init(top: 5, leading: HomeMetrics.pageInset, bottom: 10, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
+            selectorCard
+                .listRowInsets(.init(top: 10, leading: HomeMetrics.pageInset, bottom: 7, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
             if items.isEmpty {
                 VStack(spacing: 12) {
@@ -114,12 +105,21 @@ struct PetItemsListView: View {
                     .buttonStyle(HomeSecondaryButtonStyle())
                 }
                 .padding(.vertical, 10)
+                .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .listRowInsets(itemListInsets)
+                .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             } else {
                 ForEach(items) { item in
                     itemRow(item)
-                        .listRowInsets(.init())
-                        .listRowBackground(HomeTheme.card)
+                        .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(HomeTheme.line, lineWidth: 0.6)
+                        }
+                        .listRowInsets(itemListInsets)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             nativeItemActions(item)
                         }
@@ -148,11 +148,22 @@ struct PetItemsListView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .padding(.horizontal, 14)
+                .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .listRowInsets(itemListInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
                 if pendingExpanded {
                     ForEach(pendingItems) { item in
                         itemRow(item)
-                            .listRowInsets(.init())
-                            .listRowBackground(HomeTheme.card)
+                            .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(HomeTheme.line, lineWidth: 0.6)
+                            }
+                            .listRowInsets(itemListInsets)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 nativeItemActions(item)
                             }
@@ -162,7 +173,17 @@ struct PetItemsListView: View {
                     }
                 }
             }
+
+            footerContent
+                .listRowInsets(.init(top: 13, leading: HomeMetrics.pageInset, bottom: 24, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
         }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 1)
+        .scrollContentBackground(.hidden)
+        .background(HomeTheme.background)
+        .scrollIndicators(.hidden)
         .onAppear {
             if !primaryCategories.contains(where: { $0.id == primaryID }) {
                 primaryID = primaryCategories.first?.id ?? ""
@@ -201,6 +222,53 @@ struct PetItemsListView: View {
                 PetRatingsListView()
             case .editor(let primaryID, let secondaryID):
                 PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
+            }
+        }
+    }
+
+    private var itemListInsets: EdgeInsets {
+        .init(top: 3, leading: HomeMetrics.pageInset, bottom: 3, trailing: HomeMetrics.pageInset)
+    }
+
+    private var selectorCard: some View {
+        HomeCard(padding: 0) {
+            VStack(spacing: 0) {
+                primarySelector
+                    .padding(.horizontal, 14)
+                    .padding(.top, 10)
+                secondarySelector
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 6)
+                HStack(spacing: 10) {
+                    filterButton(selectedBrand == "all" ? "品牌" : selectedBrand, icon: "tag", active: selectedBrand != "all")
+                    Spacer()
+                    Menu {
+                        ForEach(PetItemListSortMode.allCases) { option in
+                            Button {
+                                sortMode = option
+                                NativeHaptics.selection()
+                            } label: {
+                                if sortMode == option {
+                                    Label(option.title, systemImage: "checkmark")
+                                } else {
+                                    Text(option.title)
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(sortMode.title, systemImage: "arrow.up.arrow.down")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(HomeTheme.background, in: Capsule())
+                            .overlay { Capsule().stroke(HomeTheme.line, lineWidth: 0.8) }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
             }
         }
     }
@@ -249,6 +317,7 @@ struct PetItemsListView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("查看\(item.name)详情")
+            .layoutPriority(1)
 
             Button {
                 expandedItemID = expandedItemID == item.id ? nil : item.id
@@ -270,7 +339,7 @@ struct PetItemsListView: View {
                         Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
                     }
                 }
-                .frame(width: 118, alignment: .trailing)
+                .frame(width: 106, alignment: .trailing)
                 .frame(minHeight: 48, alignment: .trailing)
                 .contentShape(Rectangle())
             }
@@ -282,16 +351,14 @@ struct PetItemsListView: View {
 
     private func quickManagerRow(_ item: PetItem) -> some View {
         compactQuickManager(item)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .listRowInsets(.init())
-            .listRowBackground(HomeTheme.background)
+            .listRowInsets(.init(top: 2, leading: HomeMetrics.pageInset + 8, bottom: 5, trailing: HomeMetrics.pageInset + 8))
+            .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .id("quick-manager-\(item.id)")
     }
 
     private var primarySelector: some View {
-        HStack(spacing: 22) {
+        HStack(spacing: 16) {
             ForEach(primaryCategories) { category in
                 Button {
                     primaryID = category.id
@@ -300,6 +367,7 @@ struct PetItemsListView: View {
                     HomeUnderlineTab(title: category.name, selected: primaryID == category.id, prominent: true)
                 }
                 .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: false)
             }
             Spacer(minLength: 0)
             Button {
@@ -375,12 +443,14 @@ struct PetItemsListView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(active ? HomeTheme.blue : HomeTheme.muted)
                 .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 10)
                 .frame(height: 32)
                 .background(active ? HomeTheme.blue.opacity(0.10) : HomeTheme.background, in: Capsule())
                 .overlay { Capsule().stroke(active ? HomeTheme.blue.opacity(0.35) : HomeTheme.line, lineWidth: 0.8) }
         }
         .buttonStyle(.plain)
+        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func compactQuickManager(_ item: PetItem) -> some View {

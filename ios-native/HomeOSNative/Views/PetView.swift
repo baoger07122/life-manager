@@ -5,6 +5,7 @@ struct PetView: View {
     @State private var selectedCategoryID = "all"
     @State private var selectedInventoryPrimaryID = "pet-root-food"
     @State private var litterSheet: LitterSheet?
+    @State private var showMonthlyExpense = false
 
     private enum LitterSheet: String, Identifiable {
         case initialize, refill, replace
@@ -13,26 +14,13 @@ struct PetView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            PetItemsListView(primaryID: $selectedInventoryPrimaryID) {
                 header
-                    .listRowInsets(.init(top: 12, leading: 4, bottom: 4, trailing: 4))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+            } statistics: {
                 itemStatistics
-                    .listRowInsets(.init())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                PetItemsListView(primaryID: $selectedInventoryPrimaryID)
+            } footer: {
                 timelineSection
-                    .listRowInsets(.init())
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
             }
-            .listStyle(.insetGrouped)
-            .environment(\.defaultMinListRowHeight, 1)
-            .scrollContentBackground(.hidden)
-            .background(HomeTheme.background)
-            .scrollIndicators(.hidden)
             .sheet(item: $litterSheet) { sheet in
                 switch sheet {
                 case .initialize: LitterInitializeView()
@@ -53,6 +41,9 @@ struct PetView: View {
                     }
                     .accessibilityLabel("宠物物品管理")
                 }
+            }
+            .navigationDestination(isPresented: $showMonthlyExpense) {
+                PetMonthlyExpenseView()
             }
         }
     }
@@ -80,7 +71,10 @@ struct PetView: View {
                 }
                 .buttonStyle(.plain)
                 Divider().frame(height: 52)
-                NavigationLink { PetMonthlyExpenseView() } label: {
+                Button {
+                    showMonthlyExpense = true
+                    NativeHaptics.tap()
+                } label: {
                     inventoryStatistic(title: "本月开销", value: store.petMonthlyExpense(), suffix: "元", currency: true)
                 }
                 .buttonStyle(.plain)

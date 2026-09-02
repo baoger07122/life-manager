@@ -20,7 +20,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     @State private var secondaryID = ""
     @State private var selectedBrand = "all"
     @State private var sortMode: PetItemListSortMode = .createdNewest
-    @State private var listSheet: PetItemListSheet?
     @State private var expandedItemID: String?
     @State private var quickMode: PetInventoryTransactionType = .outbound
     @State private var quickQuantity = 1.0
@@ -91,31 +90,29 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
-            selectorCard
-                .listRowInsets(.init(top: 10, leading: HomeMetrics.pageInset, bottom: 7, trailing: HomeMetrics.pageInset))
+            selectorPanelHeader
+                .listRowInsets(.init(top: 10, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
 
             if items.isEmpty {
                 VStack(spacing: 12) {
-                    EmptyState(icon: "shippingbox.fill", title: "暂无当前库存", message: "可以新增物品，或查看下方待回购商品。")
+                    EmptyState(icon: "shippingbox.fill", title: "暂无当前库存", message: "可以新增物品，或从右上角查看待回购。")
                     Button("添加宠物物品") { openEditor() }
                     .buttonStyle(HomeSecondaryButtonStyle())
                 }
                 .padding(.vertical, 10)
-                .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .listRowInsets(itemListInsets)
+                .background(HomeTheme.card)
+                .overlay(alignment: .top) { panelDivider }
+                .listRowInsets(panelRowInsets)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             } else {
                 ForEach(items) { item in
                     itemRow(item)
-                        .background(HomeTheme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(HomeTheme.line, lineWidth: 0.6)
-                        }
-                        .listRowInsets(itemListInsets)
+                        .background(HomeTheme.card)
+                        .overlay(alignment: .top) { panelDivider }
+                        .listRowInsets(panelRowInsets)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -126,6 +123,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     }
                 }
             }
+
+            panelBottomCap
+                .listRowInsets(panelRowInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
 
             footerContent
                 .listRowInsets(.init(top: 13, leading: HomeMetrics.pageInset, bottom: 24, trailing: HomeMetrics.pageInset))
@@ -147,12 +149,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             selectedBrand = "all"
             expandedItemID = nil
             selectDefaultSecondary()
-        }
-        .sheet(item: $listSheet) { _ in
-            PetBrandFilterSheet(
-                brands: availableBrands,
-                selectedBrand: $selectedBrand
-            )
         }
         .alert("永久删除这个物品？", isPresented: Binding(
             get: { deleteCandidate != nil },
@@ -187,6 +183,14 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             headerContent
             Spacer(minLength: 12)
             Menu {
+                Menu {
+                    brandMenuButton(title: "全部品牌", value: "all")
+                    ForEach(availableBrands, id: \.self) { brand in
+                        brandMenuButton(title: brand, value: brand)
+                    }
+                } label: {
+                    Label(selectedBrand == "all" ? "品牌筛选" : "品牌：\(selectedBrand)", systemImage: "tag")
+                }
                 Button {
                     route = .pendingRepurchase
                     NativeHaptics.selection()
@@ -211,49 +215,62 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         }
     }
 
-    private var itemListInsets: EdgeInsets {
-        .init(top: 3, leading: HomeMetrics.pageInset, bottom: 3, trailing: HomeMetrics.pageInset)
+    private var panelRowInsets: EdgeInsets {
+        .init(top: 0, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset)
     }
 
-    private var selectorCard: some View {
-        HomeCard(padding: 0) {
-            VStack(spacing: 0) {
-                primarySelector
-                    .padding(.horizontal, 14)
-                    .padding(.top, 10)
-                secondarySelector
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
-                HStack(spacing: 10) {
-                    filterButton(selectedBrand == "all" ? "品牌" : selectedBrand, icon: "tag", active: selectedBrand != "all")
-                    Spacer()
-                    Menu {
-                        ForEach(PetItemListSortMode.allCases) { option in
-                            Button {
-                                sortMode = option
-                                NativeHaptics.selection()
-                            } label: {
-                                if sortMode == option {
-                                    Label(option.title, systemImage: "checkmark")
-                                } else {
-                                    Text(option.title)
-                                }
-                            }
-                        }
-                    } label: {
-                        Label(sortMode.title, systemImage: "arrow.up.arrow.down")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(.horizontal, 10)
-                            .frame(height: 32)
-                            .background(HomeTheme.background, in: Capsule())
-                            .overlay { Capsule().stroke(HomeTheme.line, lineWidth: 0.8) }
-                    }
-                }
+    private var selectorPanelHeader: some View {
+        VStack(spacing: 0) {
+            primarySelector
                 .padding(.horizontal, 14)
-                .padding(.bottom, 8)
+                .padding(.top, 10)
+            secondaryAndSortRow
+                .padding(.leading, 14)
+                .padding(.trailing, 7)
+                .padding(.bottom, 7)
+        }
+        .background(
+            HomeTheme.card,
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 18,
+                style: .continuous
+            )
+        )
+    }
+
+    private var panelBottomCap: some View {
+        Color.clear
+            .frame(height: 10)
+            .background(
+                HomeTheme.card,
+                in: UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 18,
+                    bottomTrailingRadius: 18,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+            )
+    }
+
+    private var panelDivider: some View {
+        Divider()
+            .padding(.leading, 14)
+    }
+
+    @ViewBuilder private func brandMenuButton(title: String, value: String) -> some View {
+        Button {
+            selectedBrand = value
+            expandedItemID = nil
+            NativeHaptics.selection()
+        } label: {
+            if selectedBrand == value {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
             }
         }
     }
@@ -336,7 +353,10 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
 
     private func quickManagerRow(_ item: PetItem) -> some View {
         compactQuickManager(item)
-            .listRowInsets(.init(top: 2, leading: HomeMetrics.pageInset + 8, bottom: 5, trailing: HomeMetrics.pageInset + 8))
+            .padding(.horizontal, 8)
+            .padding(.bottom, 6)
+            .background(HomeTheme.card)
+            .listRowInsets(panelRowInsets)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .id("quick-manager-\(item.id)")
@@ -385,20 +405,44 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         }
     }
 
-    private var secondarySelector: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 20) {
-                ForEach(secondaryCategories) { category in
-                    Button {
-                        secondaryID = category.id
-                        expandedItemID = nil
-                        NativeHaptics.selection()
-                    } label: {
-                        HomeUnderlineTab(title: category.name, selected: secondaryID == category.id)
+    private var secondaryAndSortRow: some View {
+        HStack(spacing: 4) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 20) {
+                    ForEach(secondaryCategories) { category in
+                        Button {
+                            secondaryID = category.id
+                            expandedItemID = nil
+                            NativeHaptics.selection()
+                        } label: {
+                            HomeUnderlineTab(title: category.name, selected: secondaryID == category.id)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
+            Menu {
+                ForEach(PetItemListSortMode.allCases) { option in
+                    Button {
+                        sortMode = option
+                        NativeHaptics.selection()
+                    } label: {
+                        if sortMode == option {
+                            Label(option.title, systemImage: "checkmark")
+                        } else {
+                            Text(option.title)
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(HomeTheme.muted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("排序：\(sortMode.title)")
         }
     }
 
@@ -417,25 +461,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         secondaryID = preferredNames.compactMap { name in
             secondaryCategories.first { $0.name == name }?.id
         }.first ?? secondaryCategories.first?.id ?? ""
-    }
-
-    private func filterButton(_ title: String, icon: String, active: Bool) -> some View {
-        Button {
-            listSheet = .brand
-            NativeHaptics.selection()
-        } label: {
-            Label(title, systemImage: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(active ? HomeTheme.blue : HomeTheme.muted)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 10)
-                .frame(height: 32)
-                .background(active ? HomeTheme.blue.opacity(0.10) : HomeTheme.background, in: Capsule())
-                .overlay { Capsule().stroke(active ? HomeTheme.blue.opacity(0.35) : HomeTheme.line, lineWidth: 0.8) }
-        }
-        .buttonStyle(.plain)
-        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func compactQuickManager(_ item: PetItem) -> some View {
@@ -560,11 +585,6 @@ private enum PetItemsRoute: Hashable {
     case noRepurchase
 }
 
-private enum PetItemListSheet: String, Identifiable {
-    case brand
-    var id: String { rawValue }
-}
-
 private enum PetItemListSortMode: String, CaseIterable, Identifiable {
     case createdNewest, stockHigh
     var id: String { rawValue }
@@ -573,77 +593,6 @@ private enum PetItemListSortMode: String, CaseIterable, Identifiable {
         case .createdNewest: "最近添加"
         case .stockHigh: "库存从高到低"
         }
-    }
-}
-
-private struct PetBrandFilterSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let brands: [String]
-    @Binding private var selectedBrand: String
-    @State private var draftBrand: String
-
-    init(
-        brands: [String],
-        selectedBrand: Binding<String>
-    ) {
-        self.brands = brands
-        _selectedBrand = selectedBrand
-        _draftBrand = State(initialValue: selectedBrand.wrappedValue)
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    selectionRow("全部品牌", selected: draftBrand == "all") { draftBrand = "all" }
-                    ForEach(brands, id: \.self) { brand in
-                        selectionRow(brand, selected: draftBrand == brand) { draftBrand = brand }
-                    }
-                }
-            }
-            .navigationTitle("选择品牌")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("应用") { apply() }.fontWeight(.semibold) }
-            }
-            .safeAreaInset(edge: .bottom) {
-                HStack(spacing: 12) {
-                    Button("重置") {
-                        draftBrand = "all"
-                        NativeHaptics.selection()
-                    }
-                    .buttonStyle(HomeSecondaryButtonStyle())
-                    Button("应用筛选", action: apply)
-                        .buttonStyle(HomePrimaryButtonStyle())
-                }
-                .padding(.horizontal, HomeMetrics.pageInset)
-                .padding(.vertical, 10)
-                .background(.ultraThinMaterial)
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    private func selectionRow(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button {
-            action()
-            NativeHaptics.selection()
-        } label: {
-            HStack {
-                Text(title).foregroundStyle(HomeTheme.ink)
-                Spacer()
-                if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(HomeTheme.blue) }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func apply() {
-        selectedBrand = draftBrand
-        NativeHaptics.success()
-        dismiss()
     }
 }
 

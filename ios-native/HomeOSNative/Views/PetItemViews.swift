@@ -19,7 +19,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     private let footerContent: FooterContent
     @State private var secondaryID = ""
     @State private var selectedBrand = "all"
-    @State private var sortMode: PetItemListSortMode = .createdNewest
+    @AppStorage("homeos.pet.items.sortMode") private var sortMode: PetItemListSortMode = .smart
     @State private var expandedItemID: String?
     @State private var quickMode: PetInventoryTransactionType = .outbound
     @State private var quickQuantity = 1.0
@@ -47,14 +47,32 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         }
         return filtered.sorted { left, right in
             switch sortMode {
+            case .smart:
+                let leftRating = store.petProductRating(productID: left.id)?.overall
+                let rightRating = store.petProductRating(productID: right.id)?.overall
+                switch (leftRating, rightRating) {
+                case let (.some(leftScore), .some(rightScore)):
+                    if leftScore != rightScore { return leftScore > rightScore }
+                    return isNewer(left, than: right)
+                case (.some(_), .none):
+                    return true
+                case (.none, .some(_)):
+                    return false
+                case (.none, .none):
+                    return isNewer(left, than: right)
+                }
             case .createdNewest:
-                let leftDate = left.createdAt ?? left.updatedAt ?? 0
-                let rightDate = right.createdAt ?? right.updatedAt ?? 0
-                return leftDate == rightDate ? left.name < right.name : leftDate > rightDate
+                return isNewer(left, than: right)
+            case .ratingHigh:
+                let leftScore = store.petProductRating(productID: left.id)?.overall ?? -1
+                let rightScore = store.petProductRating(productID: right.id)?.overall ?? -1
+                if leftScore != rightScore { return leftScore > rightScore }
+                return isNewer(left, than: right)
             case .stockHigh:
                 let leftStock = store.petInventory(for: left.id)
                 let rightStock = store.petInventory(for: right.id)
-                return leftStock == rightStock ? left.name < right.name : leftStock > rightStock
+                if leftStock != rightStock { return leftStock > rightStock }
+                return isNewer(left, than: right)
             }
         }
     }
@@ -64,6 +82,12 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             item.resolvedWillRepurchase
                 && (selectedPrimary.map { item.resolvedPrimaryCategory == $0.name } ?? true)
         }.map(\.brand).filter { !$0.isEmpty })).sorted()
+    }
+
+    private func isNewer(_ left: PetItem, than right: PetItem) -> Bool {
+        let leftDate = left.createdAt ?? left.updatedAt ?? 0
+        let rightDate = right.createdAt ?? right.updatedAt ?? 0
+        return leftDate == rightDate ? left.name < right.name : leftDate > rightDate
     }
 
     init(
@@ -588,11 +612,13 @@ private enum PetItemsRoute: Hashable {
 }
 
 private enum PetItemListSortMode: String, CaseIterable, Identifiable {
-    case createdNewest, stockHigh
+    case smart, createdNewest, ratingHigh, stockHigh
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .smart: "智能排序"
         case .createdNewest: "最近添加"
+        case .ratingHigh: "评分从高到低"
         case .stockHigh: "库存从高到低"
         }
     }

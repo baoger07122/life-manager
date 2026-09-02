@@ -627,7 +627,7 @@ private enum PetItemListSortMode: String, CaseIterable, Identifiable {
 struct PetRatingsListView: View {
     @EnvironmentObject private var store: HomeStore
     @State private var primaryID = "pet-root-food"
-    @State private var secondaryID = "all"
+    @State private var secondaryID = ""
     @State private var ratingSubjectID = "overall"
     @State private var selectedBrand = "all"
     @State private var sortMode: PetRatingSortMode = .scoreHigh
@@ -640,10 +640,11 @@ struct PetRatingsListView: View {
     }
     private var items: [PetItem] {
         let filtered = store.activePetItems.filter { item in
-            guard let selectedPrimary, store.petProductRating(productID: item.id) != nil else { return false }
-            let secondaryName = secondaryCategories.first { $0.id == secondaryID }?.name
+            guard let selectedPrimary,
+                  let secondaryName = secondaryCategories.first(where: { $0.id == secondaryID })?.name,
+                  store.petProductRating(productID: item.id) != nil else { return false }
             return item.resolvedPrimaryCategory == selectedPrimary.name
-                && (secondaryName == nil || item.resolvedSecondaryCategory == secondaryName)
+                && item.resolvedSecondaryCategory == secondaryName
                 && (selectedBrand == "all" || item.brand == selectedBrand)
         }
         return filtered.sorted { left, right in
@@ -676,7 +677,6 @@ struct PetRatingsListView: View {
                         ForEach(primaryCategories) { category in
                             Button {
                                 primaryID = category.id
-                                secondaryID = "all"
                                 NativeHaptics.selection()
                             } label: {
                                 HomeUnderlineTab(title: category.name, selected: primaryID == category.id, prominent: true)
@@ -690,7 +690,6 @@ struct PetRatingsListView: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 14) {
-                            ratingFilter(title: "全部", id: "all")
                             ForEach(secondaryCategories) { category in ratingFilter(title: category.name, id: category.id) }
                         }
                     }
@@ -766,14 +765,15 @@ struct PetRatingsListView: View {
             if !primaryCategories.contains(where: { $0.id == primaryID }) {
                 primaryID = primaryCategories.first?.id ?? ""
             }
+            selectDefaultRatingSecondary()
             if ratingSubjectID != "overall", !store.activePets.contains(where: { $0.id == ratingSubjectID }) {
                 ratingSubjectID = "overall"
             }
         }
         .onChange(of: primaryID) { _, _ in
-            secondaryID = "all"
             selectedBrand = "all"
             if selectedPrimary?.capabilityKey != "petFood" { ratingSubjectID = "overall" }
+            selectDefaultRatingSecondary()
         }
     }
 
@@ -785,6 +785,20 @@ struct PetRatingsListView: View {
             HomeUnderlineTab(title: title, selected: secondaryID == id)
         }
         .buttonStyle(.plain)
+    }
+
+    private func selectDefaultRatingSecondary() {
+        guard !secondaryCategories.isEmpty else {
+            secondaryID = ""
+            return
+        }
+        if secondaryCategories.contains(where: { $0.id == secondaryID }) { return }
+        let preferredNames = selectedPrimary?.capabilityKey == "petFood"
+            ? ["主食罐"]
+            : ["矿砂", "猫砂"]
+        secondaryID = preferredNames.compactMap { name in
+            secondaryCategories.first { $0.name == name }?.id
+        }.first ?? secondaryCategories.first?.id ?? ""
     }
 
     private func ratingSubjectButton(title: String, id: String) -> some View {

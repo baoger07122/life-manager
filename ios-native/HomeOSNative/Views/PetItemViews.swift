@@ -257,8 +257,10 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private var panelDivider: some View {
-        Divider()
-            .padding(.leading, 14)
+        Rectangle()
+            .fill(HomeTheme.line.opacity(0.72))
+            .frame(height: 0.5)
+            .padding(.horizontal, 14)
     }
 
     @ViewBuilder private func brandMenuButton(title: String, value: String) -> some View {

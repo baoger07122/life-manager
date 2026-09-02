@@ -927,13 +927,23 @@ final class HomeStore: ObservableObject {
         )
     }
 
-    func addPetPalatabilityReview(productID: String, petID: String, date: String, score: Int, note: String?) -> Bool {
+    func savePetPalatabilityReview(id: String? = nil, productID: String, petID: String, date: String, score: Int, note: String?) -> Bool {
         guard let pet = data.pets.first(where: { $0.id == petID }) else { return fail("请选择宠物") }
         guard (1...5).contains(score) else { return fail("评分必须为 1 到 5 的整数") }
         let now = Date().timeIntervalSince1970
         var next = data
         let legacyPreference = score >= 4 ? "喜欢" : score == 3 ? "一般" : "不喜欢"
-        next.petPalatabilityReviews.append(PetPalatabilityReview(id: UUID().uuidString, productID: productID, petID: pet.id, petNameSnapshot: pet.name, reviewDate: date, preference: legacyPreference, score: score, note: note?.nilIfBlank, createdAt: now, updatedAt: now))
+        if let id, let index = next.petPalatabilityReviews.firstIndex(where: { $0.id == id && $0.productID == productID }) {
+            next.petPalatabilityReviews[index].petID = pet.id
+            next.petPalatabilityReviews[index].petNameSnapshot = pet.name
+            next.petPalatabilityReviews[index].reviewDate = date
+            next.petPalatabilityReviews[index].preference = legacyPreference
+            next.petPalatabilityReviews[index].score = score
+            next.petPalatabilityReviews[index].note = note?.nilIfBlank
+            next.petPalatabilityReviews[index].updatedAt = now
+        } else {
+            next.petPalatabilityReviews.append(PetPalatabilityReview(id: UUID().uuidString, productID: productID, petID: pet.id, petNameSnapshot: pet.name, reviewDate: date, preference: legacyPreference, score: score, note: note?.nilIfBlank, createdAt: now, updatedAt: now))
+        }
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true

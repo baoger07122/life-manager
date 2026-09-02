@@ -672,7 +672,7 @@ struct PetRatingsListView: View {
         ScrollView {
             HomeCard(padding: 0) {
                 VStack(spacing: 0) {
-                    HStack(spacing: 22) {
+                    HStack(spacing: 14) {
                         ForEach(primaryCategories) { category in
                             Button {
                                 primaryID = category.id
@@ -686,19 +686,19 @@ struct PetRatingsListView: View {
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14)
-                    .padding(.top, 10)
+                    .padding(.top, 8)
 
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 20) {
+                        HStack(spacing: 14) {
                             ratingFilter(title: "全部", id: "all")
                             ForEach(secondaryCategories) { category in ratingFilter(title: category.name, id: category.id) }
                         }
                     }
                     .padding(.horizontal, 14)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 2)
                     HStack(spacing: 4) {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 16) {
+                            HStack(spacing: 0) {
                                 ratingSubjectButton(title: "整体", id: "overall")
                                 if selectedPrimary?.capabilityKey == "petFood" {
                                     ForEach(store.activePets) { pet in
@@ -706,6 +706,8 @@ struct PetRatingsListView: View {
                                     }
                                 }
                             }
+                            .padding(.horizontal, 3)
+                            .background(HomeTheme.background, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         }
                         Spacer(minLength: 4)
                         Menu {
@@ -715,7 +717,7 @@ struct PetRatingsListView: View {
                             }
                         } label: {
                             Image(systemName: "tag")
-                                .frame(width: 38, height: 38)
+                                .frame(width: 34, height: 32)
                         }
                         Menu {
                             ForEach(PetRatingSortMode.allCases) { mode in
@@ -723,13 +725,13 @@ struct PetRatingsListView: View {
                             }
                         } label: {
                             Image(systemName: "arrow.up.arrow.down")
-                                .frame(width: 38, height: 38)
+                                .frame(width: 34, height: 32)
                         }
                     }
                     .font(HomeTypography.supporting.weight(.medium))
                     .foregroundStyle(HomeTheme.muted)
                     .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
+                    .padding(.bottom, 6)
                     Divider()
 
                     if items.isEmpty {
@@ -790,7 +792,13 @@ struct PetRatingsListView: View {
             ratingSubjectID = id
             NativeHaptics.selection()
         } label: {
-            HomeUnderlineTab(title: title, selected: ratingSubjectID == id)
+            Text(title)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(ratingSubjectID == id ? HomeTheme.blue : HomeTheme.muted)
+                .lineLimit(1)
+                .padding(.horizontal, 9)
+                .frame(height: 30)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -809,6 +817,11 @@ struct PetRatingsListView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     if ratingSubjectID == "overall", let summary = store.petProductRating(productID: item.id) {
                         Text(dimensionSummary(item: item, rating: summary))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(2)
+                    } else if let note = latestPetNote(for: item) {
+                        Text(note)
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(2)
@@ -847,6 +860,19 @@ struct PetRatingsListView: View {
             return (summary.overall, summary.count)
         }
         return store.petPalatabilityRating(productID: item.id, petID: ratingSubjectID)
+    }
+
+    private func latestPetNote(for item: PetItem) -> String? {
+        guard ratingSubjectID != "overall" else { return nil }
+        let review = store.data.petPalatabilityReviews
+            .filter { $0.productID == item.id && $0.petID == ratingSubjectID }
+            .max {
+                $0.reviewDate == $1.reviewDate
+                    ? $0.createdAt < $1.createdAt
+                    : $0.reviewDate < $1.reviewDate
+            }
+        guard let note = review?.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty else { return nil }
+        return note
     }
 
     @ViewBuilder private func ratingImage(_ item: PetItem) -> some View {
@@ -1117,7 +1143,7 @@ struct PetItemDetailView: View {
             case .outbound: PetInventoryEditorView(productID: itemID, mode: .outbound)
             case .adjustment: PetInventoryEditorView(productID: itemID, mode: .adjustment)
             case .productReview(let reviewID): PetProductReviewEditorView(productID: itemID, reviewID: reviewID)
-            case .palatability: PetPalatabilityEditorView(productID: itemID)
+            case .palatability(let reviewID): PetPalatabilityEditorView(productID: itemID, reviewID: reviewID)
             case .image: PetItemImageEditorSheet(itemID: itemID, initialImage: item?.image)
             case .transaction(let transactionID): PetInventoryTransactionEditorView(transactionID: transactionID)
             }
@@ -1343,19 +1369,32 @@ struct PetItemDetailView: View {
         let records = store.data.petPalatabilityReviews.filter { $0.productID == itemID }.sorted { $0.reviewDate > $1.reviewDate }
         return HomeCard {
             VStack(alignment: .leading, spacing: 9) {
-                HomeSectionHeader(title: "猫咪评价", actionTitle: "添加") { sheet = .palatability }
+                HomeSectionHeader(title: "猫咪评价", actionTitle: "添加") { sheet = .palatability(reviewID: nil) }
                 if records.isEmpty { Text("暂无猫咪评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
                 ForEach(records.prefix(6)) { review in
                     Divider()
-                    HStack {
-                        Text(review.petNameSnapshot).font(HomeTypography.cardTitle)
-                        Spacer()
-                        Text("\(review.resolvedScore)分")
-                            .font(HomeTypography.body)
-                            .foregroundStyle(palatabilityScoreColor(review.resolvedScore))
+                    Button {
+                        NativeHaptics.selection()
+                        sheet = .palatability(reviewID: review.id)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text(review.petNameSnapshot).font(HomeTypography.cardTitle)
+                                Spacer()
+                                Text("\(review.resolvedScore)分")
+                                    .font(HomeTypography.body)
+                                    .foregroundStyle(palatabilityScoreColor(review.resolvedScore))
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                            if let note = review.note {
+                                Text(note).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                            }
+                            Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        }
                     }
-                    if let note = review.note { Text(note).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted) }
-                    Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -1441,7 +1480,7 @@ private enum PetItemDetailSheet: Identifiable {
     case outbound
     case adjustment
     case productReview(reviewID: String?)
-    case palatability
+    case palatability(reviewID: String?)
     case image
     case transaction(transactionID: String)
 
@@ -1451,7 +1490,7 @@ private enum PetItemDetailSheet: Identifiable {
         case .outbound: "outbound"
         case .adjustment: "adjustment"
         case .productReview(let reviewID): "product-review-\(reviewID ?? "new")"
-        case .palatability: "palatability"
+        case .palatability(let reviewID): "palatability-\(reviewID ?? "new")"
         case .image: "image"
         case .transaction(let transactionID): "transaction-\(transactionID)"
         }

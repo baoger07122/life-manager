@@ -809,10 +809,12 @@ struct PetPalatabilityEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let productID: String
+    var reviewID: String? = nil
     @State private var petID = ""
     @State private var score = 3
     @State private var note = ""
     @State private var date = Date()
+    @State private var loaded = false
     var body: some View {
         NavigationStack {
             Form {
@@ -821,13 +823,27 @@ struct PetPalatabilityEditorView: View {
                 DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("备注（可选）", text: $note, axis: .vertical).font(HomeTypography.body)
             }
-            .navigationTitle("添加猫咪评价").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(reviewID == nil ? "添加猫咪评价" : "编辑猫咪评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { if store.addPetPalatabilityReview(productID: productID, petID: petID, date: LitterPredictionService.format(date), score: score, note: note) { dismiss() } }.disabled(petID.isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { if store.savePetPalatabilityReview(id: reviewID, productID: productID, petID: petID, date: LitterPredictionService.format(date), score: score, note: note) { dismiss() } }.disabled(petID.isEmpty) }
             }
-            .task { if petID.isEmpty { petID = store.activePets.first?.id ?? "" } }
+            .task { loadReview() }
         }.presentationDetents([.medium])
+    }
+
+    private func loadReview() {
+        guard !loaded else { return }
+        defer { loaded = true }
+        if let reviewID,
+           let existing = store.data.petPalatabilityReviews.first(where: { $0.id == reviewID && $0.productID == productID }) {
+            petID = existing.petID
+            score = existing.resolvedScore
+            note = existing.note ?? ""
+            date = LitterPredictionService.parse(existing.reviewDate) ?? Date()
+        } else if petID.isEmpty {
+            petID = store.activePets.first?.id ?? ""
+        }
     }
 }
 

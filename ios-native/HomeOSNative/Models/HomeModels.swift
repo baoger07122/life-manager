@@ -232,9 +232,22 @@ struct PetPalatabilityReview: Codable, Identifiable, Hashable {
     var petNameSnapshot: String
     var reviewDate: String
     var preference: String
+    var score: Int? = nil
     var note: String?
     var createdAt: Double
     var updatedAt: Double
+}
+
+extension PetPalatabilityReview {
+    var resolvedScore: Int {
+        if let score, (1...5).contains(score) { return score }
+        switch preference {
+        case "喜欢": return 5
+        case "一般": return 3
+        case "不喜欢": return 1
+        default: return 3
+        }
+    }
 }
 
 struct PetProfile: Codable, Identifiable, Hashable {

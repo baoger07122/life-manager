@@ -810,21 +810,21 @@ struct PetPalatabilityEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let productID: String
     @State private var petID = ""
-    @State private var preference = "喜欢"
+    @State private var score = 3
     @State private var note = ""
     @State private var date = Date()
     var body: some View {
         NavigationStack {
             Form {
                 Picker("宠物", selection: $petID) { ForEach(store.activePets) { Text($0.name).tag($0.id) } }
-                Picker("评价", selection: $preference) { ForEach(["喜欢", "一般", "不喜欢"], id: \.self) { Text($0) } }.pickerStyle(.segmented)
+                Picker("评价", selection: $score) { ForEach(1...5, id: \.self) { Text("\($0)分").tag($0) } }.pickerStyle(.segmented)
                 DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("备注（可选）", text: $note, axis: .vertical).font(HomeTypography.body)
             }
             .navigationTitle("添加猫咪评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("保存") { if store.addPetPalatabilityReview(productID: productID, petID: petID, date: LitterPredictionService.format(date), preference: preference, note: note) { dismiss() } }.disabled(petID.isEmpty) }
+                ToolbarItem(placement: .confirmationAction) { Button("保存") { if store.addPetPalatabilityReview(productID: productID, petID: petID, date: LitterPredictionService.format(date), score: score, note: note) { dismiss() } }.disabled(petID.isEmpty) }
             }
             .task { if petID.isEmpty { petID = store.activePets.first?.id ?? "" } }
         }.presentationDetents([.medium])
@@ -844,7 +844,7 @@ struct PetPreferenceSummaryView: View {
                         ForEach(latestReviews(for: pet.id)) { review in
                             HStack {
                                 Text(store.data.petItems.first { $0.id == review.productID }?.name ?? "已停用产品").font(HomeTypography.body)
-                                Spacer(); Text(review.preference).font(HomeTypography.body).foregroundStyle(preferenceColor(review.preference))
+                                Spacer(); Text("\(review.resolvedScore)分").font(HomeTypography.body).foregroundStyle(palatabilityScoreColor(review.resolvedScore))
                             }
                         }
                     }

@@ -512,6 +512,13 @@ final class HomeStore: ObservableObject {
             .sorted { $0.petNameSnapshot < $1.petNameSnapshot }
     }
 
+    func petPalatabilityRating(productID: String, petID: String) -> (overall: Double, count: Int)? {
+        let reviews = data.petPalatabilityReviews.filter { $0.productID == productID && $0.petID == petID }
+        guard !reviews.isEmpty else { return nil }
+        let total = reviews.reduce(0) { $0 + $1.resolvedScore }
+        return (Double(total) / Double(reviews.count), reviews.count)
+    }
+
     var litterPrediction: LitterPrediction? {
         guard let state = data.litterBoxState else { return nil }
         return LitterPredictionService.evaluate(state: state, operations: data.litterOperations)
@@ -920,11 +927,13 @@ final class HomeStore: ObservableObject {
         )
     }
 
-    func addPetPalatabilityReview(productID: String, petID: String, date: String, preference: String, note: String?) -> Bool {
+    func addPetPalatabilityReview(productID: String, petID: String, date: String, score: Int, note: String?) -> Bool {
         guard let pet = data.pets.first(where: { $0.id == petID }) else { return fail("请选择宠物") }
+        guard (1...5).contains(score) else { return fail("评分必须为 1 到 5 的整数") }
         let now = Date().timeIntervalSince1970
         var next = data
-        next.petPalatabilityReviews.append(PetPalatabilityReview(id: UUID().uuidString, productID: productID, petID: pet.id, petNameSnapshot: pet.name, reviewDate: date, preference: preference, note: note?.nilIfBlank, createdAt: now, updatedAt: now))
+        let legacyPreference = score >= 4 ? "喜欢" : score == 3 ? "一般" : "不喜欢"
+        next.petPalatabilityReviews.append(PetPalatabilityReview(id: UUID().uuidString, productID: productID, petID: pet.id, petNameSnapshot: pet.name, reviewDate: date, preference: legacyPreference, score: score, note: note?.nilIfBlank, createdAt: now, updatedAt: now))
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true

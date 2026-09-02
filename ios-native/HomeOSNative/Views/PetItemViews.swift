@@ -628,6 +628,7 @@ struct PetRatingsListView: View {
     @EnvironmentObject private var store: HomeStore
     @State private var primaryID = "pet-root-food"
     @State private var secondaryID = "all"
+    @State private var ratingSubjectID = "overall"
     @State private var selectedBrand = "all"
     @State private var sortMode: PetRatingSortMode = .scoreHigh
     @State private var sheet: PetRatingsSheet?
@@ -646,12 +647,20 @@ struct PetRatingsListView: View {
                 && (selectedBrand == "all" || item.brand == selectedBrand)
         }
         return filtered.sorted { left, right in
-            let leftRating = store.petProductRating(productID: left.id)?.overall ?? 0
-            let rightRating = store.petProductRating(productID: right.id)?.overall ?? 0
             switch sortMode {
-            case .scoreHigh: return leftRating == rightRating ? left.name < right.name : leftRating > rightRating
-            case .scoreLow: return leftRating == rightRating ? left.name < right.name : leftRating < rightRating
-            case .name: return left.name.localizedStandardCompare(right.name) == .orderedAscending
+            case .name:
+                return left.name.localizedStandardCompare(right.name) == .orderedAscending
+            case .scoreHigh, .scoreLow:
+                let leftRating = ratingSummary(for: left)?.overall
+                let rightRating = ratingSummary(for: right)?.overall
+                switch (leftRating, rightRating) {
+                case let (.some(leftScore), .some(rightScore)):
+                    if leftScore == rightScore { return left.name < right.name }
+                    return sortMode == .scoreHigh ? leftScore > rightScore : leftScore < rightScore
+                case (.some(_), .none): return true
+                case (.none, .some(_)): return false
+                case (.none, .none): return left.name < right.name
+                }
             }
         }
     }
@@ -687,26 +696,38 @@ struct PetRatingsListView: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.bottom, 6)
-                    HStack(spacing: 10) {
+                    HStack(spacing: 4) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 16) {
+                                ratingSubjectButton(title: "整体", id: "overall")
+                                if selectedPrimary?.capabilityKey == "petFood" {
+                                    ForEach(store.activePets) { pet in
+                                        ratingSubjectButton(title: pet.name, id: pet.id)
+                                    }
+                                }
+                            }
+                        }
+                        Spacer(minLength: 4)
                         Menu {
                             Button("全部品牌") { selectedBrand = "all" }
                             ForEach(availableBrands, id: \.self) { brand in
                                 Button(brand) { selectedBrand = brand }
                             }
                         } label: {
-                            Label(selectedBrand == "all" ? "品牌" : selectedBrand, systemImage: "tag")
+                            Image(systemName: "tag")
+                                .frame(width: 38, height: 38)
                         }
                         Menu {
                             ForEach(PetRatingSortMode.allCases) { mode in
                                 Button(mode.title) { sortMode = mode }
                             }
                         } label: {
-                            Label(sortMode.title, systemImage: "arrow.up.arrow.down")
+                            Image(systemName: "arrow.up.arrow.down")
+                                .frame(width: 38, height: 38)
                         }
-                        Spacer()
                     }
                     .font(HomeTypography.supporting.weight(.medium))
-                    .foregroundStyle(HomeTheme.blue)
+                    .foregroundStyle(HomeTheme.muted)
                     .padding(.horizontal, 14)
                     .padding(.bottom, 8)
                     Divider()
@@ -743,10 +764,14 @@ struct PetRatingsListView: View {
             if !primaryCategories.contains(where: { $0.id == primaryID }) {
                 primaryID = primaryCategories.first?.id ?? ""
             }
+            if ratingSubjectID != "overall", !store.activePets.contains(where: { $0.id == ratingSubjectID }) {
+                ratingSubjectID = "overall"
+            }
         }
         .onChange(of: primaryID) { _, _ in
             secondaryID = "all"
             selectedBrand = "all"
+            if selectedPrimary?.capabilityKey != "petFood" { ratingSubjectID = "overall" }
         }
     }
 
@@ -756,6 +781,16 @@ struct PetRatingsListView: View {
             NativeHaptics.selection()
         } label: {
             HomeUnderlineTab(title: title, selected: secondaryID == id)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func ratingSubjectButton(title: String, id: String) -> some View {
+        Button {
+            ratingSubjectID = id
+            NativeHaptics.selection()
+        } label: {
+            HomeUnderlineTab(title: title, selected: ratingSubjectID == id)
         }
         .buttonStyle(.plain)
     }
@@ -772,7 +807,7 @@ struct PetRatingsListView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(HomeTheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    if let summary = store.petProductRating(productID: item.id) {
+                    if ratingSubjectID == "overall", let summary = store.petProductRating(productID: item.id) {
                         Text(dimensionSummary(item: item, rating: summary))
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
@@ -780,13 +815,17 @@ struct PetRatingsListView: View {
                     }
                 }
                 Spacer(minLength: 6)
-                if let summary = store.petProductRating(productID: item.id) {
+                if let summary = ratingSummary(for: item) {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(summary.overall.formatted(.number.precision(.fractionLength(1))))
                             .font(.system(size: 25, weight: .semibold))
                             .foregroundStyle(HomeTheme.blue)
                         Text("\(summary.count)次评价").font(.system(size: 11)).foregroundStyle(HomeTheme.muted)
                     }
+                } else {
+                    Text("未评分")
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
                 }
             }
             .padding(.horizontal, 14)
@@ -800,6 +839,14 @@ struct PetRatingsListView: View {
         petRatingDimensions(item).compactMap { name in
             rating.dimensionAverages[name].map { "\(name) \($0.formatted(.number.precision(.fractionLength(1))))" }
         }.joined(separator: " · ")
+    }
+
+    private func ratingSummary(for item: PetItem) -> (overall: Double, count: Int)? {
+        if ratingSubjectID == "overall" {
+            guard let summary = store.petProductRating(productID: item.id) else { return nil }
+            return (summary.overall, summary.count)
+        }
+        return store.petPalatabilityRating(productID: item.id, petID: ratingSubjectID)
     }
 
     @ViewBuilder private func ratingImage(_ item: PetItem) -> some View {
@@ -1300,7 +1347,13 @@ struct PetItemDetailView: View {
                 if records.isEmpty { Text("暂无猫咪评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
                 ForEach(records.prefix(6)) { review in
                     Divider()
-                    HStack { Text(review.petNameSnapshot).font(HomeTypography.cardTitle); Spacer(); Text(review.preference).font(HomeTypography.body).foregroundStyle(preferenceColor(review.preference)) }
+                    HStack {
+                        Text(review.petNameSnapshot).font(HomeTypography.cardTitle)
+                        Spacer()
+                        Text("\(review.resolvedScore)分")
+                            .font(HomeTypography.body)
+                            .foregroundStyle(palatabilityScoreColor(review.resolvedScore))
+                    }
                     if let note = review.note { Text(note).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted) }
                     Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
                 }
@@ -1476,7 +1529,9 @@ private struct PetItemImageEditorSheet: View {
         dismiss()
     }
 }
-func preferenceColor(_ value: String) -> Color { value == "喜欢" ? HomeTheme.success : value == "不喜欢" ? HomeTheme.danger : HomeTheme.muted }
+func palatabilityScoreColor(_ score: Int) -> Color {
+    score >= 4 ? HomeTheme.success : score <= 2 ? HomeTheme.danger : HomeTheme.muted
+}
 func sourceText(_ value: PetInventorySource) -> String {
     switch value { case .manual: "手动"; case .migration: "旧数据迁移"; case .litterRefill: "猫砂补砂"; case .litterReplace: "猫砂换砂" }
 }

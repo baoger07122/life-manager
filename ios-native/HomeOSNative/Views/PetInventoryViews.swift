@@ -6,6 +6,7 @@ struct PetItemEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let itemID: String?
+    let copySourceID: String?
     let initialPrimaryID: String?
     let initialSecondaryID: String?
     @State private var primaryID: String
@@ -26,9 +27,11 @@ struct PetItemEditorView: View {
     @State private var loaded = false
     @State private var sheet: PetItemEditorSheet?
     @State private var showDuplicateAlert = false
+    @FocusState private var focusedField: PetItemEditorField?
 
-    init(itemID: String? = nil, initialPrimaryID: String? = nil, initialSecondaryID: String? = nil) {
+    init(itemID: String? = nil, copyingItemID: String? = nil, initialPrimaryID: String? = nil, initialSecondaryID: String? = nil) {
         self.itemID = itemID
+        self.copySourceID = copyingItemID
         self.initialPrimaryID = initialPrimaryID
         self.initialSecondaryID = initialSecondaryID
         _primaryID = State(initialValue: initialPrimaryID ?? "")
@@ -87,7 +90,12 @@ struct PetItemEditorView: View {
                         divider
                         editorTextRow(title: "名称", placeholder: "请输入名称", text: $name)
                         divider
-                        editorTextRow(title: selectedPrimary?.capabilityKey == "petFood" ? "口味" : "型号 / 款式", placeholder: "选填", text: $variant)
+                        editorTextRow(
+                            title: selectedPrimary?.capabilityKey == "petFood" ? "口味" : "型号 / 款式",
+                            placeholder: "选填",
+                            text: $variant,
+                            focusedField: .variant
+                        )
                         divider
                         packageTypeRow
                         divider
@@ -148,9 +156,15 @@ struct PetItemEditorView: View {
             .padding(.vertical, 16)
         }
         .background(HomeTheme.background)
-        .navigationTitle(itemID == nil ? "新增宠物物品" : "编辑宠物物品")
+        .navigationTitle(editorTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task { loadExisting() }
+        .task {
+            loadExisting()
+            if copySourceID != nil {
+                await Task.yield()
+                focusedField = .variant
+            }
+        }
         .onChange(of: selectedPhoto) { _, photo in
             Task {
                 if let data = try? await photo?.loadTransferable(type: Data.self) {
@@ -176,6 +190,12 @@ struct PetItemEditorView: View {
 
     private var categorySummary: String {
         [selectedPrimary?.name, selectedSecondary?.name].compactMap { $0 }.joined(separator: " · ")
+    }
+
+    private var editorTitle: String {
+        if itemID != nil { return "编辑宠物物品" }
+        if copySourceID != nil { return "复制宠物食品" }
+        return "新增宠物物品"
     }
 
     private var imageCard: some View {
@@ -235,18 +255,33 @@ struct PetItemEditorView: View {
                 Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
             }
             .frame(minHeight: HomeMetrics.controlHeight)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private func editorTextRow(title: String, placeholder: String, text: Binding<String>, keyboard: UIKeyboardType = .default) -> some View {
+    private func editorTextRow(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        keyboard: UIKeyboardType = .default,
+        focusedField: PetItemEditorField? = nil
+    ) -> some View {
         HStack(spacing: 12) {
             Text(title).font(HomeTypography.body)
             Spacer()
-            TextField(placeholder, text: text)
-                .font(HomeTypography.body)
-                .keyboardType(keyboard)
-                .multilineTextAlignment(.trailing)
+            if let focusedField {
+                TextField(placeholder, text: text)
+                    .font(HomeTypography.body)
+                    .keyboardType(keyboard)
+                    .multilineTextAlignment(.trailing)
+                    .focused($self.focusedField, equals: focusedField)
+            } else {
+                TextField(placeholder, text: text)
+                    .font(HomeTypography.body)
+                    .keyboardType(keyboard)
+                    .multilineTextAlignment(.trailing)
+            }
         }
         .frame(minHeight: HomeMetrics.controlHeight)
     }
@@ -265,7 +300,8 @@ struct PetItemEditorView: View {
 
     private func loadExisting() {
         guard !loaded else { return }; defer { loaded = true }
-        guard let itemID, let item = store.data.petItems.first(where: { $0.id == itemID }) else {
+        guard let sourceID = itemID ?? copySourceID,
+              let item = store.data.petItems.first(where: { $0.id == sourceID }) else {
             let rememberedPrimary = UserDefaults.standard.string(forKey: "HomeOS.lastPetPrimaryCategoryID")
             let preferredPrimary = initialPrimaryID ?? rememberedPrimary
             primaryID = primaryCategories.contains(where: { $0.id == preferredPrimary })
@@ -287,7 +323,7 @@ struct PetItemEditorView: View {
             ?? store.categories(for: .pet, parentID: primaryID).first?.id ?? ""
         name = item.name; brand = item.brand
         let storedVariant = item.variant ?? item.model
-        variant = storedVariant.caseInsensitiveCompare(item.spec) == .orderedSame ? "" : storedVariant
+        variant = copySourceID == nil && storedVariant.caseInsensitiveCompare(item.spec) != .orderedSame ? storedVariant : ""
         spec = item.spec; unit = item.unit
         packageType = item.packageType ?? ""
         notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
@@ -329,6 +365,10 @@ struct PetItemEditorView: View {
         NativeHaptics.success()
         dismiss()
     }
+}
+
+private enum PetItemEditorField: Hashable {
+    case variant
 }
 
 private enum PetItemEditorSheet: String, Identifiable {
@@ -413,6 +453,8 @@ private struct PetBrandSelectionSheet: View {
     @Binding private var brand: String
     @State private var query = ""
     @State private var draftBrand: String
+    @State private var selectedDetent: PresentationDetent = .medium
+    @FocusState private var searchFocused: Bool
 
     init(brand: Binding<String>) {
         _brand = brand
@@ -434,7 +476,9 @@ private struct PetBrandSelectionSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundStyle(HomeTheme.muted)
-                    TextField("搜索品牌", text: $query).font(HomeTypography.body)
+                    TextField("搜索品牌", text: $query)
+                        .font(HomeTypography.body)
+                        .focused($searchFocused)
                     if !query.isEmpty {
                         Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
                     }
@@ -442,25 +486,36 @@ private struct PetBrandSelectionSheet: View {
                 .padding(.horizontal, 12)
                 .frame(height: HomeMetrics.controlHeight)
                 .background(HomeTheme.background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
+                .simultaneousGesture(TapGesture().onEnded {
+                    selectedDetent = .large
+                    searchFocused = true
+                })
 
-                if query.isEmpty, !recentBrands.isEmpty {
-                    brandSection(title: "最近使用", values: recentBrands)
-                }
-                brandSection(title: query.isEmpty ? "全部品牌" : "搜索结果", values: filteredBrands)
-
-                if canAddQuery {
-                    Button {
-                        if store.addManagedBrand(name: cleanQuery, modules: [.pet]) {
-                            draftBrand = cleanQuery
-                            query = ""
-                            NativeHaptics.success()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if query.isEmpty, !recentBrands.isEmpty {
+                            brandSection(title: "最近使用", values: recentBrands)
                         }
-                    } label: {
-                        Label("新增品牌“\(cleanQuery)”", systemImage: "plus.circle.fill")
-                            .font(HomeTypography.body)
+                        brandSection(title: query.isEmpty ? "全部品牌" : "搜索结果", values: filteredBrands)
+
+                        if canAddQuery {
+                            Button {
+                                if store.addManagedBrand(name: cleanQuery, modules: [.pet]) {
+                                    draftBrand = cleanQuery
+                                    query = ""
+                                    NativeHaptics.success()
+                                }
+                            } label: {
+                                Label("新增品牌“\(cleanQuery)”", systemImage: "plus.circle.fill")
+                                    .font(HomeTypography.body)
+                            }
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Spacer(minLength: 0)
+                .scrollDismissesKeyboard(.interactively)
+
                 Button("完成") {
                     brand = draftBrand
                     NativeHaptics.success()
@@ -478,8 +533,11 @@ private struct PetBrandSelectionSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $selectedDetent)
         .presentationDragIndicator(.visible)
+        .onChange(of: searchFocused) { _, focused in
+            if focused { selectedDetent = .large }
+        }
     }
 
     private func brandSection(title: String, values: [ManagedBrand]) -> some View {
@@ -818,7 +876,7 @@ struct PetPalatabilityEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Picker("宠物", selection: $petID) { ForEach(store.activePets) { Text($0.name).tag($0.id) } }
+                petSelector
                 Picker("评价", selection: $score) { ForEach(1...5, id: \.self) { Text("\($0)分").tag($0) } }.pickerStyle(.segmented)
                 DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("备注（可选）", text: $note, axis: .vertical).font(HomeTypography.body)
@@ -830,6 +888,39 @@ struct PetPalatabilityEditorView: View {
             }
             .task { loadReview() }
         }.presentationDetents([.medium])
+    }
+
+    private var petSelector: some View {
+        HStack(spacing: 14) {
+            Text("宠物")
+            Spacer(minLength: 8)
+            ScrollView(.horizontal) {
+                HStack(spacing: 18) {
+                    ForEach(store.activePets) { pet in
+                        Button {
+                            guard petID != pet.id else { return }
+                            petID = pet.id
+                            NativeHaptics.selection()
+                        } label: {
+                            VStack(spacing: 4) {
+                                Text(pet.name)
+                                    .font(HomeTypography.body.weight(petID == pet.id ? .semibold : .regular))
+                                    .foregroundStyle(petID == pet.id ? HomeTheme.blue : HomeTheme.muted)
+                                    .lineLimit(1)
+                                Capsule()
+                                    .fill(petID == pet.id ? HomeTheme.blue : Color.clear)
+                                    .frame(height: 2)
+                            }
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func loadReview() {

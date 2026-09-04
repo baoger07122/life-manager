@@ -1144,10 +1144,24 @@ struct PetItemDetailView: View {
             if let item {
                 ToolbarItemGroup(placement: .primaryAction) {
                     NavigationLink("编辑") { PetItemEditorView(itemID: item.id) }
-                    Button { showArchive = true } label: {
-                        Image(systemName: item.resolvedWillRepurchase ? "cart.badge.minus" : "cart.badge.plus")
+                    Menu {
+                        if isPetFood(item) {
+                            NavigationLink {
+                                PetItemEditorView(copyingItemID: item.id)
+                            } label: {
+                                Label("复制商品", systemImage: "doc.on.doc")
+                            }
+                        }
+                        Button { showArchive = true } label: {
+                            Label(
+                                item.resolvedWillRepurchase ? "设为不回购" : "恢复回购",
+                                systemImage: item.resolvedWillRepurchase ? "cart.badge.minus" : "cart.badge.plus"
+                            )
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
                     }
-                    .accessibilityLabel(item.resolvedWillRepurchase ? "设为不回购" : "恢复回购")
+                    .accessibilityLabel("更多商品操作")
                 }
             }
         }

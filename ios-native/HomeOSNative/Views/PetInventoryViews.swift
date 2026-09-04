@@ -94,7 +94,7 @@ struct PetItemEditorView: View {
                             title: selectedPrimary?.capabilityKey == "petFood" ? "口味" : "型号 / 款式",
                             placeholder: "选填",
                             text: $variant,
-                            focusedField: .variant
+                            focusTarget: .variant
                         )
                         divider
                         packageTypeRow
@@ -265,17 +265,17 @@ struct PetItemEditorView: View {
         placeholder: String,
         text: Binding<String>,
         keyboard: UIKeyboardType = .default,
-        focusedField: PetItemEditorField? = nil
+        focusTarget: PetItemEditorField? = nil
     ) -> some View {
         HStack(spacing: 12) {
             Text(title).font(HomeTypography.body)
             Spacer()
-            if let focusedField {
+            if let focusTarget {
                 TextField(placeholder, text: text)
                     .font(HomeTypography.body)
                     .keyboardType(keyboard)
                     .multilineTextAlignment(.trailing)
-                    .focused($self.focusedField, equals: focusedField)
+                    .focused($focusedField, equals: focusTarget)
             } else {
                 TextField(placeholder, text: text)
                     .font(HomeTypography.body)

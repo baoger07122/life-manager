@@ -14,8 +14,12 @@ struct PetItemEditorView: View {
     @State private var name = ""
     @State private var brand = ""
     @State private var variant = ""
-    @State private var spec = ""
+    @State private var specValueText = ""
+    @State private var specUnit = "g"
+    @State private var legacySpec = ""
     @State private var packageType = ""
+    @State private var draftPackageType = ""
+    @State private var showAddPackageType = false
     @State private var unit = "件"
     @State private var initialStockText = ""
     @State private var purchaseTotalText = ""
@@ -99,7 +103,7 @@ struct PetItemEditorView: View {
                         divider
                         packageTypeRow
                         divider
-                        editorTextRow(title: "单件规格", placeholder: "例如5.4kg、185g", text: $spec)
+                        specificationRow
                         if itemID == nil {
                             divider
                             editorTextRow(title: "初始库存", placeholder: "0", text: $initialStockText, keyboard: .decimalPad)
@@ -173,6 +177,11 @@ struct PetItemEditorView: View {
                 }
             }
         }
+        .onChange(of: primaryID) { _, _ in
+            if specValueText.isEmpty && legacySpec.isEmpty {
+                specUnit = selectedPrimary?.capabilityKey == "petSupply" ? "kg" : "g"
+            }
+        }
         .sheet(item: $sheet) { destination in
             switch destination {
             case .category:
@@ -186,6 +195,21 @@ struct PetItemEditorView: View {
         } message: {
             Text("已存在品牌、名称、口味、包装形式和规格完全相同的物品。不同口味请分别建立产品。")
         }
+        .alert("新增包装形式", isPresented: $showAddPackageType) {
+            TextField("例如：盒", text: $draftPackageType)
+            Button("取消", role: .cancel) { draftPackageType = "" }
+            Button("添加") {
+                let value = draftPackageType.trimmingCharacters(in: .whitespacesAndNewlines)
+                if store.addPetPackageType(value) {
+                    packageType = value
+                    unit = value
+                    draftPackageType = ""
+                }
+            }
+            .disabled(draftPackageType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } message: {
+            Text("添加后会保留在包装形式下拉菜单中。")
+        }
     }
 
     private var categorySummary: String {
@@ -194,7 +218,7 @@ struct PetItemEditorView: View {
 
     private var editorTitle: String {
         if itemID != nil { return "编辑宠物物品" }
-        if copySourceID != nil { return "复制宠物食品" }
+        if copySourceID != nil { return "复制宠物物品" }
         return "新增宠物物品"
     }
 
@@ -228,22 +252,87 @@ struct PetItemEditorView: View {
         HStack {
             Text("包装形式").font(HomeTypography.body)
             Spacer()
-            Picker("包装形式", selection: Binding(
-                get: { packageType },
-                set: { value in
-                    packageType = value
-                    if !value.isEmpty { unit = value }
+            Menu {
+                Button {
+                    packageType = ""
                     NativeHaptics.selection()
+                } label: {
+                    if packageType.isEmpty { Label("未设置", systemImage: "checkmark") } else { Text("未设置") }
                 }
-            )) {
-                Text("未设置").tag("")
-                Text("袋").tag("袋")
-                Text("罐").tag("罐")
+                ForEach(store.petPackageTypes, id: \.self) { value in
+                    Button {
+                        packageType = value
+                        unit = value
+                        NativeHaptics.selection()
+                    } label: {
+                        if packageType == value { Label(value, systemImage: "checkmark") } else { Text(value) }
+                    }
+                }
+                Divider()
+                Button {
+                    draftPackageType = ""
+                    showAddPackageType = true
+                    NativeHaptics.tap()
+                } label: {
+                    Label("新增包装形式", systemImage: "plus")
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Text(packageType.isEmpty ? "未设置" : packageType)
+                        .font(HomeTypography.body)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(HomeTheme.blue)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
             }
-            .pickerStyle(.menu)
-            .labelsHidden()
         }
         .frame(minHeight: HomeMetrics.controlHeight)
+    }
+
+    private var specificationRow: some View {
+        HStack(spacing: 10) {
+            Text("单件规格").font(HomeTypography.body)
+            Spacer(minLength: 10)
+            TextField(legacySpec.isEmpty ? "例如80" : legacySpec, text: $specValueText)
+                .font(HomeTypography.body)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 96)
+            Menu {
+                ForEach(PetSpecificationResolver.selectableUnits, id: \.self) { value in
+                    Button {
+                        specUnit = value
+                        NativeHaptics.selection()
+                    } label: {
+                        if specUnit == value { Label(value, systemImage: "checkmark") } else { Text(value) }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(specUnit).font(HomeTypography.body)
+                    Image(systemName: "chevron.down").font(.caption2.weight(.semibold))
+                }
+                .foregroundStyle(HomeTheme.blue)
+                .frame(minWidth: 50, minHeight: 44)
+                .contentShape(Rectangle())
+            }
+        }
+        .frame(minHeight: HomeMetrics.controlHeight)
+    }
+
+    private var enteredSpecValue: Double? {
+        let normalized = specValueText.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value > 0 else { return nil }
+        return value
+    }
+
+    private var savedSpecText: String {
+        if let enteredSpecValue {
+            return PetSpecificationResolver.canonicalText(value: enteredSpecValue, unit: specUnit)
+        }
+        return legacySpec.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func editorButtonRow(title: String, value: String, action: @escaping () -> Void) -> some View {
@@ -307,6 +396,7 @@ struct PetItemEditorView: View {
             primaryID = primaryCategories.contains(where: { $0.id == preferredPrimary })
                 ? (preferredPrimary ?? "")
                 : (primaryCategories.first?.id ?? "")
+            specUnit = selectedPrimary?.capabilityKey == "petSupply" ? "kg" : "g"
 
             let rememberedSecondary = UserDefaults.standard.string(forKey: "HomeOS.lastPetSecondaryCategoryID")
             let preferredSecondary = initialSecondaryID ?? rememberedSecondary
@@ -324,7 +414,15 @@ struct PetItemEditorView: View {
         name = item.name; brand = item.brand
         let storedVariant = item.variant ?? item.model
         variant = copySourceID == nil && storedVariant.caseInsensitiveCompare(item.spec) != .orderedSame ? storedVariant : ""
-        spec = item.spec; unit = item.unit
+        if let resolvedSpec = PetSpecificationResolver.resolve(item: item) {
+            specValueText = PetSpecificationResolver.number(resolvedSpec.value)
+            specUnit = resolvedSpec.unit
+            legacySpec = ""
+        } else {
+            specValueText = ""
+            legacySpec = item.spec
+        }
+        unit = item.unit
         packageType = item.packageType ?? ""
         notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
         conversion = item.unitConversionToBase ?? 0; imageReference = item.image
@@ -336,7 +434,7 @@ struct PetItemEditorView: View {
         guard let selectedPrimary, let selectedSecondary else { return }
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanVariant = variant.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleanSpec = spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSpec = savedSpecText
         let cleanBrand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanPackageType = packageType.trimmingCharacters(in: .whitespacesAndNewlines)
         let duplicate = store.activePetItems.contains { candidate in
@@ -348,9 +446,11 @@ struct PetItemEditorView: View {
                 && (candidate.packageType ?? "") == cleanPackageType
         }
         guard !duplicate else { showDuplicateAlert = true; NativeHaptics.warning(); return }
-        var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: spec, quantity: initialStock, unit: resolvedUnit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
+        var item = existing ?? PetItem(id: UUID().uuidString, type: selectedSecondary.name, name: name, brand: brand, model: variant, spec: cleanSpec, quantity: initialStock, unit: resolvedUnit, days: 0, weeklyUsage: nil, lastReplenishedAt: nil, purchaseHistory: nil, replenishmentHistory: nil, feedback: nil, price: nil, cat: "", preference: "", image: imageReference, unitConversionToBase: nil)
         let savedSecondary = selectedSecondary.name
         item.type = savedSecondary; item.name = cleanName; item.brand = cleanBrand; item.model = cleanVariant; item.spec = cleanSpec
+        item.specValue = enteredSpecValue
+        item.specUnit = enteredSpecValue == nil ? nil : specUnit
         item.unit = resolvedUnit
         item.primaryCategory = selectedPrimary.name; item.secondaryCategory = savedSecondary
         item.variant = cleanVariant.isEmpty ? nil : cleanVariant; item.lowStockThreshold = nil; item.notes = notes.isEmpty ? nil : notes

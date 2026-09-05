@@ -41,21 +41,27 @@ struct PetView: View {
     private var itemStatistics: some View {
         return HomeCard(padding: 0) {
             HStack(spacing: 0) {
-                Button {
-                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petFood")?.id ?? selectedInventoryPrimaryID
-                    NativeHaptics.selection()
+                NavigationLink {
+                    PetInventoryStatisticsView(capabilityKey: "petFood")
                 } label: {
                     inventoryStatistic(title: "宠物食品", value: petInventoryTotal(capabilityKey: "petFood"), suffix: "件")
                 }
                 .buttonStyle(.plain)
-                Divider().frame(height: 52)
-                Button {
-                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petSupply")?.id ?? selectedInventoryPrimaryID
+                .simultaneousGesture(TapGesture().onEnded {
+                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petFood")?.id ?? selectedInventoryPrimaryID
                     NativeHaptics.selection()
+                })
+                Divider().frame(height: 52)
+                NavigationLink {
+                    PetInventoryStatisticsView(capabilityKey: "petSupply")
                 } label: {
                     inventoryStatistic(title: "宠物用品", value: petInventoryTotal(capabilityKey: "petSupply"), suffix: "件")
                 }
                 .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded {
+                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petSupply")?.id ?? selectedInventoryPrimaryID
+                    NativeHaptics.selection()
+                })
                 Divider().frame(height: 52)
                 Button {
                     showMonthlyExpense = true

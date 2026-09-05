@@ -87,6 +87,8 @@ struct PetItem: Codable, Identifiable, Hashable {
     var brand: String
     var model: String
     var spec: String
+    var specValue: Double? = nil
+    var specUnit: String? = nil
     var quantity: Double
     var unit: String
     var days: Int
@@ -117,7 +119,7 @@ struct PetItem: Codable, Identifiable, Hashable {
 
 extension PetItem {
     enum CodingKeys: String, CodingKey {
-        case id, type, name, brand, model, spec, quantity, unit, days, weeklyUsage
+        case id, type, name, brand, model, spec, specValue, specUnit, quantity, unit, days, weeklyUsage
         case lastReplenishedAt, purchaseHistory, replenishmentHistory, feedback, price
         case cat, preference, image, unitConversionToBase
         case primaryCategory, secondaryCategory, variant, lowStockThreshold, notes, packageType, isArchived
@@ -132,6 +134,8 @@ extension PetItem {
         brand = try values.decodeIfPresent(String.self, forKey: .brand) ?? ""
         model = try values.decodeIfPresent(String.self, forKey: .model) ?? ""
         spec = try values.decodeIfPresent(String.self, forKey: .spec) ?? ""
+        specValue = try values.decodeIfPresent(Double.self, forKey: .specValue)
+        specUnit = try values.decodeIfPresent(String.self, forKey: .specUnit)
         quantity = try values.decodeIfPresent(Double.self, forKey: .quantity) ?? 0
         unit = try values.decodeIfPresent(String.self, forKey: .unit) ?? "件"
         days = try values.decodeIfPresent(Int.self, forKey: .days) ?? 0
@@ -435,6 +439,7 @@ struct HomeSettings: Codable, Hashable {
     var petEventCollapsedDateGroups: [String: Bool]?
     var managedCategories: [ManagedCategory]?
     var managedBrands: [ManagedBrand]?
+    var petPackageTypes: [String]?
 
     static let standard = HomeSettings(
         threshold: 15,
@@ -454,7 +459,8 @@ struct HomeSettings: Codable, Hashable {
         expiryThresholds: .standard,
         petEventCollapsedDateGroups: [:],
         managedCategories: nil,
-        managedBrands: nil
+        managedBrands: nil,
+        petPackageTypes: ["袋", "罐"]
     )
 }
 

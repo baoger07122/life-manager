@@ -1145,12 +1145,10 @@ struct PetItemDetailView: View {
                 ToolbarItemGroup(placement: .primaryAction) {
                     NavigationLink("编辑") { PetItemEditorView(itemID: item.id) }
                     Menu {
-                        if isPetFood(item) {
-                            NavigationLink {
-                                PetItemEditorView(copyingItemID: item.id)
-                            } label: {
-                                Label("复制商品", systemImage: "doc.on.doc")
-                            }
+                        NavigationLink {
+                            PetItemEditorView(copyingItemID: item.id)
+                        } label: {
+                            Label("复制商品", systemImage: "doc.on.doc")
                         }
                         Button { showArchive = true } label: {
                             Label(

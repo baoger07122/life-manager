@@ -237,6 +237,32 @@ final class HomeStore: ObservableObject {
         data.petItems.filter { !$0.isArchived }
     }
 
+    var petPackageTypes: [String] {
+        let configured = data.settings.petPackageTypes ?? ["袋", "罐"]
+        let used = data.petItems.compactMap { $0.packageType?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return (configured + used).reduce(into: [String]()) { result, value in
+            if !result.contains(where: { $0.caseInsensitiveCompare(value) == .orderedSame }) {
+                result.append(value)
+            }
+        }
+    }
+
+    func addPetPackageType(_ name: String) -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { return fail("包装形式不能为空") }
+        guard !petPackageTypes.contains(where: { $0.caseInsensitiveCompare(cleanName) == .orderedSame }) else {
+            return fail("包装形式已经存在")
+        }
+        var next = data
+        var values = next.settings.petPackageTypes ?? ["袋", "罐"]
+        values.append(cleanName)
+        next.settings.petPackageTypes = values
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
     func brands(for module: ManagedCategoryModule) -> [ManagedBrand] {
         let source = data.settings.managedBrands ?? defaultManagedBrands(for: data)
         return source

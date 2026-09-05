@@ -12,19 +12,26 @@ struct PetInventoryStatisticsView: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
-                overviewCard
+                VStack(alignment: .leading, spacing: 10) {
+                    sectionLabel("库存总览")
+                    overviewCard
+                }
                 if snapshot.categories.isEmpty {
                     HomeCard {
                         EmptyState(icon: "shippingbox.fill", title: "暂无当前库存", message: "新增库存后会自动按分类和规格汇总。")
                             .frame(maxWidth: .infinity)
                     }
                 } else {
-                    ForEach(snapshot.categories) { category in
-                        categoryCard(category)
+                    VStack(alignment: .leading, spacing: 10) {
+                        sectionLabel("分类明细")
+                        ForEach(snapshot.categories) { category in
+                            categoryCard(category)
+                        }
                     }
                 }
             }
             .padding(HomeMetrics.pageInset)
+            .padding(.bottom, 96)
         }
         .background(HomeTheme.background)
         .navigationTitle("\(rootCategory?.name ?? "宠物物品")统计")
@@ -32,53 +39,92 @@ struct PetInventoryStatisticsView: View {
     }
 
     private var overviewCard: some View {
-        HomeCard {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("当前库存").font(HomeTypography.sectionTitle)
-                HStack(spacing: 0) {
-                    overviewMetric(title: "库存数量", value: quantity(snapshot.totalQuantity), suffix: "件")
-                    if snapshot.totalMassGrams > 0 {
-                        Divider().frame(height: 42)
-                        overviewMetric(title: "可计算重量", value: mass(snapshot.totalMassGrams), suffix: "")
-                    }
-                    if snapshot.totalVolumeMilliliters > 0 {
-                        Divider().frame(height: 42)
-                        overviewMetric(title: "可计算容量", value: volume(snapshot.totalVolumeMilliliters), suffix: "")
-                    }
+        HomeCard(padding: 14) {
+            HStack(spacing: 0) {
+                overviewMetric(
+                    icon: "shippingbox.fill",
+                    title: "库存数量",
+                    value: quantity(snapshot.totalQuantity),
+                    suffix: "件"
+                )
+                if snapshot.totalMassGrams > 0 || snapshot.totalVolumeMilliliters > 0 {
+                    Divider().frame(height: 52)
+                    overviewMetric(
+                        icon: snapshot.totalMassGrams > 0 ? "scalemass.fill" : "drop.fill",
+                        title: "总净含量",
+                        value: netContent,
+                        suffix: ""
+                    )
                 }
             }
         }
     }
 
-    private func overviewMetric(title: String, value: String, suffix: String) -> some View {
-        VStack(spacing: 4) {
-            Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted).lineLimit(1)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).font(.system(size: 20, weight: .semibold)).foregroundStyle(HomeTheme.blue)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                if !suffix.isEmpty {
-                    Text(suffix).font(HomeTypography.supporting).foregroundStyle(HomeTheme.blue)
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(HomeTypography.sectionTitle)
+            .foregroundStyle(HomeTheme.ink)
+            .padding(.leading, 2)
+    }
+
+    private func overviewMetric(icon: String, title: String, value: String, suffix: String) -> some View {
+        HStack(spacing: 10) {
+            statisticIcon(icon, size: 38, symbolSize: 17)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                    .lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(value)
+                        .font(.system(size: 21, weight: .semibold, design: .rounded))
+                        .foregroundStyle(HomeTheme.blue)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.68)
+                    if !suffix.isEmpty {
+                        Text(suffix).font(HomeTypography.supporting).foregroundStyle(HomeTheme.blue)
+                    }
                 }
             }
         }
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4)
     }
 
     private func categoryCard(_ category: PetInventoryCategorySummary) -> some View {
         HomeCard(padding: 0) {
             VStack(spacing: 0) {
-                HStack {
-                    Text(category.name).font(HomeTypography.cardTitle)
+                HStack(spacing: 10) {
+                    statisticIcon(categoryIcon(for: category.name), size: 32, symbolSize: 15)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(category.name)
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundStyle(HomeTheme.ink)
+                        Text(category.packageSummary)
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
+                    }
                     Spacer()
-                    Text(category.packageSummary)
-                        .font(HomeTypography.body.weight(.medium))
+                    Text("共\(quantity(category.totalQuantity))件")
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(HomeTheme.blue)
                 }
                 .padding(.horizontal, HomeMetrics.cardPadding)
-                .frame(minHeight: 50)
+                .frame(minHeight: 58)
+                .background(HomeTheme.blue.opacity(0.045))
+
+                HStack {
+                    Text("规格")
+                    Spacer()
+                    Text("库存")
+                }
+                .font(HomeTypography.supporting)
+                .foregroundStyle(HomeTheme.muted)
+                .padding(.horizontal, HomeMetrics.cardPadding)
+                .frame(height: 32)
 
                 ForEach(category.specifications) { specification in
-                    Divider().padding(.leading, HomeMetrics.cardPadding)
+                    Divider().padding(.horizontal, HomeMetrics.cardPadding)
                     HStack(spacing: 12) {
                         Text(specification.label)
                             .font(HomeTypography.body)
@@ -89,16 +135,42 @@ struct PetInventoryStatisticsView: View {
                             .foregroundStyle(HomeTheme.muted)
                     }
                     .padding(.horizontal, HomeMetrics.cardPadding)
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 42)
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(category.name)，\(specification.label)，\(specification.packageSummary)")
                 }
             }
+            .clipShape(RoundedRectangle(cornerRadius: HomeMetrics.cardRadius, style: .continuous))
         }
+    }
+
+    private func statisticIcon(_ name: String, size: CGFloat, symbolSize: CGFloat) -> some View {
+        Image(systemName: name)
+            .font(.system(size: symbolSize, weight: .semibold))
+            .foregroundStyle(HomeTheme.blue)
+            .frame(width: size, height: size)
+            .background(HomeTheme.blue.opacity(0.09), in: RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
+    }
+
+    private func categoryIcon(for name: String) -> String {
+        if name.contains("零食") { return "heart.fill" }
+        if name.contains("主食") || name.contains("罐") { return "cylinder.fill" }
+        if name.contains("冻干") { return "snowflake" }
+        if name.contains("猫粮") || name.contains("粮") { return "fish.fill" }
+        if name.contains("砂") { return "circle.grid.3x3.fill" }
+        if name.contains("清洁") { return "sparkles" }
+        return "shippingbox.fill"
     }
 
     private func quantity(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(0...2)))
+    }
+
+    private var netContent: String {
+        var values: [String] = []
+        if snapshot.totalMassGrams > 0 { values.append(mass(snapshot.totalMassGrams)) }
+        if snapshot.totalVolumeMilliliters > 0 { values.append(volume(snapshot.totalVolumeMilliliters)) }
+        return values.joined(separator: " · ")
     }
 
     private func mass(_ grams: Double) -> String {
@@ -181,6 +253,7 @@ private struct PetInventoryStatisticsSnapshot {
 
 private struct PetInventoryCategoryAccumulator {
     let name: String
+    var totalQuantity = 0.0
     var packages: [String: Double] = [:]
     var specifications: [String: PetInventorySpecificationAccumulator] = [:]
 
@@ -192,6 +265,7 @@ private struct PetInventoryCategoryAccumulator {
         quantity: Double,
         unspecified: Bool
     ) {
+        totalQuantity += quantity
         packages[package, default: 0] += quantity
         var specification = specifications[specificationKey]
             ?? PetInventorySpecificationAccumulator(id: specificationKey, label: specificationLabel, sortValue: sortValue, isUnspecified: unspecified)
@@ -202,6 +276,7 @@ private struct PetInventoryCategoryAccumulator {
     var summary: PetInventoryCategorySummary {
         PetInventoryCategorySummary(
             name: name,
+            totalQuantity: totalQuantity,
             packageSummary: Self.packageSummary(packages),
             specifications: specifications.values
                 .sorted { $0.sortValue == $1.sortValue ? $0.label < $1.label : $0.sortValue < $1.sortValue }
@@ -234,6 +309,7 @@ private struct PetInventorySpecificationAccumulator {
 private struct PetInventoryCategorySummary: Identifiable {
     var id: String { name }
     let name: String
+    let totalQuantity: Double
     let packageSummary: String
     let specifications: [PetInventorySpecificationSummary]
 }

@@ -74,7 +74,7 @@ struct SettingsView: View {
                 } header: { settingsSectionTitle("Playground 预览") }
                 #endif
                 Section {
-                    LabeledContent("原生版本", value: "0.1.31 (33)")
+                    LabeledContent("原生版本", value: "0.1.32 (34)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
                     Text("当前为原生重写第一阶段，不包含 WebView。")
                         .font(.footnote).foregroundStyle(HomeTheme.muted)

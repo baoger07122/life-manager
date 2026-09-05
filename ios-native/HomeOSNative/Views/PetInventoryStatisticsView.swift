@@ -120,6 +120,7 @@ private struct PetInventoryStatisticsSnapshot {
     var totalVolumeMilliliters: Double
     var categories: [PetInventoryCategorySummary]
 
+    @MainActor
     static func make(store: HomeStore, capabilityKey: String) -> Self {
         guard let root = store.petRootCategory(capabilityKey: capabilityKey) else {
             return .init(totalQuantity: 0, totalMassGrams: 0, totalVolumeMilliliters: 0, categories: [])

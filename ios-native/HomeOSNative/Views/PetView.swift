@@ -6,6 +6,19 @@ struct PetView: View {
     @State private var selectedInventoryPrimaryID = "pet-root-food"
     @State private var litterSheet: LitterSheet?
     @State private var showMonthlyExpense = false
+    @State private var statisticsPath: [StatisticsRoute] = []
+
+    private enum StatisticsRoute: Hashable {
+        case food
+        case supply
+
+        var capabilityKey: String {
+            switch self {
+            case .food: "petFood"
+            case .supply: "petSupply"
+            }
+        }
+    }
 
     private enum LitterSheet: String, Identifiable {
         case initialize, refill, replace
@@ -13,7 +26,7 @@ struct PetView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $statisticsPath) {
             PetItemsListView(primaryID: $selectedInventoryPrimaryID) {
                 header
             } statistics: {
@@ -31,6 +44,9 @@ struct PetView: View {
             .navigationDestination(isPresented: $showMonthlyExpense) {
                 PetMonthlyExpenseView()
             }
+            .navigationDestination(for: StatisticsRoute.self) { route in
+                PetInventoryStatisticsView(capabilityKey: route.capabilityKey)
+            }
         }
     }
 
@@ -41,27 +57,21 @@ struct PetView: View {
     private var itemStatistics: some View {
         return HomeCard(padding: 0) {
             HStack(spacing: 0) {
-                NavigationLink {
-                    PetInventoryStatisticsView(capabilityKey: "petFood")
+                Button {
+                    statisticsPath.append(.food)
+                    NativeHaptics.tap()
                 } label: {
                     inventoryStatistic(title: "宠物食品", value: petInventoryTotal(capabilityKey: "petFood"), suffix: "件")
                 }
                 .buttonStyle(.plain)
-                .simultaneousGesture(TapGesture().onEnded {
-                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petFood")?.id ?? selectedInventoryPrimaryID
-                    NativeHaptics.selection()
-                })
                 Divider().frame(height: 52)
-                NavigationLink {
-                    PetInventoryStatisticsView(capabilityKey: "petSupply")
+                Button {
+                    statisticsPath.append(.supply)
+                    NativeHaptics.tap()
                 } label: {
                     inventoryStatistic(title: "宠物用品", value: petInventoryTotal(capabilityKey: "petSupply"), suffix: "件")
                 }
                 .buttonStyle(.plain)
-                .simultaneousGesture(TapGesture().onEnded {
-                    selectedInventoryPrimaryID = store.petRootCategory(capabilityKey: "petSupply")?.id ?? selectedInventoryPrimaryID
-                    NativeHaptics.selection()
-                })
                 Divider().frame(height: 52)
                 Button {
                     showMonthlyExpense = true

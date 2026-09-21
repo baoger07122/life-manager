@@ -4,6 +4,16 @@ import PhotosUI
 extension PetItem {
     var resolvedPrimaryCategory: String { primaryCategory ?? (type.contains("食品") ? "宠物食品" : "宠物用品") }
     var resolvedSecondaryCategory: String { secondaryCategory ?? type }
+    var displayVariant: String? {
+        let cleanVariant = (variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanSpecification = spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanVariant.isEmpty, cleanVariant.caseInsensitiveCompare(cleanSpecification) != .orderedSame else { return nil }
+        return cleanVariant
+    }
+    var displayNameAndVariant: String {
+        guard let flavor = displayVariant else { return name }
+        return "\(name) · \(flavor)"
+    }
     var displayTitle: String {
         let cleanBrand = brand.trimmingCharacters(in: .whitespacesAndNewlines)
         return cleanBrand.isEmpty ? name : "\(cleanBrand) \(name)"
@@ -333,7 +343,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
-                        Text(productNameAndFlavor(item))
+                        Text(item.displayNameAndVariant)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(HomeTheme.ink)
                             .lineLimit(1)
@@ -575,12 +585,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     private func quickUnitPrice(_ item: PetItem) -> Double? {
         guard quickMode == .inbound, quickQuantity > 0, quickTotalPrice > 0 else { return nil }
         return quickTotalPrice / quickQuantity
-    }
-
-    private func productNameAndFlavor(_ item: PetItem) -> String {
-        let flavor = (item.variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !flavor.isEmpty, flavor.caseInsensitiveCompare(item.spec) != .orderedSame else { return item.name }
-        return "\(item.name) · \(flavor)"
     }
 
     private func specificationAndStock(_ item: PetItem) -> String {
@@ -825,7 +829,7 @@ struct PetRatingsListView: View {
                     Text(item.brand.isEmpty ? "无品牌" : item.brand)
                         .font(.system(size: 12))
                         .foregroundStyle(HomeTheme.muted)
-                    Text(item.name)
+                    Text(item.displayNameAndVariant)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(HomeTheme.ink)
                         .fixedSize(horizontal: false, vertical: true)
@@ -929,6 +933,9 @@ private struct PetRatingProductPickerSheet: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(item.displayTitle).font(HomeTypography.body.weight(.medium))
+                        if let flavor = item.displayVariant {
+                            Text(flavor).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        }
                         Text(item.resolvedPrimaryCategory + " · " + item.resolvedSecondaryCategory)
                             .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
                     }
@@ -1209,7 +1216,7 @@ struct PetItemDetailView: View {
                     Text(item.brand.isEmpty ? "无品牌" : item.brand)
                         .font(HomeTypography.supporting)
                         .foregroundStyle(HomeTheme.muted)
-                    Text(detailProductName(item))
+                    Text(item.displayNameAndVariant)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(HomeTheme.ink)
                     Text(productSpecification(item))
@@ -1488,12 +1495,6 @@ struct PetItemDetailView: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return values.isEmpty ? "规格未记录" : values.joined(separator: " · ")
-    }
-
-    private func detailProductName(_ item: PetItem) -> String {
-        let flavor = (item.variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !flavor.isEmpty, flavor.caseInsensitiveCompare(item.spec) != .orderedSame else { return item.name }
-        return "\(item.name) · \(flavor)"
     }
 
     private func isPetFood(_ item: PetItem) -> Bool {

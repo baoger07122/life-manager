@@ -14,30 +14,44 @@ private enum HomeActivityFilter: String, CaseIterable, Identifiable {
 }
 
 struct HomeView: View {
+    private let embedsNavigationStack: Bool
     @EnvironmentObject private var store: HomeStore
     @State private var activityFilter: HomeActivityFilter = .all
 
+    init(embedsNavigationStack: Bool = true) {
+        self.embedsNavigationStack = embedsNavigationStack
+    }
+
+    @ViewBuilder
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
-                    PageTitle(title: "我的物品")
-                    petStatusSection
-                    if !store.dueFoods.isEmpty { expirySection }
-                    quickFoodsSection
-                    mealPlansSection
-                    activitiesSection
-                }
-                .padding(.horizontal, HomeMetrics.pageInset)
-                .padding(.top, 18)
-                .padding(.bottom, 12)
+        if embedsNavigationStack {
+            NavigationStack {
+                homeContent
             }
-            .background(HomeTheme.background)
-            .scrollIndicators(.hidden)
-            .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
-                Button("知道了") { store.lastError = nil }
-            } message: { Text(store.lastError ?? "") }
+        } else {
+            homeContent
         }
+    }
+
+    private var homeContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
+                PageTitle(title: "我的物品")
+                petStatusSection
+                if !store.dueFoods.isEmpty { expirySection }
+                quickFoodsSection
+                mealPlansSection
+                activitiesSection
+            }
+            .padding(.horizontal, HomeMetrics.pageInset)
+            .padding(.top, 18)
+            .padding(.bottom, 12)
+        }
+        .background(HomeTheme.background)
+        .scrollIndicators(.hidden)
+        .alert("提示", isPresented: Binding(get: { store.lastError != nil }, set: { if !$0 { store.lastError = nil } })) {
+            Button("知道了") { store.lastError = nil }
+        } message: { Text(store.lastError ?? "") }
     }
 
     private var petStatusSection: some View {

@@ -2,12 +2,17 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: HomeStore
+    @Binding private var isHomeVisible: Bool
     @State private var exporting = false
     @State private var importing = false
     @State private var confirmClear = false
     #if PLAYGROUND_PREVIEW
     @State private var confirmPreviewReset = false
     #endif
+
+    init(isHomeVisible: Binding<Bool>) {
+        _isHomeVisible = isHomeVisible
+    }
 
     var body: some View {
         NavigationStack {
@@ -17,6 +22,19 @@ struct SettingsView: View {
                     .padding(.top, 18)
                     .padding(.bottom, 8)
                 List {
+                Section {
+                    Toggle("显示首页", isOn: $isHomeVisible)
+                    Text("关闭后从底部导航隐藏首页，仍可在设置中查看首页总览。")
+                        .font(.footnote)
+                        .foregroundStyle(HomeTheme.muted)
+                    if !isHomeVisible {
+                        NavigationLink {
+                            HomeView(embedsNavigationStack: false)
+                        } label: {
+                            Label("查看首页总览", systemImage: "house.fill")
+                        }
+                    }
+                } header: { settingsSectionTitle("首页") }
                 Section {
                     LabeledContent("食品", value: "\(store.data.foods.count)")
                     LabeledContent("菜谱", value: "\(store.data.recipes.count)")
@@ -74,7 +92,7 @@ struct SettingsView: View {
                 } header: { settingsSectionTitle("Playground 预览") }
                 #endif
                 Section {
-                    LabeledContent("原生版本", value: "0.1.33 (35)")
+                    LabeledContent("原生版本", value: "0.1.34 (36)")
                     LabeledContent("Web 功能基线", value: "v8.25.1")
                     Text("当前为原生重写第一阶段，不包含 WebView。")
                         .font(.footnote).foregroundStyle(HomeTheme.muted)

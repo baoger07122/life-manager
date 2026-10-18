@@ -119,6 +119,7 @@ struct HomeUnderlineTab: View {
     let title: String
     let selected: Bool
     var prominent = false
+    var minimumTapWidth: CGFloat? = nil
 
     var body: some View {
         VStack(spacing: prominent ? 8 : 5) {
@@ -130,7 +131,7 @@ struct HomeUnderlineTab: View {
                 .fill(selected ? HomeTheme.blue : Color.clear)
                 .frame(width: prominent ? 28 : 20, height: 3)
         }
-        .frame(minHeight: HomeMetrics.minimumTapTarget)
+        .frame(minWidth: minimumTapWidth, minHeight: HomeMetrics.minimumTapTarget)
         .contentShape(Rectangle())
     }
 }

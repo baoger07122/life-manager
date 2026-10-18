@@ -777,6 +777,83 @@ struct PetInventoryEditorView: View {
     }
 }
 
+struct PetInventoryTransactionHistoryView: View {
+    @EnvironmentObject private var store: HomeStore
+    let productID: String
+    let priceHistoryOnly: Bool
+    let onSelectTransaction: (String) -> Void
+
+    private var records: [PetInventoryTransaction] {
+        let allRecords = store.petTransactions(for: productID)
+        guard priceHistoryOnly else { return allRecords }
+        return allRecords.filter { $0.type == .inbound && ($0.totalPrice != nil || $0.unitPrice != nil) }
+    }
+
+    var body: some View {
+        List {
+            if records.isEmpty {
+                Text(priceHistoryOnly ? "暂无已记录金额的入库记录" : "暂无库存流水")
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.muted)
+                    .listRowBackground(Color.clear)
+            }
+            ForEach(records) { transaction in
+                Button {
+                    NativeHaptics.tap()
+                    onSelectTransaction(transaction.id)
+                } label: {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: transaction.quantityChange >= 0 ? "arrow.down.circle" : "arrow.up.circle")
+                            .font(.system(size: 20))
+                            .foregroundStyle(transaction.quantityChange >= 0 ? HomeTheme.blue : HomeTheme.orange)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(transaction.reason.isEmpty ? transactionTypeTitle(transaction.type) : transaction.reason)
+                                .font(HomeTypography.body.weight(.medium))
+                                .foregroundStyle(HomeTheme.ink)
+                            Text("\(HomeDateText.display(transaction.occurrenceDate)) · \(sourceText(transaction.source))")
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.muted)
+                            Text(petTransactionAmountSummary(transaction))
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.muted)
+                            if let note = transaction.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                                Text("备注 · \(note)")
+                                    .font(HomeTypography.supporting)
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        Text("\(transaction.quantityChange > 0 ? "+" : "")\(transaction.quantityChange.formatted())\(transaction.unit)")
+                            .font(HomeTypography.body.weight(.semibold))
+                            .foregroundStyle(transaction.quantityChange >= 0 ? HomeTheme.success : HomeTheme.orange)
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .padding(.top, 3)
+                    }
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(HomeTheme.background)
+        .navigationTitle(priceHistoryOnly ? "全部价格历史" : "全部库存记录")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func transactionTypeTitle(_ type: PetInventoryTransactionType) -> String {
+        switch type {
+        case .inbound: "入库"
+        case .outbound: "出库"
+        case .adjustment: "库存修正"
+        }
+    }
+}
+
 struct PetInventoryTransactionEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
@@ -808,7 +885,10 @@ struct PetInventoryTransactionEditorView: View {
     }
     private var canEditRecord: Bool {
         guard let transaction else { return false }
-        return transaction.type != .adjustment && transaction.linkedOperationID == nil
+        return transaction.type != .adjustment
+            && transaction.linkedOperationID == nil
+            && transaction.source != .litterRefill
+            && transaction.source != .litterReplace
     }
     private var canEditTotalPrice: Bool {
         canEditRecord && transaction?.source == .manual
@@ -910,7 +990,7 @@ struct PetInventoryTransactionEditorView: View {
 
                     if !canEditRecord {
                         Section {
-                            Text(transaction.linkedOperationID == nil
+                            Text(transaction.type == .adjustment
                                 ? "库存修正记录为只读；如需调整库存，请新增一次修正操作。"
                                 : "这条记录关联猫砂操作，只能查看，不能单独修改或解除关联。")
                                 .font(HomeTypography.supporting)

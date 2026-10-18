@@ -248,8 +248,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 PetRatingsListView()
             case .editor(let primaryID, let secondaryID):
                 PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
-            case .editItem(let itemID):
-                PetItemEditorView(itemID: itemID)
             case .pendingRepurchase:
                 PetPendingRepurchaseView()
             case .noRepurchase:
@@ -378,22 +376,22 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        HStack(spacing: 11) {
+        HStack(spacing: 0) {
             Button {
                 NativeHaptics.tap()
-                route = .editItem(itemID: item.id)
+                route = .detail(itemID: item.id)
             } label: {
                 productImage(item)
                     .frame(width: 48, height: 48)
-                    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("编辑\(item.name)")
+            .accessibilityLabel("查看\(item.name)详情")
 
             Button {
                 toggleQuickManager(for: item)
             } label: {
-                HStack(spacing: 10) {
+                HStack(spacing: 11) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
                             .font(.system(size: 12))
@@ -405,7 +403,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .lineLimit(1)
                             .minimumScaleFactor(0.84)
                     }
-                    Spacer(minLength: 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .trailing, spacing: 6) {
                         Text(specificationAndStock(item))
                             .font(.system(size: 12))
@@ -419,9 +417,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
                         }
                     }
-                    .frame(maxWidth: 132, alignment: .trailing)
+                    .frame(width: 106, alignment: .trailing)
+                    .frame(minHeight: 48, alignment: .trailing)
                 }
-                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                .padding(.leading, 11)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -449,7 +449,12 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     primaryID = category.id
                     NativeHaptics.selection()
                 } label: {
-                    HomeUnderlineTab(title: category.name, selected: primaryID == category.id, prominent: true)
+                    HomeUnderlineTab(
+                        title: category.name,
+                        selected: primaryID == category.id,
+                        prominent: true,
+                        minimumTapWidth: HomeMetrics.minimumTapTarget
+                    )
                 }
                 .buttonStyle(.plain)
                 .fixedSize(horizontal: true, vertical: false)
@@ -496,7 +501,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             resetQuickEntry()
                             NativeHaptics.selection()
                         } label: {
-                            HomeUnderlineTab(title: category.name, selected: secondaryID == category.id)
+                            HomeUnderlineTab(
+                                title: category.name,
+                                selected: secondaryID == category.id,
+                                minimumTapWidth: HomeMetrics.minimumTapTarget
+                            )
                         }
                         .buttonStyle(.plain)
                     }
@@ -516,10 +525,14 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     }
                 }
             } label: {
-                Image(systemName: "arrow.up.arrow.down")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(HomeTheme.muted)
-                    .frame(width: 44, height: 44)
+                VStack(spacing: 5) {
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(height: 17, alignment: .center)
+                    Capsule().fill(Color.clear).frame(width: 20, height: 3)
+                }
+                    .frame(width: 44, height: HomeMetrics.minimumTapTarget, alignment: .center)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -545,7 +558,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func compactQuickManager(_ item: PetItem) -> some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             HStack(spacing: 10) {
                 Picker("操作", selection: $quickMode) {
                     Text("出库").tag(PetInventoryTransactionType.outbound)
@@ -591,21 +604,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     TextField("可选", text: $quickNote)
                         .font(.system(size: 14))
                 }
-                .frame(minHeight: 36)
-            }
-
-            HStack {
-                Spacer()
-                Button {
-                    route = .detail(itemID: item.id)
-                    NativeHaptics.tap()
-                } label: {
-                    Label("记录 / 详情", systemImage: "list.bullet.rectangle")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(HomeTheme.muted)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("查看\(item.name)的记录和详情")
+                .frame(minHeight: 32)
             }
         }
         .onChange(of: quickMode) { _, _ in
@@ -707,7 +706,6 @@ private enum PetItemsRoute: Hashable {
     case detail(itemID: String)
     case ratings
     case editor(primaryID: String, secondaryID: String)
-    case editItem(itemID: String)
     case pendingRepurchase
     case noRepurchase
 }
@@ -1367,10 +1365,24 @@ struct PetItemDetailView: View {
     }
 
     private func transactionCard(_ item: PetItem) -> some View {
-        let records = Array(store.petTransactions(for: item.id).prefix(5))
+        let allRecords = store.petTransactions(for: item.id)
+        let records = Array(allRecords.prefix(5))
         return HomeCard {
             VStack(alignment: .leading, spacing: 9) {
-                Text("进出库记录").font(HomeTypography.cardTitle)
+                HStack {
+                    Text("进出库记录").font(HomeTypography.cardTitle)
+                    Spacer()
+                    if allRecords.count > records.count {
+                        NavigationLink {
+                            PetInventoryTransactionHistoryView(productID: item.id, priceHistoryOnly: false) { transactionID in
+                                sheet = .transaction(transactionID: transactionID)
+                            }
+                        } label: {
+                            Text("查看全部").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 if records.isEmpty { Text("暂无库存流水").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
                 ForEach(records) { record in
                     Divider()
@@ -1397,6 +1409,8 @@ struct PetItemDetailView: View {
                                 .foregroundStyle(.tertiary)
                                 .padding(.top, 3)
                         }
+                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -1405,10 +1419,26 @@ struct PetItemDetailView: View {
     }
 
     private func priceCard(_ item: PetItem) -> some View {
-        let records = store.petTransactions(for: item.id).filter { $0.type == .inbound && $0.unitPrice != nil }
+        let records = store.petTransactions(for: item.id).filter {
+            $0.type == .inbound && ($0.totalPrice != nil || $0.unitPrice != nil)
+        }
+        let unitPriceRecords = records.filter { $0.unitPrice != nil }
         return HomeCard(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("价格历史").font(HomeTypography.cardTitle)
+                HStack {
+                    Text("价格历史").font(HomeTypography.cardTitle)
+                    Spacer()
+                    if records.count > 4 {
+                        NavigationLink {
+                            PetInventoryTransactionHistoryView(productID: item.id, priceHistoryOnly: true) { transactionID in
+                                sheet = .transaction(transactionID: transactionID)
+                            }
+                        } label: {
+                            Text("查看全部").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
                 HStack {
                     Text("日期").frame(maxWidth: .infinity, alignment: .leading)
                     Text("总价").frame(maxWidth: .infinity, alignment: .trailing)
@@ -1418,19 +1448,27 @@ struct PetItemDetailView: View {
                 .foregroundStyle(HomeTheme.muted)
                 ForEach(records.prefix(4)) { record in
                     Divider()
-                    HStack {
-                        Text(HomeDateText.display(record.occurrenceDate)).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(record.totalPrice.map(currency2) ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
-                        Text(record.unitPrice.map { "\(currency2($0))/\(record.unit)" } ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                    Button {
+                        NativeHaptics.tap()
+                        sheet = .transaction(transactionID: record.id)
+                    } label: {
+                        HStack {
+                            Text(HomeDateText.display(record.occurrenceDate)).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(record.totalPrice.map(currency2) ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                            Text(record.unitPrice.map { "\(currency2($0))/\(record.unit)" } ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                        .font(.system(size: 11))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                        .contentShape(Rectangle())
                     }
-                    .font(.system(size: 11))
-                    .foregroundStyle(HomeTheme.muted)
+                    .buttonStyle(.plain)
                 }
                 Divider()
                 HStack(spacing: 16) {
                     Spacer()
                     Text("最低 \(records.compactMap(\.unitPrice).min().map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
-                    Text("最近 \(records.first?.unitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
+                    Text("最近 \(unitPriceRecords.first?.unitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
                 }
                 .font(.system(size: 11))
                 .foregroundStyle(HomeTheme.muted)

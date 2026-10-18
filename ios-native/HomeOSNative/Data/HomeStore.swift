@@ -833,6 +833,9 @@ final class HomeStore: ObservableObject {
         let original = next.petInventoryTransactions[transactionIndex]
         guard original.type != .adjustment else { return fail("库存修正记录请通过新的修正操作处理") }
         guard original.linkedOperationID == nil else { return fail("关联猫砂操作的记录不能单独修改") }
+        guard original.source != .litterRefill, original.source != .litterReplace else {
+            return fail("猫砂自动生成的记录不能单独修改")
+        }
         guard let itemIndex = next.petItems.firstIndex(where: { $0.id == original.productID }) else {
             return fail("找不到关联物品")
         }

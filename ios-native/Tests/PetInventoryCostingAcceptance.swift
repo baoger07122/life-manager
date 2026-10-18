@@ -337,7 +337,7 @@ struct PetInventoryCostingAcceptance {
         expect(editor.contains("HomeMetrics.controlHeight"), "transaction rows use the standard control height")
         expect(editor.contains("HomeTypography.body") && !editor.contains(".font(.body)") && !editor.contains(".font(.footnote)"), "transaction fields share the new-item body typography")
         expect(editor.contains("HStack(alignment: .center") && !editor.contains(".padding(.vertical"), "note stays centered without extra vertical row padding")
-        expect(editor.contains("case .inbound: \"入库数量\"") && editor.contains("case .outbound: \"出库数量\"") && editor.contains("case .adjustment: \"修正变化\""), "view labels identify stock direction without changing adjustment meaning")
+        expect(editor.contains("case .inbound: return \"入库数量\"") && editor.contains("case .outbound: return \"出库数量\"") && editor.contains("case .adjustment: return \"修正变化\""), "view labels identify stock direction without changing adjustment meaning")
         expect(editor.contains("abs(transaction.quantityChange).formatted()") && editor.contains("transaction.quantityChange >= 0 ? \"增加\" : \"减少\"") && !editor.contains("quantityChange > 0 ? \"+\" : \"\""), "view quantity uses absolute receipt/issue amounts and clear adjustment direction")
         expect(editor.contains("Text(currency2(value))") && editor.contains("Text(\"/\\(item.unit)\")") && editor.contains("HStack(spacing: 4)"), "unit-price amount and unit are separate right-aligned labels")
         expect(editor.contains("DatePicker(\"时间\""), "time edits in place")

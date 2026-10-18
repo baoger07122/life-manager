@@ -1028,9 +1028,9 @@ struct PetInventoryTransactionEditorView: View {
         guard row == .quantity else { return row.title }
         if isEditing && canEditRecord { return row.title }
         switch transaction.type {
-        case .inbound: "入库数量"
-        case .outbound: "出库数量"
-        case .adjustment: "修正变化"
+        case .inbound: return "入库数量"
+        case .outbound: return "出库数量"
+        case .adjustment: return "修正变化"
         }
     }
 

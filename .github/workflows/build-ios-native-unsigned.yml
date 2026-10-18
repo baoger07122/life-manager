@@ -30,6 +30,7 @@ jobs:
           swiftc \
             HomeOSNative/Models/HomeModels.swift \
             HomeOSNative/Data/PetInventoryCosting.swift \
+            HomeOSNative/Data/PetInventoryHistoryMutation.swift \
             Tests/PetInventoryCostingAcceptance.swift \
             -o /tmp/pet-inventory-costing-acceptance
           /tmp/pet-inventory-costing-acceptance

@@ -533,7 +533,7 @@ final class HomeStore: ObservableObject {
         if let recordedPrice = latestPetUnitPriceFromRecordedHistory(for: productID, in: source) {
             return recordedPrice
         }
-        if source.petInventoryTransactions.contains(where: { $0.productID == productID && $0.type == .inbound }) {
+        if source.petInventoryTransactions.contains(where: { $0.productID == productID }) {
             return nil
         }
         if let cachedPrice = source.petItems.first(where: { $0.id == productID })?.price, cachedPrice > 0 {
@@ -543,23 +543,12 @@ final class HomeStore: ObservableObject {
     }
 
     private func latestPetUnitPriceFromRecordedHistory(for productID: String, in source: HomeBackup) -> Double? {
-        let transactions = source.petInventoryTransactions.enumerated()
-            .filter { $0.element.productID == productID && $0.element.type == .inbound }
-            .sorted { left, right in
-                if left.element.occurrenceDate != right.element.occurrenceDate {
-                    return left.element.occurrenceDate > right.element.occurrenceDate
-                }
-                if left.element.createdAt != right.element.createdAt {
-                    return left.element.createdAt > right.element.createdAt
-                }
-                return left.offset > right.offset
-            }
-        for transaction in transactions {
-            if let unitPrice = transaction.element.recordedInboundUnitPrice { return unitPrice }
+        if let unitPrice = PetInventoryHistoryMutation.latestRecordedInboundUnitPrice(for: productID, in: source) {
+            return unitPrice
         }
         // Once a product has transaction history, a cleared or unpriced receipt must not
         // be resurrected from the legacy purchase arrays or cached item price.
-        guard transactions.isEmpty else { return nil }
+        guard !source.petInventoryTransactions.contains(where: { $0.productID == productID }) else { return nil }
         if let item = source.petItems.first(where: { $0.id == productID }) {
             let history = (item.purchaseHistory ?? []) + (item.replenishmentHistory ?? [])
             if let record = history
@@ -862,63 +851,48 @@ final class HomeStore: ObservableObject {
         id: String,
         quantity: Double,
         occurrenceDate: String,
-        reason: String,
         totalPrice: Double?,
-        purchaseChannel: String? = nil,
-        note: String? = nil,
-        updatePurchaseDetails: Bool = true
+        note: String?
     ) -> Bool {
         guard quantity.isFinite, quantity > 0 else { return fail("数量必须大于 0") }
         if let totalPrice, (!totalPrice.isFinite || totalPrice < 0) { return fail("金额无效") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
-        var next = data
-        guard let transactionIndex = next.petInventoryTransactions.firstIndex(where: { $0.id == id }) else {
-            return fail("找不到这条进出库记录")
-        }
-        let original = next.petInventoryTransactions[transactionIndex]
-        guard original.type != .adjustment else { return fail("库存修正记录请通过新的修正操作处理") }
-        guard original.linkedOperationID == nil else { return fail("关联猫砂操作的记录不能单独修改") }
-        guard original.source != .litterRefill, original.source != .litterReplace else {
-            return fail("猫砂自动生成的记录不能单独修改")
-        }
-        guard let itemIndex = next.petItems.firstIndex(where: { $0.id == original.productID }) else {
-            return fail("找不到关联物品")
-        }
-
         let now = Date().timeIntervalSince1970
-        let signedQuantity = original.type == .outbound ? -quantity : quantity
-        let historyChanged = signedQuantity != original.quantityChange || occurrenceDate != original.occurrenceDate
-        next.petInventoryTransactions[transactionIndex].quantityChange = signedQuantity
-        next.petInventoryTransactions[transactionIndex].occurrenceDate = occurrenceDate
-        next.petInventoryTransactions[transactionIndex].reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        if updatePurchaseDetails {
-            if original.type == .inbound {
-                next.petInventoryTransactions[transactionIndex].totalPrice = totalPrice
-                next.petInventoryTransactions[transactionIndex].unitPrice = totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil }
-                next.petInventoryTransactions[transactionIndex].purchaseChannel = purchaseChannel?.nilIfBlank
-            }
-            next.petInventoryTransactions[transactionIndex].note = note?.nilIfBlank
+        do {
+            let next = try PetInventoryHistoryMutation.update(
+                transactionID: id,
+                quantity: quantity,
+                occurrenceDate: occurrenceDate,
+                totalPrice: totalPrice,
+                note: note,
+                now: now,
+                in: data
+            )
+            guard commit(next) else { return false }
+        } catch let error as PetInventoryCosting.InvalidHistory {
+            return fail(invalidPetInventoryHistoryMessage(error, productID: data.petInventoryTransactions.first(where: { $0.id == id })?.productID))
+        } catch let error as PetInventoryHistoryMutation.Failure {
+            return fail(petInventoryMutationErrorMessage(error))
+        } catch {
+            return fail("无法保存这条库存记录，请重试。")
         }
-        next.petInventoryTransactions[transactionIndex].updatedAt = now
-        if let error = recalculatePetInventoryHistory(
-            productID: original.productID,
-            in: &next,
-            now: now,
-            allowInvalidHistory: !historyChanged
-        ) {
-            return fail(error)
+        NativeHaptics.success()
+        return true
+    }
+
+    func deletePetInventoryTransaction(id: String) -> Bool {
+        let now = Date().timeIntervalSince1970
+        do {
+            let result = try PetInventoryHistoryMutation.delete(transactionID: id, from: data, now: now)
+            guard commit(result.backup) else { return false }
+        } catch let error as PetInventoryCosting.InvalidHistory {
+            let productID = data.petInventoryTransactions.first(where: { $0.id == id })?.productID
+            return fail(invalidPetInventoryHistoryMessage(error, productID: productID, deleting: true))
+        } catch let error as PetInventoryHistoryMutation.Failure {
+            return fail(petInventoryMutationErrorMessage(error, deleting: true))
+        } catch {
+            return fail("无法删除这条库存记录，原数据已保留。")
         }
-        next.petItems[itemIndex].updatedAt = now
-        if original.type == .inbound && updatePurchaseDetails {
-            let updated = next.petInventoryTransactions[transactionIndex]
-            if original.recordedInboundTotalPrice != updated.recordedInboundTotalPrice
-                || original.quantityChange != updated.quantityChange
-                || original.occurrenceDate != updated.occurrenceDate {
-                next.petItems[itemIndex].price = latestPetUnitPriceFromRecordedHistory(for: original.productID, in: next)
-            }
-        }
-        synchronizePetInventoryActivities(for: original.productID, in: &next)
-        guard commit(next) else { return false }
         NativeHaptics.success()
         return true
     }
@@ -1266,97 +1240,55 @@ final class HomeStore: ObservableObject {
         now: Double,
         allowInvalidHistory: Bool = false
     ) -> String? {
-        let indices = backup.petInventoryTransactions.indices.filter {
-            backup.petInventoryTransactions[$0].productID == productID
-        }
-        guard !indices.isEmpty else { return nil }
-        let events = indices.map { Self.petInventoryCostEvent(backup.petInventoryTransactions[$0]) }
-
         do {
-            let replay = try PetInventoryCosting.replay(events)
-            for (index, result) in zip(indices, replay.events) {
-                var transaction = backup.petInventoryTransactions[index]
-                let derivedValuesChanged = transaction.quantityChange != result.quantityChange
-                    || transaction.quantityBefore != result.quantityBefore
-                    || transaction.quantityAfter != result.quantityAfter
-                    || transaction.totalPrice != result.totalPrice
-                    || transaction.unitPrice != result.unitPrice
-                transaction.quantityChange = result.quantityChange
-                transaction.quantityBefore = result.quantityBefore
-                transaction.quantityAfter = result.quantityAfter
-                if transaction.type == .outbound {
-                    transaction.totalPrice = result.totalPrice
-                    transaction.unitPrice = result.unitPrice
-                }
-                if derivedValuesChanged { transaction.updatedAt = now }
-                backup.petInventoryTransactions[index] = transaction
-            }
-            if let itemIndex = backup.petItems.firstIndex(where: { $0.id == productID }) {
-                if backup.petItems[itemIndex].quantity != replay.currentQuantity {
-                    backup.petItems[itemIndex].quantity = replay.currentQuantity
-                    backup.petItems[itemIndex].updatedAt = now
-                }
-            }
-            synchronizePetInventoryActivities(for: productID, in: &backup)
+            try PetInventoryHistoryMutation.replayProduct(
+                productID: productID,
+                in: &backup,
+                now: now,
+                allowInvalidHistory: allowInvalidHistory
+            )
             return nil
         } catch let error as PetInventoryCosting.InvalidHistory {
-            guard allowInvalidHistory else {
-                let item = backup.petItems.first(where: { $0.id == productID })
-                let unit = item?.unit ?? "件"
-                return "按发生日期重算时，\(HomeDateText.display(error.occurrenceDate)) 的库存不足：当时有 \(error.availableQuantity.formatted())\(unit)，需要 \(error.requestedQuantity.formatted())\(unit)。请先调整相关流水的日期或数量。"
-            }
-
-            for index in indices where backup.petInventoryTransactions[index].type == .outbound {
-                if backup.petInventoryTransactions[index].totalPrice != nil
-                    || backup.petInventoryTransactions[index].unitPrice != nil {
-                    backup.petInventoryTransactions[index].totalPrice = nil
-                    backup.petInventoryTransactions[index].unitPrice = nil
-                    backup.petInventoryTransactions[index].updatedAt = now
-                }
-            }
-            synchronizePetInventoryActivities(for: productID, in: &backup)
-            return nil
+            return invalidPetInventoryHistoryMessage(error, productID: productID)
         } catch {
             return "无法重算这件物品的库存价格，请检查流水后重试。"
         }
     }
 
     private func synchronizePetInventoryActivities(for productID: String, in backup: inout HomeBackup) {
-        let transactions = backup.petInventoryTransactions.filter { $0.productID == productID }
-        for transaction in transactions {
-            let action: String
-            let amount: Double?
-            switch transaction.type {
-            case .inbound:
-                action = "入库"
-                amount = transaction.recordedInboundTotalPrice
-            case .outbound:
-                action = "出库"
-                amount = transaction.recordedOutboundTotalPrice
-            case .adjustment:
-                action = "修正"
-                amount = nil
-            }
+        PetInventoryHistoryMutation.synchronizeActivities(for: productID, in: &backup)
+    }
 
-            let deterministicID = "pet-inventory-\(transaction.id)"
-            let activityIndex = backup.activities.firstIndex(where: { $0.id == deterministicID })
-                ?? backup.activities.indices
-                    .filter {
-                        backup.activities[$0].type == "pet"
-                            && backup.activities[$0].targetId == productID
-                            && backup.activities[$0].action == action
-                            && abs((backup.activities[$0].occurredAt ?? 0) - transaction.createdAt) < 1
-                    }
-                    .min {
-                        abs((backup.activities[$0].occurredAt ?? 0) - transaction.createdAt)
-                            < abs((backup.activities[$1].occurredAt ?? 0) - transaction.createdAt)
-                    }
-            guard let activityIndex else { continue }
-            backup.activities[activityIndex].quantity = abs(transaction.quantityChange)
-            backup.activities[activityIndex].unit = transaction.unit
-            backup.activities[activityIndex].totalPrice = amount
-            backup.activities[activityIndex].time = Self.activityDateText(transaction.occurrenceDate)
-            backup.activities[activityIndex].occurredAt = transaction.createdAt
+    private func invalidPetInventoryHistoryMessage(
+        _ error: PetInventoryCosting.InvalidHistory,
+        productID: String?,
+        deleting: Bool = false
+    ) -> String {
+        let unit = productID.flatMap { id in data.petItems.first(where: { $0.id == id })?.unit } ?? "件"
+        let shortfall = max(0, error.requestedQuantity - error.availableQuantity)
+        let detail = "\(HomeDateText.display(error.occurrenceDate)) 的库存不足：当时有 \(error.availableQuantity.formatted())\(unit)，需要 \(error.requestedQuantity.formatted())\(unit)，短少 \(shortfall.formatted())\(unit)。"
+        return deleting
+            ? "无法删除这条记录。\(detail)原记录与所有数据均已保留。"
+            : "按发生日期重算时，\(detail)请先调整相关流水的日期或数量。"
+    }
+
+    private func petInventoryMutationErrorMessage(
+        _ error: PetInventoryHistoryMutation.Failure,
+        deleting: Bool = false
+    ) -> String {
+        switch error {
+        case .transactionNotFound:
+            return "找不到这条库存记录。"
+        case .litterOperationMustBeChangedAsAGroup:
+            return "猫砂关联流水不能单独\(deleting ? "删除" : "修改")，请通过猫砂补充/换洗的成组操作处理。"
+        case .adjustmentIsReadOnly:
+            return "库存修正记录为只读，请通过新的修正操作调整库存。"
+        case .ambiguousActivityMatch:
+            return "无法唯一识别这条记录对应的旧版动态。为避免误删其他动态，记录未删除。"
+        case .invalidQuantity:
+            return "数量必须大于 0。"
+        case .invalidPrice:
+            return "金额无效。"
         }
     }
 

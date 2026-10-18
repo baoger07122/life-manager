@@ -854,6 +854,26 @@ struct PetInventoryTransactionHistoryView: View {
     }
 }
 
+enum PetInventoryTransactionDetailRow: String, CaseIterable, Identifiable, Equatable {
+    case time
+    case quantity
+    case totalPrice
+    case unitPrice
+    case note
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .time: "时间"
+        case .quantity: "数量"
+        case .totalPrice: "本次总价"
+        case .unitPrice: "折算单价"
+        case .note: "备注"
+        }
+    }
+}
+
 struct PetInventoryTransactionEditorView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
@@ -861,12 +881,10 @@ struct PetInventoryTransactionEditorView: View {
     @State private var quantityText = ""
     @State private var totalPriceText = ""
     @State private var date = Date()
-    @State private var reason = ""
-    @State private var purchaseChannel = ""
     @State private var note = ""
     @State private var loaded = false
     @State private var isEditing = false
-    @State private var confirmPriceRemoval = false
+    @State private var confirmDelete = false
     @State private var localError: String?
 
     private var transaction: PetInventoryTransaction? {
@@ -879,154 +897,81 @@ struct PetInventoryTransactionEditorView: View {
     private var quantity: Double? {
         Double(quantityText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: "."))
     }
+    private var cleanedPriceText: String {
+        totalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+    }
     private var totalPrice: Double? {
-        let clean = totalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
-        guard !clean.isEmpty, let value = Double(clean), value.isFinite, value >= 0 else { return nil }
+        guard !cleanedPriceText.isEmpty, let value = Double(cleanedPriceText), value.isFinite, value >= 0 else { return nil }
         return value
     }
     private var canEditRecord: Bool {
         guard let transaction else { return false }
-        return transaction.type != .adjustment
-            && transaction.linkedOperationID == nil
-            && transaction.source != .litterRefill
-            && transaction.source != .litterReplace
+        return transaction.type != .adjustment && !isLitterLinked(transaction)
     }
     private var canEditTotalPrice: Bool {
-        canEditRecord && transaction?.type == .inbound && transaction?.source == .manual
+        canEditRecord && transaction?.type == .inbound
     }
-    private var canEditPurchaseChannel: Bool {
-        canEditTotalPrice && transaction?.type == .inbound
+    private var canDeleteTransaction: Bool {
+        guard let transaction else { return false }
+        return !isLitterLinked(transaction)
     }
-    private var canEditNote: Bool {
-        canEditRecord && transaction?.source == .manual
-    }
-    private var hasRecordedPrice: Bool {
-        transaction?.totalPrice != nil || transaction?.unitPrice != nil
-    }
-    private var isPriceRemovalPending: Bool {
-        isEditing && canEditTotalPrice && hasRecordedPrice
-            && totalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    private var canDeletePrice: Bool {
-        isEditing && canEditTotalPrice && hasRecordedPrice
+    private var isLitterReadOnly: Bool {
+        guard let transaction else { return false }
+        return isLitterLinked(transaction)
     }
     private var canSave: Bool {
         isEditing && canEditRecord
             && (quantity ?? 0) > 0
-            && (totalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || totalPrice != nil)
-            && !isPriceRemovalPending
+            && (!canEditTotalPrice || cleanedPriceText.isEmpty || totalPrice != nil)
     }
     private var calculatedUnitPrice: Double? {
         guard let quantity, quantity > 0, let totalPrice, totalPrice > 0 else { return nil }
-        return totalPrice / quantity
+        let unitPrice = totalPrice / quantity
+        return unitPrice.isFinite && unitPrice > 0 ? unitPrice : nil
     }
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let transaction, let item {
-                    Section("记录摘要") {
-                        LabeledContent("时间", value: fullChineseDate(transaction.occurrenceDate))
-                        LabeledContent("本次价格") {
-                            VStack(alignment: .trailing, spacing: 2) {
-                                if let total = displayedTotalPrice(transaction), let unit = displayedUnitPrice(transaction) {
-                                    Text(currency2(total)).foregroundStyle(HomeTheme.ink)
-                                    Text("\(currency2(unit))/\(transaction.unit)")
-                                        .font(HomeTypography.supporting)
-                                        .foregroundStyle(HomeTheme.muted)
-                                } else {
-                                    Text(transaction.type == .adjustment ? "不适用" : transaction.type == .outbound ? "价格未记录 / 无法计算" : "价格未记录")
-                                        .foregroundStyle(HomeTheme.muted)
-                                }
-                            }
-                        }
-                        LabeledContent(
-                            "数量",
-                            value: "\(transaction.quantityChange > 0 ? "+" : "")\(transaction.quantityChange.formatted())\(transaction.unit)"
-                        )
-                        LabeledContent("来源", value: sourceText(transaction.source))
-                    }
-
-                    if hasMoreInformation(transaction) {
-                        Section {
-                            DisclosureGroup("更多信息") {
-                                if hasRecordedText(transaction.reason) {
-                                    LabeledContent("原因", value: transaction.reason)
-                                }
-                                if hasRecordedText(transaction.purchaseChannel) {
-                                    LabeledContent("购买渠道", value: transaction.purchaseChannel ?? "")
-                                }
-                                if hasRecordedText(transaction.note) {
-                                    LabeledContent("备注", value: transaction.note ?? "")
-                                }
-                            }
-                        }
-                    }
-
-                    if isEditing {
-                        Section("编辑记录") {
-                            TextField("数量", text: $quantityText)
-                                .keyboardType(.decimalPad)
-                            DatePicker("日期", selection: $date, displayedComponents: .date)
-                            TextField("原因", text: $reason)
-                        }
-
-                        if canEditTotalPrice {
-                            Section("本次金额") {
-                                TextField("总价（选填）", text: $totalPriceText)
-                                    .keyboardType(.decimalPad)
-                                LabeledContent(
-                                    "折算单价",
-                                    value: calculatedUnitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "未记录"
-                                )
-                                if isPriceRemovalPending {
-                                    Text("如需删除已有金额，请使用下方“删除本次金额”并确认。")
-                                        .font(HomeTypography.supporting)
-                                        .foregroundStyle(HomeTheme.muted)
-                                }
-                            }
-                        }
-
-                        if canEditPurchaseChannel {
-                            Section("购买渠道") {
-                                TextField("可选", text: $purchaseChannel)
-                            }
-                        }
-
-                        if canEditNote {
-                            Section("备注") {
-                            TextField("可选", text: $note, axis: .vertical)
-                                .font(HomeTypography.body)
-                            }
-                        }
-
-                        if canDeletePrice {
-                            Section {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text("只删除本次入库金额；库存数量和整条流水会保留。")
-                                        .font(HomeTypography.supporting)
-                                        .foregroundStyle(HomeTheme.muted)
-                                    Button("删除本次金额", role: .destructive) {
-                                        confirmPriceRemoval = true
+            ScrollView {
+                VStack(spacing: 14) {
+                    if let transaction, let item {
+                        HomeCard(padding: 0) {
+                            VStack(spacing: 0) {
+                                ForEach(PetInventoryTransactionDetailRow.allCases) { row in
+                                    if row != .time {
+                                        Divider().padding(.leading, 12)
                                     }
+                                    detailRow(row, transaction: transaction, item: item)
                                 }
-                            } header: {
-                                Text("危险操作")
                             }
+                            .padding(.horizontal, 12)
                         }
-                    } else if !canEditRecord {
-                        Section {
-                            Text(transaction.type == .adjustment
-                                ? "库存修正记录为只读。"
-                                : "猫砂关联记录为只读，关联库存和操作关系保持不变。")
-                                .font(HomeTypography.supporting)
+
+                        if isLitterReadOnly {
+                            Button("删除这条记录", role: .destructive) {}
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                                .background(HomeTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .disabled(true)
+                            Text("猫砂关联流水不能单独删除或修改，请通过猫砂补充/换洗的成组操作处理。")
+                                .font(.footnote)
                                 .foregroundStyle(HomeTheme.muted)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        } else if canDeleteTransaction {
+                            Button("删除这条记录", role: .destructive) {
+                                confirmDelete = true
+                                NativeHaptics.warning()
+                            }
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 48)
+                            .background(HomeTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
+                    } else {
+                        EmptyState(icon: "exclamationmark.triangle.fill", title: "记录不存在", message: "该记录可能已被删除。")
                     }
-                } else {
-                    Text("记录不存在")
                 }
+                .padding(HomeMetrics.pageInset)
             }
+            .background(HomeTheme.background)
             .navigationTitle(isEditing ? "编辑记录" : "查看记录")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1037,8 +982,7 @@ struct PetInventoryTransactionEditorView: View {
                 }
                 if isEditing {
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("保存", action: save)
-                            .disabled(!canSave)
+                        Button("保存", action: save).disabled(!canSave)
                     }
                 } else if canEditRecord {
                     ToolbarItem(placement: .confirmationAction) {
@@ -1048,19 +992,108 @@ struct PetInventoryTransactionEditorView: View {
             }
         }
         .task { load() }
-        .confirmationDialog("删除本次入库金额？", isPresented: $confirmPriceRemoval, titleVisibility: .visible) {
-            Button("删除本次金额", role: .destructive, action: removeAmount)
+        .confirmationDialog("删除这条记录？", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("删除这条记录", role: .destructive, action: deleteRecord)
             Button("取消", role: .cancel) {}
         } message: {
-            Text("只清除本次总价和折算单价，并重算受影响的后续出库成本；数量和整条库存流水会保留。")
+            Text("将删除整条库存流水（含数量、金额和备注），并按发生日期重算当前库存、后续库存快照和出库成本。若后续流水会造成历史库存不足，系统将拒绝删除并保留原数据。")
         }
-        .alert("记录修改失败", isPresented: Binding(
+        .alert("记录操作失败", isPresented: Binding(
             get: { localError != nil },
             set: { if !$0 { localError = nil } }
         )) {
             Button("知道了") { localError = nil }
         } message: {
-            Text(localError ?? "请检查输入后重试。")
+            Text(localError ?? "请检查后重试。")
+        }
+    }
+
+    private func detailRow(
+        _ row: PetInventoryTransactionDetailRow,
+        transaction: PetInventoryTransaction,
+        item: PetItem
+    ) -> some View {
+        HStack(alignment: row == .note ? .top : .center, spacing: 12) {
+            Text(row.title)
+                .font(.footnote)
+                .foregroundStyle(HomeTheme.muted)
+                .fixedSize(horizontal: true, vertical: false)
+            Spacer(minLength: 8)
+            rowValue(row, transaction: transaction, item: item)
+                .frame(maxWidth: .infinity, alignment: row == .note ? .leading : .trailing)
+        }
+        .padding(.vertical, row == .note ? 10 : 0)
+        .frame(minHeight: row == .note ? 52 : 46)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func rowValue(
+        _ row: PetInventoryTransactionDetailRow,
+        transaction: PetInventoryTransaction,
+        item: PetItem
+    ) -> some View {
+        switch row {
+        case .time:
+            if isEditing && canEditRecord {
+                DatePicker("时间", selection: $date, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .font(.body)
+                    .accessibilityLabel("时间")
+            } else {
+                Text(fullChineseDate(transaction.occurrenceDate)).font(.body).foregroundStyle(HomeTheme.ink)
+            }
+        case .quantity:
+            if isEditing && canEditRecord {
+                HStack(spacing: 5) {
+                    TextField("数量", text: $quantityText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body)
+                        .accessibilityLabel("数量")
+                    Text(transaction.unit).font(.body).foregroundStyle(HomeTheme.muted)
+                }
+            } else {
+                Text("\(transaction.quantityChange > 0 ? "+" : "")\(transaction.quantityChange.formatted())\(transaction.unit)")
+                    .font(.body)
+                    .foregroundStyle(HomeTheme.ink)
+            }
+        case .totalPrice:
+            if isEditing && canEditTotalPrice {
+                HStack(spacing: 4) {
+                    TextField("未记录", text: $totalPriceText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(.body)
+                        .accessibilityLabel("本次总价，可留空")
+                    Text("元").font(.body).foregroundStyle(HomeTheme.muted)
+                }
+            } else {
+                Text(displayedTotalPrice(transaction).map(currency2) ?? "未记录")
+                    .font(.body)
+                    .foregroundStyle(HomeTheme.ink)
+            }
+        case .unitPrice:
+            let value = isEditing && canEditTotalPrice ? calculatedUnitPrice : displayedUnitPrice(transaction)
+            Text(value.map { "\(currency2($0))/\(item.unit)" } ?? "未记录")
+                .font(.body)
+                .foregroundStyle(value == nil ? HomeTheme.muted : HomeTheme.ink)
+        case .note:
+            if isEditing && canEditRecord {
+                TextField("未填写", text: $note, axis: .vertical)
+                    .lineLimit(1...4)
+                    .multilineTextAlignment(.leading)
+                    .font(.body)
+                    .accessibilityLabel("备注")
+            } else {
+                let value = transaction.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                Text(value.isEmpty ? "未填写" : value)
+                    .font(.body)
+                    .foregroundStyle(value.isEmpty ? HomeTheme.muted : HomeTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -1076,8 +1109,6 @@ struct PetInventoryTransactionEditorView: View {
             ? (transaction.recordedInboundTotalPrice.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "")
             : ""
         date = LitterPredictionService.parse(transaction.occurrenceDate) ?? Date()
-        reason = transaction.reason
-        purchaseChannel = transaction.purchaseChannel ?? ""
         note = transaction.note ?? ""
     }
 
@@ -1099,16 +1130,17 @@ struct PetInventoryTransactionEditorView: View {
             NativeHaptics.error()
             return
         }
-        let savedReason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !canEditTotalPrice || cleanedPriceText.isEmpty || totalPrice != nil else {
+            localError = "请输入有效金额，或留空表示未记录"
+            NativeHaptics.error()
+            return
+        }
         let success = store.updatePetInventoryTransaction(
             id: transactionID,
             quantity: quantity,
             occurrenceDate: LitterPredictionService.format(date),
-            reason: savedReason.isEmpty ? (transaction?.type == .inbound ? "购买入库" : "日常使用") : savedReason,
-            totalPrice: totalPrice,
-            purchaseChannel: purchaseChannel,
-            note: note,
-            updatePurchaseDetails: transaction?.source == .manual
+            totalPrice: canEditTotalPrice ? totalPrice : nil,
+            note: note
         )
         if success {
             isEditing = false
@@ -1118,12 +1150,11 @@ struct PetInventoryTransactionEditorView: View {
         }
     }
 
-    private func removeAmount() {
-        if store.clearPetInventoryTransactionPrice(id: transactionID) {
-            isEditing = false
-            if let updated = transaction { loadFields(from: updated) }
+    private func deleteRecord() {
+        if store.deletePetInventoryTransaction(id: transactionID) {
+            dismiss()
         } else {
-            localError = store.lastError ?? "金额没有删除，请重试。"
+            localError = store.lastError ?? "记录没有删除，原数据已保留。"
         }
     }
 
@@ -1138,7 +1169,11 @@ struct PetInventoryTransactionEditorView: View {
     private func displayedUnitPrice(_ transaction: PetInventoryTransaction) -> Double? {
         switch transaction.type {
         case .inbound: transaction.recordedInboundUnitPrice
-        case .outbound: transaction.unitPrice.flatMap { $0 > 0 ? $0 : nil }
+        case .outbound:
+            if let unitPrice = transaction.unitPrice, unitPrice.isFinite, unitPrice > 0 { return unitPrice }
+            guard let total = transaction.recordedOutboundTotalPrice, transaction.quantityChange != 0 else { return nil }
+            let unitPrice = total / abs(transaction.quantityChange)
+            return unitPrice.isFinite && unitPrice > 0 ? unitPrice : nil
         case .adjustment: nil
         }
     }
@@ -1152,13 +1187,10 @@ struct PetInventoryTransactionEditorView: View {
         return formatter.string(from: value)
     }
 
-    private func hasMoreInformation(_ transaction: PetInventoryTransaction) -> Bool {
-        hasRecordedText(transaction.reason) || hasRecordedText(transaction.purchaseChannel) || hasRecordedText(transaction.note)
-    }
-
-    private func hasRecordedText(_ value: String?) -> Bool {
-        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
-        return !value.isEmpty
+    private func isLitterLinked(_ transaction: PetInventoryTransaction) -> Bool {
+        transaction.linkedOperationID != nil
+            || transaction.source == .litterRefill
+            || transaction.source == .litterReplace
     }
 }
 

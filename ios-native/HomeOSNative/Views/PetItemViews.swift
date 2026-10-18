@@ -443,7 +443,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private var primarySelector: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 4) {
             ForEach(primaryCategories) { category in
                 Button {
                     primaryID = category.id
@@ -452,9 +452,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     HomeUnderlineTab(
                         title: category.name,
                         selected: primaryID == category.id,
-                        prominent: true,
-                        minimumTapWidth: HomeMetrics.minimumTapTarget
+                        prominent: true
                     )
+                    .padding(.horizontal, 6)
+                    .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .fixedSize(horizontal: true, vertical: false)
@@ -493,7 +495,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     private var secondaryAndSortRow: some View {
         HStack(spacing: 4) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 20) {
+                HStack(spacing: 8) {
                     ForEach(secondaryCategories) { category in
                         Button {
                             secondaryID = category.id
@@ -503,9 +505,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                         } label: {
                             HomeUnderlineTab(
                                 title: category.name,
-                                selected: secondaryID == category.id,
-                                minimumTapWidth: HomeMetrics.minimumTapTarget
+                                selected: secondaryID == category.id
                             )
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -1232,10 +1236,10 @@ struct PetItemDetailView: View {
                     productHeroCard(item)
                     productNotesCard(item)
                     inventoryCard(item)
-                    transactionCard(item)
                     productReviewCard
                     if isPetFood(item) { palatabilityCard }
                     priceCard(item)
+                    transactionCard(item)
                 }.padding(HomeMetrics.pageInset)
             } else {
                 EmptyState(icon: "exclamationmark.triangle.fill", title: "物品不存在", message: "该物品可能已停用。")
@@ -1366,54 +1370,40 @@ struct PetItemDetailView: View {
 
     private func transactionCard(_ item: PetItem) -> some View {
         let allRecords = store.petTransactions(for: item.id)
-        let records = Array(allRecords.prefix(5))
+        let recentRecord = allRecords.first
         return HomeCard {
-            VStack(alignment: .leading, spacing: 9) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text("进出库记录").font(HomeTypography.cardTitle)
+                    Text("共 \(allRecords.count) 条")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
                     Spacer()
-                    if allRecords.count > records.count {
-                        NavigationLink {
-                            PetInventoryTransactionHistoryView(productID: item.id, priceHistoryOnly: false) { transactionID in
-                                sheet = .transaction(transactionID: transactionID)
-                            }
-                        } label: {
-                            Text("查看全部").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                    NavigationLink {
+                        PetInventoryTransactionHistoryView(productID: item.id, priceHistoryOnly: false) { transactionID in
+                            sheet = .transaction(transactionID: transactionID)
                         }
-                        .buttonStyle(.plain)
-                    }
-                }
-                if records.isEmpty { Text("暂无库存流水").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
-                ForEach(records) { record in
-                    Divider()
-                    Button {
-                        NativeHaptics.tap()
-                        sheet = .transaction(transactionID: record.id)
                     } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: record.quantityChange >= 0 ? "arrow.down.circle" : "arrow.up.circle")
-                                .font(.system(size: 20))
-                                .foregroundStyle(record.quantityChange >= 0 ? HomeTheme.blue : HomeTheme.orange)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(record.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? transactionTypeTitle(record.type) : record.reason)
-                                    .font(HomeTypography.body.weight(.medium))
-                                    .lineLimit(1)
-                                Text("\(HomeDateText.display(record.occurrenceDate)) · \(sourceText(record.source))").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Text("\(record.quantityChange > 0 ? "+" : "")\(record.quantityChange.formatted())\(record.unit)")
-                                .font(HomeTypography.body.weight(.semibold)).foregroundStyle(record.quantityChange >= 0 ? HomeTheme.success : HomeTheme.orange)
-                            Image(systemName: "chevron.right")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                                .padding(.top, 3)
+                        HStack(spacing: 4) {
+                            Text("查看全部").font(HomeTypography.supporting)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                        .foregroundStyle(HomeTheme.muted)
                     }
                     .buttonStyle(.plain)
                 }
+                if let recentRecord {
+                    Divider()
+                    Text("最近 · \(HomeDateText.display(recentRecord.occurrenceDate)) · \(recentRecord.quantityChange > 0 ? "+" : "")\(recentRecord.quantityChange.formatted())\(recentRecord.unit)")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                } else {
+                    Text("暂无库存流水")
+                        .font(HomeTypography.body)
+                        .foregroundStyle(HomeTheme.muted)
+                    }
             }
         }
     }

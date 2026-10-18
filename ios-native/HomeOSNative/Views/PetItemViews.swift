@@ -4,6 +4,17 @@ import PhotosUI
 extension PetItem {
     var resolvedPrimaryCategory: String { primaryCategory ?? (type.contains("食品") ? "宠物食品" : "宠物用品") }
     var resolvedSecondaryCategory: String { secondaryCategory ?? type }
+    var isLitterProduct: Bool {
+        let secondary = resolvedSecondaryCategory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let legacyType = type.trimmingCharacters(in: .whitespacesAndNewlines)
+        let kind = (litterKind ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let knownLitterCategories = ["猫砂", "矿砂", "木薯", "木薯砂", "豆腐砂", "膨润土砂", "混合砂"]
+        return !kind.isEmpty
+            || knownLitterCategories.contains(secondary)
+            || secondary.contains("猫砂")
+            || knownLitterCategories.contains(legacyType)
+            || legacyType.contains("猫砂")
+    }
     var displayVariant: String? {
         let cleanVariant = (variant ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanSpecification = spec.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -33,7 +44,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     @State private var expandedItemID: String?
     @State private var quickMode: PetInventoryTransactionType = .outbound
     @State private var quickQuantity = 1.0
-    @State private var quickTotalPrice = 0.0
+    @State private var quickTotalPriceText = ""
+    @State private var quickNote = ""
     @State private var deleteCandidate: PetItem?
     @State private var route: PetItemsRoute?
 
@@ -83,6 +95,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 let rightStock = store.petInventory(for: right.id)
                 if leftStock != rightStock { return leftStock > rightStock }
                 return isNewer(left, than: right)
+            case .brandAndModel:
+                return brandAndModelSortsBefore(left, right)
             }
         }
     }
@@ -98,6 +112,35 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         let leftDate = left.createdAt ?? left.updatedAt ?? 0
         let rightDate = right.createdAt ?? right.updatedAt ?? 0
         return leftDate == rightDate ? left.name < right.name : leftDate > rightDate
+    }
+
+    private func brandAndModelSortsBefore(_ left: PetItem, _ right: PetItem) -> Bool {
+        let leftBrand = left.brand.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rightBrand = right.brand.trimmingCharacters(in: .whitespacesAndNewlines)
+        if leftBrand.isEmpty != rightBrand.isEmpty { return !leftBrand.isEmpty }
+        if !leftBrand.isEmpty {
+            let comparison = leftBrand.localizedStandardCompare(rightBrand)
+            if comparison != .orderedSame { return comparison == .orderedAscending }
+        }
+
+        let leftVariant = left.displayVariant ?? left.model
+        let rightVariant = right.displayVariant ?? right.model
+        let comparableFields = [
+            (left.name, right.name),
+            (leftVariant, rightVariant),
+            (left.spec, right.spec),
+            (left.packageType ?? "", right.packageType ?? "")
+        ]
+        for (leftValue, rightValue) in comparableFields {
+            let comparison = leftValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                .localizedStandardCompare(rightValue.trimmingCharacters(in: .whitespacesAndNewlines))
+            if comparison != .orderedSame { return comparison == .orderedAscending }
+        }
+
+        let leftCreatedAt = left.createdAt ?? 0
+        let rightCreatedAt = right.createdAt ?? 0
+        if leftCreatedAt != rightCreatedAt { return leftCreatedAt < rightCreatedAt }
+        return left.id < right.id
     }
 
     init(
@@ -182,6 +225,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         .onChange(of: primaryID) { _, _ in
             selectedBrand = "all"
             expandedItemID = nil
+            resetQuickEntry()
             selectDefaultSecondary()
         }
         .alert("永久删除这个物品？", isPresented: Binding(
@@ -204,6 +248,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 PetRatingsListView()
             case .editor(let primaryID, let secondaryID):
                 PetItemEditorView(initialPrimaryID: primaryID, initialSecondaryID: secondaryID)
+            case .editItem(let itemID):
+                PetItemEditorView(itemID: itemID)
             case .pendingRepurchase:
                 PetPendingRepurchaseView()
             case .noRepurchase:
@@ -301,6 +347,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         Button {
             selectedBrand = value
             expandedItemID = nil
+            resetQuickEntry()
             NativeHaptics.selection()
         } label: {
             if selectedBrand == value {
@@ -334,10 +381,19 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         HStack(spacing: 11) {
             Button {
                 NativeHaptics.tap()
-                route = .detail(itemID: item.id)
+                route = .editItem(itemID: item.id)
             } label: {
-                HStack(spacing: 11) {
-                    productImage(item)
+                productImage(item)
+                    .frame(width: 48, height: 48)
+                    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("编辑\(item.name)")
+
+            Button {
+                toggleQuickManager(for: item)
+            } label: {
+                HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
                             .font(.system(size: 12))
@@ -349,39 +405,27 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .lineLimit(1)
                             .minimumScaleFactor(0.84)
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("查看\(item.name)详情")
-            .layoutPriority(1)
-
-            Button {
-                expandedItemID = expandedItemID == item.id ? nil : item.id
-                quickMode = store.petInventory(for: item.id) <= 0 ? .inbound : .outbound
-                quickQuantity = quickStep(for: item)
-                quickTotalPrice = 0
-                NativeHaptics.selection()
-            } label: {
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(specificationAndStock(item))
-                        .font(.system(size: 12))
-                        .foregroundStyle(HomeTheme.muted)
-                        .lineLimit(1)
-                    if let rating = store.petProductRating(productID: item.id) {
-                        Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(HomeTheme.orange)
-                    } else {
-                        Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                    Spacer(minLength: 4)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(specificationAndStock(item))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                        if let rating = store.petProductRating(productID: item.id) {
+                            Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(HomeTheme.orange)
+                        } else {
+                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                        }
                     }
+                    .frame(maxWidth: 132, alignment: .trailing)
                 }
-                .frame(width: 106, alignment: .trailing)
-                .frame(minHeight: 48, alignment: .trailing)
+                .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("展开\(item.name)快捷操作")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
@@ -449,6 +493,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                         Button {
                             secondaryID = category.id
                             expandedItemID = nil
+                            resetQuickEntry()
                             NativeHaptics.selection()
                         } label: {
                             HomeUnderlineTab(title: category.name, selected: secondaryID == category.id)
@@ -531,7 +576,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             if quickMode == .inbound {
                 HStack(spacing: 8) {
                     Text("购入总价").font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
-                    TextField("¥0.00", value: $quickTotalPrice, format: .currency(code: "CNY"))
+                    TextField("¥0.00", text: $quickTotalPriceText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.leading)
                         .font(.system(size: 14))
@@ -541,7 +586,30 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                         .foregroundStyle(HomeTheme.muted)
                 }
                 .frame(minHeight: 36)
+                HStack(spacing: 8) {
+                    Text("本次备注").font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
+                    TextField("可选", text: $quickNote)
+                        .font(.system(size: 14))
+                }
+                .frame(minHeight: 36)
             }
+
+            HStack {
+                Spacer()
+                Button {
+                    route = .detail(itemID: item.id)
+                    NativeHaptics.tap()
+                } label: {
+                    Label("记录 / 详情", systemImage: "list.bullet.rectangle")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(HomeTheme.muted)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("查看\(item.name)的记录和详情")
+            }
+        }
+        .onChange(of: quickMode) { _, _ in
+            resetQuickEntry(for: item)
         }
         .padding(9)
         .background(HomeTheme.background.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -565,16 +633,19 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func confirmQuickAction(_ item: PetItem) {
+        let note = quickNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let success = store.recordPetInventory(
             productID: item.id,
             type: quickMode,
             quantity: quickQuantity,
             occurrenceDate: LitterPredictionService.format(Date()),
             reason: quickMode == .inbound ? "快捷入库" : "快捷出库",
-            totalPrice: quickMode == .inbound && quickTotalPrice > 0 ? quickTotalPrice : nil
+            totalPrice: quickMode == .inbound ? parsedQuickTotalPrice : nil,
+            note: quickMode == .inbound && !note.isEmpty ? note : nil
         )
         if success {
             expandedItemID = nil
+            resetQuickEntry()
         }
     }
 
@@ -583,8 +654,33 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func quickUnitPrice(_ item: PetItem) -> Double? {
-        guard quickMode == .inbound, quickQuantity > 0, quickTotalPrice > 0 else { return nil }
-        return quickTotalPrice / quickQuantity
+        guard quickMode == .inbound, quickQuantity.isFinite, quickQuantity > 0,
+              let price = parsedQuickTotalPrice else { return nil }
+        return price / quickQuantity
+    }
+
+    private var parsedQuickTotalPrice: Double? {
+        let normalized = quickTotalPriceText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard let price = Double(normalized), price.isFinite, price > 0 else { return nil }
+        return price
+    }
+
+    private func toggleQuickManager(for item: PetItem) {
+        if expandedItemID == item.id {
+            expandedItemID = nil
+            resetQuickEntry()
+        } else {
+            expandedItemID = item.id
+            quickMode = store.petInventory(for: item.id) <= 0 ? .inbound : .outbound
+            resetQuickEntry(for: item)
+        }
+        NativeHaptics.selection()
+    }
+
+    private func resetQuickEntry(for item: PetItem? = nil) {
+        quickQuantity = item.map { quickStep(for: $0) } ?? 1
+        quickTotalPriceText = ""
+        quickNote = ""
     }
 
     private func specificationAndStock(_ item: PetItem) -> String {
@@ -611,12 +707,13 @@ private enum PetItemsRoute: Hashable {
     case detail(itemID: String)
     case ratings
     case editor(primaryID: String, secondaryID: String)
+    case editItem(itemID: String)
     case pendingRepurchase
     case noRepurchase
 }
 
 private enum PetItemListSortMode: String, CaseIterable, Identifiable {
-    case smart, createdNewest, ratingHigh, stockHigh
+    case smart, createdNewest, ratingHigh, stockHigh, brandAndModel
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -624,6 +721,7 @@ private enum PetItemListSortMode: String, CaseIterable, Identifiable {
         case .createdNewest: "最近添加"
         case .ratingHigh: "评分从高到低"
         case .stockHigh: "库存从高到低"
+        case .brandAndModel: "品牌 / 同款"
         }
     }
 }
@@ -1134,6 +1232,7 @@ struct PetItemDetailView: View {
             if let item {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
                     productHeroCard(item)
+                    productNotesCard(item)
                     inventoryCard(item)
                     transactionCard(item)
                     productReviewCard
@@ -1231,6 +1330,20 @@ struct PetItemDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private func productNotesCard(_ item: PetItem) -> some View {
+        let note = item.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !note.isEmpty {
+            HomeCard(padding: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("备注").font(HomeTypography.cardTitle)
+                    Text(note).font(HomeTypography.body).foregroundStyle(HomeTheme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
     private func inventoryCard(_ item: PetItem) -> some View {
         HomeCard(padding: 12) {
             HStack(alignment: .center, spacing: 12) {
@@ -1262,7 +1375,6 @@ struct PetItemDetailView: View {
                 ForEach(records) { record in
                     Divider()
                     Button {
-                        guard record.type != .adjustment, record.linkedOperationID == nil else { return }
                         NativeHaptics.tap()
                         sheet = .transaction(transactionID: record.id)
                     } label: {
@@ -1273,25 +1385,20 @@ struct PetItemDetailView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(record.reason).font(HomeTypography.body.weight(.medium))
                                 Text("\(HomeDateText.display(record.occurrenceDate)) · \(sourceText(record.source))").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                if let totalPrice = record.totalPrice, let unitPrice = record.unitPrice {
-                                    Text("总价 \(currency2(totalPrice)) · 单价 \(currency2(unitPrice))/\(record.unit)")
-                                        .font(HomeTypography.supporting)
-                                        .foregroundStyle(HomeTheme.muted)
-                                }
+                                Text(petTransactionAmountSummary(record))
+                                    .font(HomeTypography.supporting)
+                                    .foregroundStyle(HomeTheme.muted)
                             }
                             Spacer()
                             Text("\(record.quantityChange > 0 ? "+" : "")\(record.quantityChange.formatted())\(record.unit)")
                                 .font(HomeTypography.body.weight(.semibold)).foregroundStyle(record.quantityChange >= 0 ? HomeTheme.success : HomeTheme.orange)
-                            if record.type != .adjustment, record.linkedOperationID == nil {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.top, 3)
-                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                                .padding(.top, 3)
                         }
                     }
                     .buttonStyle(.plain)
-                    .disabled(record.type == .adjustment || record.linkedOperationID != nil)
                 }
             }
         }
@@ -1313,8 +1420,8 @@ struct PetItemDetailView: View {
                     Divider()
                     HStack {
                         Text(HomeDateText.display(record.occurrenceDate)).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(currency2(record.totalPrice ?? 0)).frame(maxWidth: .infinity, alignment: .trailing)
-                        Text("\(currency2(record.unitPrice ?? 0))/\(record.unit)").frame(maxWidth: .infinity, alignment: .trailing)
+                        Text(record.totalPrice.map(currency2) ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                        Text(record.unitPrice.map { "\(currency2($0))/\(record.unit)" } ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
                     }
                     .font(.system(size: 11))
                     .foregroundStyle(HomeTheme.muted)
@@ -1390,6 +1497,11 @@ struct PetItemDetailView: View {
                                     .foregroundStyle(HomeTheme.muted)
                             }
                             if !review.reviewText.isEmpty { Text(review.reviewText).font(HomeTypography.body).foregroundStyle(HomeTheme.ink) }
+                            Text(orderedPetReviewDimensions(review.resolvedDimensionScores).map { dimension in
+                                "\(dimension) \(review.resolvedDimensionScores[dimension] ?? 0)"
+                            }.joined(separator: " · "))
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
                         }
                     }
                     .buttonStyle(.plain)
@@ -1606,7 +1718,26 @@ func petRatingDimensions(_ item: PetItem) -> [String] {
     if item.resolvedPrimaryCategory.contains("食品") {
         return ["适口性", "品质", "性价比", "回购意愿"]
     }
+    if item.isLitterProduct {
+        return ["除臭性", "结团性", "耐用性", "性价比"]
+    }
     return ["使用效果", "便利性", "耐用性", "性价比"]
+}
+
+func orderedPetReviewDimensions(_ scores: [String: Int]) -> [String] {
+    let preferredOrder = [
+        "除臭性", "结团性", "耐用性", "性价比",
+        "使用效果", "便利性", "适口性", "品质", "回购意愿", "使用体验"
+    ]
+    let known = preferredOrder.filter { scores[$0] != nil }
+    let remaining = scores.keys.filter { !preferredOrder.contains($0) }.sorted()
+    return known + remaining
+}
+
+func petTransactionAmountSummary(_ transaction: PetInventoryTransaction) -> String {
+    let totalPrice = transaction.totalPrice.map(currency2) ?? "未记录"
+    let unitPrice = transaction.unitPrice.map { "\(currency2($0))/\(transaction.unit)" } ?? "未记录"
+    return "总价 \(totalPrice) · 单价 \(unitPrice)"
 }
 
 func currency2(_ value: Double) -> String {

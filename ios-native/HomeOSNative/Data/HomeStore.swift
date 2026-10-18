@@ -503,6 +503,16 @@ final class HomeStore: ObservableObject {
 
     func latestPetUnitPrice(for productID: String, in backup: HomeBackup? = nil) -> Double? {
         let source = backup ?? data
+        if let recordedPrice = latestPetUnitPriceFromRecordedHistory(for: productID, in: source) {
+            return recordedPrice
+        }
+        if let cachedPrice = source.petItems.first(where: { $0.id == productID })?.price, cachedPrice > 0 {
+            return cachedPrice
+        }
+        return nil
+    }
+
+    private func latestPetUnitPriceFromRecordedHistory(for productID: String, in source: HomeBackup) -> Double? {
         let transactions = source.petInventoryTransactions
             .filter { $0.productID == productID && $0.type == .inbound }
             .sorted { $0.occurrenceDate == $1.occurrenceDate ? $0.createdAt > $1.createdAt : $0.occurrenceDate > $1.occurrenceDate }
@@ -520,7 +530,6 @@ final class HomeStore: ObservableObject {
                 .first {
                 return record.price / record.quantity
             }
-            if let price = item.price, price > 0 { return price }
         }
         return nil
     }
@@ -755,7 +764,7 @@ final class HomeStore: ObservableObject {
         expirationDate: String? = nil,
         note: String? = nil
     ) -> Bool {
-        guard quantity > 0 else { return fail("数量必须大于 0") }
+        guard quantity.isFinite, quantity > 0 else { return fail("数量必须大于 0") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
         var next = data
         guard let index = next.petItems.firstIndex(where: { $0.id == productID && !$0.isArchived }) else { return fail("找不到该宠物物品") }
@@ -809,9 +818,13 @@ final class HomeStore: ObservableObject {
         quantity: Double,
         occurrenceDate: String,
         reason: String,
-        totalPrice: Double?
+        totalPrice: Double?,
+        purchaseChannel: String? = nil,
+        note: String? = nil,
+        updatePurchaseDetails: Bool = true
     ) -> Bool {
-        guard quantity > 0 else { return fail("数量必须大于 0") }
+        guard quantity.isFinite, quantity > 0 else { return fail("数量必须大于 0") }
+        if let totalPrice, (!totalPrice.isFinite || totalPrice < 0) { return fail("金额无效") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
         var next = data
         guard let transactionIndex = next.petInventoryTransactions.firstIndex(where: { $0.id == id }) else {
@@ -829,8 +842,12 @@ final class HomeStore: ObservableObject {
         next.petInventoryTransactions[transactionIndex].quantityChange = signedQuantity
         next.petInventoryTransactions[transactionIndex].occurrenceDate = occurrenceDate
         next.petInventoryTransactions[transactionIndex].reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
-        next.petInventoryTransactions[transactionIndex].totalPrice = totalPrice
-        next.petInventoryTransactions[transactionIndex].unitPrice = totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil }
+        if updatePurchaseDetails {
+            next.petInventoryTransactions[transactionIndex].totalPrice = totalPrice
+            next.petInventoryTransactions[transactionIndex].unitPrice = totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil }
+            next.petInventoryTransactions[transactionIndex].purchaseChannel = purchaseChannel?.nilIfBlank
+            next.petInventoryTransactions[transactionIndex].note = note?.nilIfBlank
+        }
         next.petInventoryTransactions[transactionIndex].updatedAt = now
 
         let orderedIndices = next.petInventoryTransactions.indices
@@ -860,8 +877,8 @@ final class HomeStore: ObservableObject {
             next.petInventoryTransactions[index] = transaction
         }
         next.petItems[itemIndex].quantity = running
-        if let latestPrice = latestPetUnitPrice(for: original.productID, in: next) {
-            next.petItems[itemIndex].price = latestPrice
+        if original.type == .inbound && updatePurchaseDetails {
+            next.petItems[itemIndex].price = latestPetUnitPriceFromRecordedHistory(for: original.productID, in: next)
         }
         next.petItems[itemIndex].updatedAt = now
 
@@ -870,9 +887,46 @@ final class HomeStore: ObservableObject {
             ($0.id == "pet-inventory-\(id)") || ($0.type == "pet" && $0.targetId == original.productID && $0.action == action && abs(($0.occurredAt ?? 0) - original.createdAt) < 1)
         }) {
             next.activities[activityIndex].quantity = quantity
-            next.activities[activityIndex].totalPrice = totalPrice
+            next.activities[activityIndex].totalPrice = next.petInventoryTransactions[transactionIndex].totalPrice
             next.activities[activityIndex].time = Self.activityDateText(occurrenceDate)
         }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    func clearPetInventoryTransactionPrice(id: String) -> Bool {
+        var next = data
+        guard let transactionIndex = next.petInventoryTransactions.firstIndex(where: { $0.id == id }) else {
+            return fail("找不到这条进出库记录")
+        }
+        let original = next.petInventoryTransactions[transactionIndex]
+        guard original.source == .manual, original.type != .adjustment, original.linkedOperationID == nil else {
+            return fail("这条记录的金额不能单独删除")
+        }
+        guard original.totalPrice != nil || original.unitPrice != nil else {
+            return fail("这条记录没有已记录的金额")
+        }
+        guard let itemIndex = next.petItems.firstIndex(where: { $0.id == original.productID }) else {
+            return fail("找不到关联物品")
+        }
+
+        let now = Date().timeIntervalSince1970
+        next.petInventoryTransactions[transactionIndex].totalPrice = nil
+        next.petInventoryTransactions[transactionIndex].unitPrice = nil
+        next.petInventoryTransactions[transactionIndex].updatedAt = now
+        if original.type == .inbound {
+            next.petItems[itemIndex].price = latestPetUnitPriceFromRecordedHistory(for: original.productID, in: next)
+        }
+        next.petItems[itemIndex].updatedAt = now
+
+        let action = original.type == .inbound ? "入库" : "出库"
+        if let activityIndex = next.activities.firstIndex(where: {
+            ($0.id == "pet-inventory-\(id)") || ($0.type == "pet" && $0.targetId == original.productID && $0.action == action && abs(($0.occurredAt ?? 0) - original.createdAt) < 1)
+        }) {
+            next.activities[activityIndex].totalPrice = nil
+        }
+
         guard commit(next) else { return false }
         NativeHaptics.success()
         return true

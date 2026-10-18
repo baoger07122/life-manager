@@ -362,7 +362,7 @@ struct PetInventoryCostingAcceptance {
         _ quantityChange: Double,
         _ occurrenceDate: String,
         _ createdAt: Double,
-        totalPrice: Double? = nil,
+        total: Double? = nil,
         source: PetInventorySource = .manual,
         linkedOperationID: String? = nil
     ) -> PetInventoryTransaction {
@@ -370,8 +370,8 @@ struct PetInventoryCostingAcceptance {
             id: id, productID: "product", type: type, quantityChange: quantityChange,
             quantityBefore: 0, quantityAfter: type == .adjustment ? abs(quantityChange) : 0,
             unit: "袋", occurrenceDate: occurrenceDate, reason: "reason \(id)", source: source,
-            linkedOperationID: linkedOperationID, totalPrice: totalPrice,
-            unitPrice: totalPrice.map { $0 / abs(quantityChange) }, purchaseChannel: "channel \(id)",
+            linkedOperationID: linkedOperationID, totalPrice: total,
+            unitPrice: total.map { $0 / abs(quantityChange) }, purchaseChannel: "channel \(id)",
             expirationDate: nil, note: nil, createdAt: createdAt, updatedAt: createdAt
         )
     }

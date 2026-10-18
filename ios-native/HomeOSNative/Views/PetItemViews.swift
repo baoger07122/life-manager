@@ -1395,11 +1395,11 @@ struct PetItemDetailView: View {
                                 .font(.system(size: 20))
                                 .foregroundStyle(record.quantityChange >= 0 ? HomeTheme.blue : HomeTheme.orange)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(record.reason).font(HomeTypography.body.weight(.medium))
+                                Text(record.reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? transactionTypeTitle(record.type) : record.reason)
+                                    .font(HomeTypography.body.weight(.medium))
+                                    .lineLimit(1)
                                 Text("\(HomeDateText.display(record.occurrenceDate)) · \(sourceText(record.source))").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                Text(petTransactionAmountSummary(record))
-                                    .font(HomeTypography.supporting)
-                                    .foregroundStyle(HomeTheme.muted)
+                                    .lineLimit(1)
                             }
                             Spacer()
                             Text("\(record.quantityChange > 0 ? "+" : "")\(record.quantityChange.formatted())\(record.unit)")
@@ -1409,7 +1409,7 @@ struct PetItemDetailView: View {
                                 .foregroundStyle(.tertiary)
                                 .padding(.top, 3)
                         }
-                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -1420,9 +1420,11 @@ struct PetItemDetailView: View {
 
     private func priceCard(_ item: PetItem) -> some View {
         let records = store.petTransactions(for: item.id).filter {
-            $0.type == .inbound && ($0.totalPrice != nil || $0.unitPrice != nil)
+            $0.recordedInboundTotalPrice != nil
         }
-        let unitPriceRecords = records.filter { $0.unitPrice != nil }
+        let minimumUnitPrice = records.compactMap(\.recordedInboundUnitPrice).min()
+        let recentUnitPrice = records.first?.recordedInboundUnitPrice
+        let averageUnitPrice = store.petWeightedAverageInboundUnitPrice(for: item.id)
         return HomeCard(padding: 12) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
@@ -1454,21 +1456,24 @@ struct PetItemDetailView: View {
                     } label: {
                         HStack {
                             Text(HomeDateText.display(record.occurrenceDate)).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(record.totalPrice.map(currency2) ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
-                            Text(record.unitPrice.map { "\(currency2($0))/\(record.unit)" } ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                            Text(record.recordedInboundTotalPrice.map(currency2) ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
+                            Text(record.recordedInboundUnitPrice.map { "\(currency2($0))/\(record.unit)" } ?? "未记录").frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         .font(.system(size: 11))
                         .foregroundStyle(HomeTheme.muted)
-                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
                 Divider()
-                HStack(spacing: 16) {
-                    Spacer()
-                    Text("最低 \(records.compactMap(\.unitPrice).min().map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
-                    Text("最近 \(unitPriceRecords.first?.unitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
+                VStack(alignment: .trailing, spacing: 4) {
+                    HStack(spacing: 16) {
+                        Spacer(minLength: 0)
+                        Text("最低 \(minimumUnitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
+                        Text("最近 \(recentUnitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
+                    }
+                    Text("入库加权均价 \(averageUnitPrice.map { "\(currency2($0))/\(item.unit)" } ?? "暂无")")
                 }
                 .font(.system(size: 11))
                 .foregroundStyle(HomeTheme.muted)
@@ -1772,10 +1777,27 @@ func orderedPetReviewDimensions(_ scores: [String: Int]) -> [String] {
     return known + remaining
 }
 
+func transactionTypeTitle(_ type: PetInventoryTransactionType) -> String {
+    switch type {
+    case .inbound: "入库"
+    case .outbound: "出库"
+    case .adjustment: "库存修正"
+    }
+}
+
 func petTransactionAmountSummary(_ transaction: PetInventoryTransaction) -> String {
-    let totalPrice = transaction.totalPrice.map(currency2) ?? "未记录"
-    let unitPrice = transaction.unitPrice.map { "\(currency2($0))/\(transaction.unit)" } ?? "未记录"
-    return "总价 \(totalPrice) · 单价 \(unitPrice)"
+    switch transaction.type {
+    case .inbound:
+        guard let total = transaction.recordedInboundTotalPrice,
+              let unit = transaction.recordedInboundUnitPrice else { return "价格未记录" }
+        return "总价 \(currency2(total)) · 单价 \(currency2(unit))/\(transaction.unit)"
+    case .outbound:
+        guard let total = transaction.recordedOutboundTotalPrice,
+              let unit = transaction.unitPrice, unit > 0 else { return "价格未记录 · 无法计算" }
+        return "总价 \(currency2(total)) · 单价 \(currency2(unit))/\(transaction.unit)"
+    case .adjustment:
+        return "价格不适用"
+    }
 }
 
 func currency2(_ value: Double) -> String {

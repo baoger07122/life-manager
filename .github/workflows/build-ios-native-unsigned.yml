@@ -24,6 +24,16 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Validate moving-average inventory costs
+        working-directory: ios-native
+        run: |
+          swiftc \
+            HomeOSNative/Models/HomeModels.swift \
+            HomeOSNative/Data/PetInventoryCosting.swift \
+            Tests/PetInventoryCostingAcceptance.swift \
+            -o /tmp/pet-inventory-costing-acceptance
+          /tmp/pet-inventory-costing-acceptance
+
       - name: Generate the native Xcode project
         working-directory: ios-native
         run: xcodegen generate

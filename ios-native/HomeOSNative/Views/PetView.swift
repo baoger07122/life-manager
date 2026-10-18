@@ -77,7 +77,13 @@ struct PetView: View {
                     showMonthlyExpense = true
                     NativeHaptics.tap()
                 } label: {
-                    inventoryStatistic(title: "本月开销", value: store.petMonthlyExpense(), suffix: "元", currency: true)
+                    inventoryStatistic(
+                        title: "本月开销",
+                        value: store.petMonthlyExpense(),
+                        suffix: "元",
+                        currency: true,
+                        incomplete: store.petMonthlyUnpricedOutboundCount() > 0
+                    )
                 }
                 .buttonStyle(.plain)
             }
@@ -85,9 +91,23 @@ struct PetView: View {
         }
     }
 
-    private func inventoryStatistic(title: String, value: Double, suffix: String, currency: Bool = false) -> some View {
+    private func inventoryStatistic(
+        title: String,
+        value: Double,
+        suffix: String,
+        currency: Bool = false,
+        incomplete: Bool = false
+    ) -> some View {
         VStack(spacing: 5) {
-            Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+            HStack(spacing: 3) {
+                Text(title).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                if incomplete {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(HomeTheme.orange)
+                        .accessibilityLabel("部分出库价格无法计算")
+                }
+            }
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(currency
                     ? "¥\(value.formatted(.number.precision(.fractionLength(0...2))))"
@@ -315,10 +335,12 @@ private struct PetMonthlyExpenseView: View {
                 HomeCard {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("本月开销").font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                        Text("¥\(store.petMonthlyExpense().formatted(.number.precision(.fractionLength(2))))")
+                        Text(currency2(store.petMonthlyExpense()))
                             .font(HomeTypography.metric)
                             .foregroundStyle(HomeTheme.blue)
-                        Text("按出库时的单价快照计算；旧记录缺少快照时使用当前最新单价。")
+                        Text(store.petMonthlyUnpricedOutboundCount() == 0
+                            ? "只汇总可按当时库存成本计算的出库。"
+                            : "另有 \(store.petMonthlyUnpricedOutboundCount()) 笔出库价格未记录，无法计算，未计入总额。")
                             .font(HomeTypography.supporting)
                             .foregroundStyle(HomeTheme.muted)
                     }
@@ -349,8 +371,8 @@ private struct PetMonthlyExpenseView: View {
 
     private func expenseRow(_ transaction: PetInventoryTransaction) -> some View {
         let item = store.data.petItems.first { $0.id == transaction.productID }
-        let unitPrice = transaction.unitPrice ?? store.latestPetUnitPrice(for: transaction.productID) ?? 0
-        let total = transaction.totalPrice ?? abs(transaction.quantityChange) * unitPrice
+        let unitPrice = transaction.unitPrice.flatMap { $0 > 0 ? $0 : nil }
+        let total = transaction.recordedOutboundTotalPrice
         return HStack(spacing: 11) {
             Image(systemName: "arrow.up.circle.fill")
                 .font(.system(size: 20))
@@ -361,15 +383,15 @@ private struct PetMonthlyExpenseView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(HomeTheme.ink)
                     .lineLimit(1)
-                Text(unitPrice > 0
-                    ? "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · ¥\(unitPrice.formatted(.number.precision(.fractionLength(2))))/\(transaction.unit)"
-                    : "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · 待补价格")
+                Text(unitPrice.map {
+                    "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · \(currency2($0))/\(transaction.unit)"
+                } ?? "\(HomeDateText.display(transaction.occurrenceDate)) · \(abs(transaction.quantityChange).formatted(.number.precision(.fractionLength(0...2))))\(transaction.unit) · 价格未记录")
                     .font(HomeTypography.supporting)
                     .foregroundStyle(HomeTheme.muted)
                     .lineLimit(1)
             }
             Spacer(minLength: 6)
-            Text("¥\(total.formatted(.number.precision(.fractionLength(2))))")
+            Text(total.map(currency2) ?? "无法计算")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(HomeTheme.ink)
         }

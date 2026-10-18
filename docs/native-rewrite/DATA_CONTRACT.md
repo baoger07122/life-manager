@@ -43,7 +43,7 @@ settings{}
 - 编辑物品评价时按 `petProductReviews[].id` 更新原记录，保留 `createdAt`，只更新日期、评分、文字与 `updatedAt`。
 - `petPalatabilityReviews[]`：仅食品使用的分宠物适口性评价，保留宠物名称快照。
 - `settings.managedBrands[]`：可用于宠物或食品模块的品牌库，包含适用范围与停用状态；旧备份缺少时由已有品牌和默认品牌生成。
-- `petInventoryTransactions[].totalPrice` 与 `unitPrice`：新建物品的初始库存也作为入库流水记录可选购入总额和自动折算单价。
+- `petInventoryTransactions[].totalPrice` 与 `unitPrice`：入库保存原始购入总额和折算单价；出库保存当时库存的移动加权平均成本快照。只使用正数入库金额计入成本池；遇到无价库存时不按零元估算，无法可靠计算的出库保持空值。修改或删除入库金额、修改流水数量或日期后，原位重放该物品历史并更新受影响的出库快照。新建物品的初始库存也使用同一入库结构。
 
 `petItems[].lowStockThreshold` 和 `foodRole` 仅为旧备份宽容读取字段；当前原生新建/编辑页面不再写入预警库存或食品用途。
 

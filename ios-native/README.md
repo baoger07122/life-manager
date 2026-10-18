@@ -3,10 +3,11 @@
 完全原生 SwiftUI 重写工程，不包含 `WKWebView`。
 
 - 测试 Bundle ID：`com.bao.homeos.native`，可与当前 Capacitor 版并存安装。
-- 当前原生版本：`0.1.36 (38)`；未签名 IPA 已上传到 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.36)。
+- 当前待发布原生版本：`0.1.37 (39)`；标签推送后由 GitHub Actions 构建并上传未签名 IPA。
 - 对应 Web 功能基线：`v8.25.1`。
 - 本地数据文件：Application Support 下的 `home-os-v1.json`。
 - 备份格式与 Web `home-os-v1` JSON 保持兼容。
+- 入库正金额保留在原有 `totalPrice`/`unitPrice` 字段；出库成本按日期和创建顺序用移动加权平均重算，数据不足时保持空值并从可计算开销中排除。
 
 GitHub Actions 使用 XcodeGen 生成 Xcode 工程并输出未签名 IPA。
 

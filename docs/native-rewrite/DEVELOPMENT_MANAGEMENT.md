@@ -65,6 +65,7 @@
 - `0.1.34 (36)`：已于 `2026-10-05` 构建成功；设置页新增首页标签开关，支持关闭后保留首页总览入口；提交 `ac778df`，Actions 运行 `37262247899`，标签 `ios-native-v0.1.34`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.34)，文件大小 `4,709,197` 字节，SHA-256 `25862d7756c897fe672657a187f9d575ab40dcee677e7f0c6b3462fa53e8a1a8`。
 - `0.1.35 (37)`：已于 `2026-10-18` 构建成功；完善宠物物品备注、库存流水金额编辑与删除、快捷入库备注、品牌同款排序、行点击区域和猫砂评价维度；提交 `635b154`，Actions 运行 `39089391276`，标签 `ios-native-v0.1.35`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.35)，文件大小 `4,737,766` 字节，SHA-256 `0ecc4aeba83fce7fabd72c224f3136c73923201847839441930f007c23b152d2`。
 - `0.1.36 (38)`：已于 `2026-10-18` 构建成功；调整宠物物品详情与快捷库存操作的点击区域，补充全部库存流水和价格历史入口，并将猫砂自动生成流水设为只读；提交 `b554425`，Actions 运行 `39102643368`，标签 `ios-native-v0.1.36`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.36)，文件大小 `4,759,471` 字节，SHA-256 `6b74843d85d142233878647ce0f79f43da9117618b3d655a5320a27355916be0`。
+- `0.1.37 (39)`：已于 `2026-10-18` 构建成功；库存出库成本按发生日期和创建顺序使用移动加权平均重算，缺少成本来源时保持未知；库存流水详情默认精简并将编辑与删除金额操作分开；提交 `7521e4d`，Actions 运行 `39112096043`，标签 `ios-native-v0.1.37`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.37)，文件大小 `4,780,733` 字节，SHA-256 `9a6176e9279fd48913bcf03b04443293e39d8fb3966a84f0ec9b878a330061fd`。
 - 纯文档、Playgrounds 预览和未进入 IPA 的视觉调整不增加正式发布次数。
 - 一旦某版本 IPA 已提供测试，之后任何正式代码变化必须使用新版本。
 - `project.yml`、设置页展示、Playground `Package.swift` 和交付记录必须一致。

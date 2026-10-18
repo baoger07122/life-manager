@@ -1011,7 +1011,7 @@ struct PetInventoryTransactionEditorView: View {
         item: PetItem
     ) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            Text(row.title)
+            Text(detailRowTitle(row, transaction: transaction))
                 .font(HomeTypography.body)
                 .foregroundStyle(HomeTheme.ink)
             Spacer(minLength: 8)
@@ -1019,6 +1019,19 @@ struct PetInventoryTransactionEditorView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .frame(minHeight: HomeMetrics.controlHeight)
+    }
+
+    private func detailRowTitle(
+        _ row: PetInventoryTransactionDetailRow,
+        transaction: PetInventoryTransaction
+    ) -> String {
+        guard row == .quantity else { return row.title }
+        if isEditing && canEditRecord { return row.title }
+        switch transaction.type {
+        case .inbound: "入库数量"
+        case .outbound: "出库数量"
+        case .adjustment: "修正变化"
+        }
     }
 
     @ViewBuilder
@@ -1039,9 +1052,7 @@ struct PetInventoryTransactionEditorView: View {
                     Text(transaction.unit).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                 }
             } else {
-                Text("\(transaction.quantityChange > 0 ? "+" : "")\(transaction.quantityChange.formatted())\(transaction.unit)")
-                    .font(HomeTypography.body)
-                    .foregroundStyle(HomeTheme.ink)
+                displayedQuantity(transaction)
             }
         case .totalPrice:
             if isEditing && canEditTotalPrice {
@@ -1060,9 +1071,20 @@ struct PetInventoryTransactionEditorView: View {
             }
         case .unitPrice:
             let value = isEditing && canEditTotalPrice ? calculatedUnitPrice : displayedUnitPrice(transaction)
-            Text(value.map { "\(currency2($0))/\(item.unit)" } ?? "未记录")
-                .font(HomeTypography.body)
-                .foregroundStyle(value == nil ? HomeTheme.muted : HomeTheme.ink)
+            if let value {
+                HStack(spacing: 4) {
+                    Text(currency2(value))
+                        .font(HomeTypography.body)
+                        .foregroundStyle(HomeTheme.ink)
+                    Text("/\(item.unit)")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                }
+            } else {
+                Text("未记录")
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.muted)
+            }
         case .note:
             if isEditing && canEditRecord {
                 TextField("未填写", text: $note, axis: .vertical)
@@ -1091,6 +1113,33 @@ struct PetInventoryTransactionEditorView: View {
                 Text(fullChineseDate(transaction.occurrenceDate))
                     .font(HomeTypography.body)
                     .foregroundStyle(HomeTheme.ink)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func displayedQuantity(_ transaction: PetInventoryTransaction) -> some View {
+        switch transaction.type {
+        case .inbound, .outbound:
+            HStack(spacing: 4) {
+                Text(abs(transaction.quantityChange).formatted())
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.ink)
+                Text(transaction.unit)
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+            }
+        case .adjustment:
+            HStack(spacing: 4) {
+                Text(transaction.quantityChange >= 0 ? "增加" : "减少")
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                Text(abs(transaction.quantityChange).formatted())
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.ink)
+                Text(transaction.unit)
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
             }
         }
     }

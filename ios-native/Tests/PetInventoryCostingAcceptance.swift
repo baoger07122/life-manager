@@ -18,6 +18,8 @@ struct PetInventoryCostingAcceptance {
         try linkedLitterTransactionsCannotBeDeleted()
         try updatingTransactionPreservesHiddenFields()
         try transactionEditorAndDetailEntryContracts()
+        try pendingRepurchaseFiltering()
+        try pendingRepurchaseCategoryContracts()
         print("Pet inventory moving-average acceptance checks passed.")
     }
 
@@ -335,6 +337,9 @@ struct PetInventoryCostingAcceptance {
         expect(editor.contains("HomeMetrics.controlHeight"), "transaction rows use the standard control height")
         expect(editor.contains("HomeTypography.body") && !editor.contains(".font(.body)") && !editor.contains(".font(.footnote)"), "transaction fields share the new-item body typography")
         expect(editor.contains("HStack(alignment: .center") && !editor.contains(".padding(.vertical"), "note stays centered without extra vertical row padding")
+        expect(editor.contains("case .inbound: \"入库数量\"") && editor.contains("case .outbound: \"出库数量\"") && editor.contains("case .adjustment: \"修正变化\""), "view labels identify stock direction without changing adjustment meaning")
+        expect(editor.contains("abs(transaction.quantityChange).formatted()") && editor.contains("transaction.quantityChange >= 0 ? \"增加\" : \"减少\"") && !editor.contains("quantityChange > 0 ? \"+\" : \"\""), "view quantity uses absolute receipt/issue amounts and clear adjustment direction")
+        expect(editor.contains("Text(currency2(value))") && editor.contains("Text(\"/\\(item.unit)\")") && editor.contains("HStack(spacing: 4)"), "unit-price amount and unit are separate right-aligned labels")
         expect(editor.contains("DatePicker(\"时间\""), "time edits in place")
         expect(editor.contains("TextField(\"数量\""), "quantity edits in place")
         expect(editor.contains("TextField(\"未记录\""), "optional inbound total price edits in place")
@@ -361,6 +366,114 @@ struct PetInventoryCostingAcceptance {
         expect(transactionCard.contains("allRecords.first"), "detail entry shows at most one recent record")
         expect(transactionCard.contains("查看全部") && transactionCard.contains("暂无库存流水"), "detail entry offers all records and a clear empty state")
         expect(!transactionCard.contains("prefix(5)"), "detail does not expand five inventory rows")
+    }
+
+    private static func pendingRepurchaseCategoryContracts() throws {
+        let petItemsSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
+        let filterSource = try String(contentsOfFile: "HomeOSNative/Models/PetPendingRepurchaseFilter.swift", encoding: .utf8)
+        guard let pending = sourceSlice(
+            petItemsSource,
+            from: "struct PetPendingRepurchaseView: View",
+            to: "struct PetNoRepurchaseLibraryView: View"
+        ), let categoryRename = sourceSlice(
+            storeSource,
+            from: "    func renameManagedCategory(id: String, name: String) -> Bool {",
+            to: "    func setManagedCategoryIcon(id: String, icon: String) -> Bool {"
+        ) else {
+            fatalError("pending repurchase presentation or category rename source is missing")
+        }
+
+        expect(pending.contains("store.categories(for: .pet)") && pending.contains("store.categories(for: .pet, parentID: $0.id)"), "pending library reuses live managed pet categories")
+        expect(pending.contains("ForEach(primaryCategories)") && pending.contains("ForEach(secondaryCategories)") && pending.contains("HomeUnderlineTab"), "pending library presents both category levels with the home selector style")
+        expect(pending.contains("capabilityKey == \"petFood\"") && pending.contains("[\"主食罐\"]") && pending.contains("[\"矿砂\"]"), "food and supplies use their requested default subcategories")
+        expect(pending.contains("PetPendingRepurchaseFilter.items(") && pending.contains("primaryCategory: selectedPrimary.name") && pending.contains("secondaryCategory: selectedSecondary.name"), "selected primary and secondary categories isolate the pending items")
+        expect(filterSource.contains("willRepurchase") && filterSource.contains("inventoryForItem(item.id) <= 0") && filterSource.contains("itemPrimaryCategory == primaryCategory") && filterSource.contains("itemSecondaryCategory == secondaryCategory"), "pending items require zero stock, repurchase intent and both selected categories")
+        expect(pending.contains("secondaryID = preferredSecondary?.id ?? \"\"") && pending.contains("onChange(of: primaryID)"), "changing the primary category selects its preferred secondary category")
+        expect(pending.contains("onChange(of: secondaryCategories.map(\\.id))") && pending.contains("onChange(of: primaryCategories.map(\\.id))"), "category additions, removal and reordering update the visible selectors")
+        expect(pending.contains("selectedSecondary?.name") && pending.contains("category.name"), "empty state and selector labels follow the current managed category names")
+        expect(pending.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: false)"), "marking a pending item as not for repurchase removes it from the filtered list")
+        expect(pending.contains("NavigationLink") && pending.contains("PetItemDetailView(itemID: item.id)"), "pending items retain their detail navigation")
+        expect(pending.contains("PetProductThumbnail(item: item)") && pending.contains("panelDivider") && pending.contains("panelBottomCap") && pending.contains(".listStyle(.plain)"), "pending list reuses the home thumbnail and unified divided card layout")
+        expect(!pending.contains("quickManagerRow") && !pending.contains("openEditor") && !pending.contains("新增"), "pending list has no stock quick actions or add-item control")
+        expect(categoryRename.contains("primaryCategory = cleanName") && categoryRename.contains("secondaryCategory = cleanName"), "renaming a managed category updates the product category names")
+    }
+
+    private static func pendingRepurchaseFiltering() throws {
+        let template = backup(transactions: [], activities: []).petItems[0]
+        var food = template
+        food.id = "food"
+        food.type = "主食罐"
+        food.primaryCategory = "宠物食品"
+        food.secondaryCategory = "主食罐"
+        food.willRepurchase = true
+
+        var supplies = template
+        supplies.id = "supplies"
+        supplies.type = "矿砂"
+        supplies.primaryCategory = "宠物用品"
+        supplies.secondaryCategory = "矿砂"
+        supplies.willRepurchase = true
+
+        var treats = supplies
+        treats.id = "treats"
+        treats.type = "零食"
+        treats.secondaryCategory = "零食"
+
+        let candidates = [food, supplies, treats]
+        let stock: [String: Double] = ["food": 0, "supplies": 0, "treats": 0]
+        let foodSelection = PetPendingRepurchaseFilter.items(
+            from: candidates,
+            primaryCategory: "宠物食品",
+            secondaryCategory: "主食罐",
+            inventoryForItem: { stock[$0, default: 0] }
+        )
+        expect(foodSelection.map(\.id) == ["food"], "food remains separate from supplies")
+
+        let secondarySelection = PetPendingRepurchaseFilter.items(
+            from: candidates,
+            primaryCategory: "宠物用品",
+            secondaryCategory: "零食",
+            inventoryForItem: { stock[$0, default: 0] }
+        )
+        expect(secondarySelection.map(\.id) == ["treats"], "switching the secondary category selects only its products")
+
+        let emptySelection = PetPendingRepurchaseFilter.items(
+            from: candidates,
+            primaryCategory: "宠物用品",
+            secondaryCategory: "未有商品的分类",
+            inventoryForItem: { stock[$0, default: 0] }
+        )
+        expect(emptySelection.isEmpty, "a category without products remains empty")
+
+        var cancelledRepurchase = food
+        cancelledRepurchase.willRepurchase = false
+        let noLongerPending = PetPendingRepurchaseFilter.items(
+            from: [cancelledRepurchase],
+            primaryCategory: "宠物食品",
+            secondaryCategory: "主食罐",
+            inventoryForItem: { _ in 0 }
+        )
+        expect(noLongerPending.isEmpty, "turning off repurchase intent removes the product from pending")
+
+        let restocked = PetPendingRepurchaseFilter.items(
+            from: [food],
+            primaryCategory: "宠物食品",
+            secondaryCategory: "主食罐",
+            inventoryForItem: { _ in 1 }
+        )
+        expect(restocked.isEmpty, "restocking removes the product from pending")
+
+        var renamed = food
+        renamed.primaryCategory = "宠物主粮"
+        renamed.secondaryCategory = "干粮"
+        let renamedSelection = PetPendingRepurchaseFilter.items(
+            from: [renamed],
+            primaryCategory: "宠物主粮",
+            secondaryCategory: "干粮",
+            inventoryForItem: { _ in 0 }
+        )
+        expect(renamedSelection.map(\.id) == ["food"], "renamed category names match the updated product category")
     }
 
     private static func sourceSlice(_ source: String, from start: String, to end: String) -> String? {

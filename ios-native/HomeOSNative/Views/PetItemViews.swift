@@ -381,8 +381,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 NativeHaptics.tap()
                 route = .detail(itemID: item.id)
             } label: {
-                productImage(item)
-                    .frame(width: 48, height: 48)
+                PetProductThumbnail(item: item)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -695,16 +694,24 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
     }
 
-    @ViewBuilder private func productImage(_ item: PetItem) -> some View {
+}
+
+private struct PetProductThumbnail: View {
+    let item: PetItem
+
+    @ViewBuilder
+    var body: some View {
         if let image = item.image, !image.isEmpty {
-            PetStoredImage(reference: image).frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            PetStoredImage(reference: image)
+                .frame(width: 48, height: 48)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         } else {
             Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "takeoutbag.and.cup.and.straw.fill")
-                .foregroundStyle(HomeTheme.blue).frame(width: 48, height: 48)
+                .foregroundStyle(HomeTheme.blue)
+                .frame(width: 48, height: 48)
                 .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
-
 }
 
 private enum PetItemsRoute: Hashable {
@@ -1052,10 +1059,34 @@ private struct PetRatingProductPickerSheet: View {
 
 struct PetPendingRepurchaseView: View {
     @EnvironmentObject private var store: HomeStore
+    @State private var primaryID = ""
+    @State private var secondaryID = ""
 
+    private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
+    private var selectedPrimary: ManagedCategory? {
+        primaryCategories.first { $0.id == primaryID }
+            ?? primaryCategories.first { $0.capabilityKey == "petFood" }
+            ?? primaryCategories.first
+    }
+    private var secondaryCategories: [ManagedCategory] {
+        selectedPrimary.map { store.categories(for: .pet, parentID: $0.id) } ?? []
+    }
+    private var selectedSecondary: ManagedCategory? {
+        secondaryCategories.first { $0.id == secondaryID } ?? preferredSecondary
+    }
+    private var preferredSecondary: ManagedCategory? {
+        let preferredNames = selectedPrimary?.capabilityKey == "petFood" ? ["主食罐"] : ["矿砂"]
+        return preferredNames.compactMap { name in secondaryCategories.first { $0.name == name } }.first
+            ?? secondaryCategories.first
+    }
     private var items: [PetItem] {
-        store.activePetItems
-            .filter { $0.resolvedWillRepurchase && store.petInventory(for: $0.id) <= 0 }
+        guard let selectedPrimary, let selectedSecondary else { return [] }
+        return PetPendingRepurchaseFilter.items(
+            from: store.activePetItems,
+            primaryCategory: selectedPrimary.name,
+            secondaryCategory: selectedSecondary.name,
+            inventoryForItem: { store.petInventory(for: $0) }
+        )
             .sorted {
                 let left = $0.updatedAt ?? $0.createdAt ?? 0
                 let right = $1.updatedAt ?? $1.createdAt ?? 0
@@ -1065,58 +1096,211 @@ struct PetPendingRepurchaseView: View {
 
     var body: some View {
         List {
+            categorySelectorPanel
+                .listRowInsets(.init(top: 10, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
             if items.isEmpty {
-                EmptyState(icon: "cart.badge.plus", title: "暂无待回购商品", message: "库存归零且仍计划回购的商品会出现在这里。")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 28)
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
+                VStack(spacing: 12) {
+                    EmptyState(
+                        icon: "cart.badge.plus",
+                        title: "暂无待回购商品",
+                        message: "“\(selectedSecondary?.name ?? selectedPrimary?.name ?? "当前")”分类里没有库存为 0 且计划回购的商品。"
+                    )
+                    .padding(.vertical, 10)
+                }
+                .background(HomeTheme.card)
+                .overlay(alignment: .top) { panelDivider }
+                .listRowInsets(panelRowInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             } else {
                 ForEach(items) { item in
-                    NavigationLink {
-                        PetItemDetailView(itemID: item.id)
+                    pendingItemRow(item)
+                        .background(HomeTheme.card)
+                        .overlay(alignment: .top) { panelDivider }
+                        .listRowInsets(panelRowInsets)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                }
+            }
+
+            panelBottomCap
+                .listRowInsets(panelRowInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+        }
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 1)
+        .scrollContentBackground(.hidden)
+        .background(HomeTheme.background)
+        .scrollIndicators(.hidden)
+        .navigationTitle("待回购")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear(perform: synchronizeSelections)
+        .onChange(of: primaryID) { _, _ in
+            secondaryID = preferredSecondary?.id ?? ""
+            NativeHaptics.selection()
+        }
+        .onChange(of: primaryCategories.map(\.id)) { _, _ in synchronizeSelections() }
+        .onChange(of: secondaryCategories.map(\.id)) { _, _ in synchronizeSelections() }
+    }
+
+    private var categorySelectorPanel: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ForEach(primaryCategories) { category in
+                    Button {
+                        primaryID = category.id
                     } label: {
-                        HStack(spacing: 11) {
-                            pendingImage(item)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.displayTitle)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(HomeTheme.ink)
-                                    .lineLimit(1)
-                                Text("\(item.resolvedPrimaryCategory) · \(item.resolvedSecondaryCategory)")
-                                    .font(HomeTypography.supporting)
-                                    .foregroundStyle(HomeTheme.muted)
-                            }
-                        }
+                        HomeUnderlineTab(
+                            title: category.name,
+                            selected: selectedPrimary?.id == category.id,
+                            prominent: true
+                        )
+                        .padding(.horizontal, 6)
+                        .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
+                        .contentShape(Rectangle())
                     }
-                    .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    .buttonStyle(.plain)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(secondaryCategories) { category in
                         Button {
-                            store.setPetItemRepurchase(id: item.id, willRepurchase: false)
+                            secondaryID = category.id
+                            NativeHaptics.selection()
                         } label: {
-                            Label("不回购", systemImage: "cart.badge.minus")
+                            HomeUnderlineTab(title: category.name, selected: selectedSecondary?.id == category.id)
+                                .padding(.horizontal, 2)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(minHeight: HomeMetrics.minimumTapTarget)
+                                .contentShape(Rectangle())
                         }
-                        .tint(HomeTheme.orange)
+                        .buttonStyle(.plain)
                     }
                 }
             }
+            .padding(.leading, 14)
+            .padding(.trailing, 7)
+            .padding(.bottom, 7)
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle("待回购")
-        .navigationBarTitleDisplayMode(.inline)
+        .background(
+            HomeTheme.card,
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 18,
+                style: .continuous
+            )
+        )
     }
 
-    @ViewBuilder private func pendingImage(_ item: PetItem) -> some View {
-        if let image = item.image, !image.isEmpty {
-            PetStoredImage(reference: image)
-                .frame(width: 46, height: 46)
-                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-        } else {
-            Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "shippingbox.fill")
-                .foregroundStyle(HomeTheme.blue)
-                .frame(width: 46, height: 46)
-                .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+    private var panelRowInsets: EdgeInsets {
+        .init(top: 0, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset)
+    }
+
+    private var panelDivider: some View {
+        Rectangle()
+            .fill(HomeTheme.line.opacity(0.72))
+            .frame(height: 0.5)
+            .padding(.horizontal, 14)
+    }
+
+    private var panelBottomCap: some View {
+        Color.clear
+            .frame(height: 10)
+            .background(
+                HomeTheme.card,
+                in: UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 18,
+                    bottomTrailingRadius: 18,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+            )
+    }
+
+    private func synchronizeSelections() {
+        if !primaryCategories.contains(where: { $0.id == primaryID }) {
+            primaryID = primaryCategories.first(where: { $0.capabilityKey == "petFood" })?.id
+                ?? primaryCategories.first?.id
+                ?? ""
         }
+        if !secondaryCategories.contains(where: { $0.id == secondaryID }) {
+            secondaryID = preferredSecondary?.id ?? ""
+        }
+    }
+
+    private func pendingItemRow(_ item: PetItem) -> some View {
+        NavigationLink {
+            PetItemDetailView(itemID: item.id)
+        } label: {
+            HStack(spacing: 0) {
+                PetProductThumbnail(item: item)
+                HStack(spacing: 11) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                        Text(item.displayNameAndVariant)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(HomeTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.84)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(specificationAndStock(item))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                        if let rating = store.petProductRating(productID: item.id) {
+                            Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(HomeTheme.orange)
+                        } else {
+                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                        }
+                    }
+                    .frame(width: 106, alignment: .trailing)
+                    .frame(minHeight: 48, alignment: .trailing)
+                }
+                .padding(.leading, 11)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button {
+                store.setPetItemRepurchase(id: item.id, willRepurchase: false)
+            } label: {
+                Label("不回购", systemImage: "cart.badge.minus")
+            }
+            .tint(HomeTheme.orange)
+        }
+    }
+
+    private func specificationAndStock(_ item: PetItem) -> String {
+        let quantity = store.petInventory(for: item.id).formatted()
+        let package = (item.packageType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stockText = "\(quantity)\(package.isEmpty ? item.unit : package)"
+        let spec = item.spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
     }
 }
 

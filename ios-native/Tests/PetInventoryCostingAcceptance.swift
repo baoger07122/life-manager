@@ -63,7 +63,11 @@ struct PetInventoryCostingAcceptance {
         afterRemoval[1].totalPrice = nil
         afterRemoval[1].unitPrice = nil
         let after = try PetInventoryCosting.replay(afterRemoval)
-        expect(PetInventoryCosting.weightedAverageInboundUnitPrice(after.events) == nil, "price history excludes the removed amount")
+        expectClose(
+            PetInventoryCosting.weightedAverageInboundUnitPrice(after.events),
+            10,
+            "price history keeps the remaining priced receipt"
+        )
         expect(after.events.first { $0.id == "out" }?.totalPrice == nil, "later outbound becomes unpriced after removal")
         let monthlyExpense = after.events.compactMap {
             PetInventoryCosting.recordedOutboundTotal(quantityChange: $0.quantityChange, totalPrice: $0.totalPrice, unitPrice: $0.unitPrice)

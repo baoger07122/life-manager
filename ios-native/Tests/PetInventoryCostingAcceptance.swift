@@ -317,10 +317,11 @@ struct PetInventoryCostingAcceptance {
         guard let rows = sourceSlice(inventorySource, from: "enum PetInventoryTransactionDetailRow", to: "    var id:"),
               let editor = sourceSlice(inventorySource, from: "struct PetInventoryTransactionEditorView", to: "struct PetProductReviewEditorView"),
               let detail = sourceSlice(detailSource, from: "struct PetItemDetailView", to: "private func productHeroCard"),
-              let transactionCard = sourceSlice(detailSource, from: "private func transactionCard", to: "private func priceCard") else {
+              let transactionCard = sourceSlice(detailSource, from: "private func transactionCard", to: "private func priceCard"),
+              let selector = sourceSlice(detailSource, from: "private var secondaryAndSortRow", to: "private func selectDefaultSecondary") else {
             fatalError("pet inventory presentation source sections are missing")
         }
-        let expectedRows = ["case time", "case quantity", "case totalPrice", "case unitPrice", "case note"]
+        let expectedRows = ["case quantity", "case totalPrice", "case unitPrice", "case note", "case time"]
         let declaredRows = rows.components(separatedBy: .newlines).compactMap { line -> String? in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             return trimmed.hasPrefix("case ") ? trimmed : nil
@@ -331,16 +332,28 @@ struct PetInventoryCostingAcceptance {
         expect(editor.contains("PetInventoryTransactionDetailRow.allCases"), "all five rows share one card")
         expect(!editor.contains("Form {"), "transaction editor avoids the multi-section form")
         expect(!editor.contains("Section("), "transaction editor has no repeated edit sections")
+        expect(editor.contains("HomeMetrics.controlHeight"), "transaction rows use the standard control height")
+        expect(editor.contains("HomeTypography.body") && !editor.contains(".font(.body)") && !editor.contains(".font(.footnote)"), "transaction fields share the new-item body typography")
+        expect(editor.contains("HStack(alignment: .center") && !editor.contains(".padding(.vertical"), "note stays centered without extra vertical row padding")
         expect(editor.contains("DatePicker(\"时间\""), "time edits in place")
         expect(editor.contains("TextField(\"数量\""), "quantity edits in place")
         expect(editor.contains("TextField(\"未记录\""), "optional inbound total price edits in place")
         expect(editor.contains("calculatedUnitPrice"), "unit price is derived live and read-only")
-        expect(editor.contains("TextField(\"未填写\", text: $note"), "note edits in place and supports empty display")
+        expect(editor.contains("TextField(\"未填写\", text: $note") && editor.contains(".lineLimit(1...)"), "note has a matching-size placeholder and grows for long text")
+        expect(editor.contains(".multilineTextAlignment(.trailing)"), "note aligns with the right-side value column")
         expect(editor.contains("value.isEmpty ? \"未填写\" : value"), "empty note displays the requested placeholder")
-        expect(editor.contains("删除这条记录") && editor.contains("confirmationDialog"), "full-record deletion is separately confirmed")
-        expect(editor.contains("isLitterReadOnly") && editor.contains("disabled(true)"), "linked litter deletion is disabled with an explanation")
-        expect(editor.contains("transaction.type != .adjustment"), "adjustments stay read-only while deletion remains separately available")
+        expect(editor.contains("if isEditing && canDeleteTransaction") && editor.contains("删除这条记录") && editor.contains("confirmationDialog"), "full-record deletion is confirmed and appears only in edit mode")
+        if let litterNotice = sourceSlice(editor, from: "if isLitterReadOnly {", to: "if isEditing && canDeleteTransaction {") {
+            expect(litterNotice.contains("猫砂联动流水只读"), "linked litter records show a short read-only explanation")
+            expect(!litterNotice.contains("Button(\"删除这条记录\""), "linked litter records have no disabled delete button")
+        } else {
+            fatalError("linked litter read-only notice is missing")
+        }
+        expect(editor.contains("canEnterEditMode") && editor.contains("transaction.type != .adjustment"), "read-only adjustments retain the edit-mode deletion path")
         expect(!editor.contains("更多信息") && !editor.contains("购买渠道") && !editor.contains("来源"), "hidden transaction fields are not displayed")
+        expect(selector.contains("HStack(spacing: 6)") && selector.contains(".fixedSize(horizontal: true, vertical: false)"), "secondary categories use compact intrinsic widths")
+        expect(!selector.contains(".frame(minWidth: HomeMetrics.minimumTapTarget") && !selector.contains(".padding(.horizontal, 4)"), "secondary selector avoids wide tab insets")
+        expect(selector.contains(".frame(width: 44, height: HomeMetrics.minimumTapTarget") && selector.contains("ScrollView(.horizontal"), "sorting stays fixed beside the horizontal selector")
         let ordering = ["productReviewCard", "palatabilityCard", "priceCard(item)", "transactionCard(item)"]
             .compactMap { detail.range(of: $0)?.lowerBound }
         expect(ordering.count == 4 && ordering == ordering.sorted(), "transaction entry follows evaluations and price history")

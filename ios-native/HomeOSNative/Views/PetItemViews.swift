@@ -495,7 +495,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     private var secondaryAndSortRow: some View {
         HStack(spacing: 4) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(secondaryCategories) { category in
                         Button {
                             secondaryID = category.id
@@ -507,8 +507,9 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                                 title: category.name,
                                 selected: secondaryID == category.id
                             )
-                            .padding(.horizontal, 4)
-                            .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
+                            .padding(.horizontal, 2)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .frame(minHeight: HomeMetrics.minimumTapTarget)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)

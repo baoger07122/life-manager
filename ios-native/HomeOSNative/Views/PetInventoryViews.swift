@@ -855,21 +855,21 @@ struct PetInventoryTransactionHistoryView: View {
 }
 
 enum PetInventoryTransactionDetailRow: String, CaseIterable, Identifiable, Equatable {
-    case time
     case quantity
     case totalPrice
     case unitPrice
     case note
+    case time
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .time: "时间"
         case .quantity: "数量"
         case .totalPrice: "本次总价"
         case .unitPrice: "折算单价"
         case .note: "备注"
+        case .time: "时间"
         }
     }
 }
@@ -915,6 +915,7 @@ struct PetInventoryTransactionEditorView: View {
         guard let transaction else { return false }
         return !isLitterLinked(transaction)
     }
+    private var canEnterEditMode: Bool { canDeleteTransaction }
     private var isLitterReadOnly: Bool {
         guard let transaction else { return false }
         return isLitterLinked(transaction)
@@ -935,33 +936,29 @@ struct PetInventoryTransactionEditorView: View {
             ScrollView {
                 VStack(spacing: 14) {
                     if let transaction, let item {
-                        HomeCard(padding: 0) {
+                        HomeCard {
                             VStack(spacing: 0) {
                                 ForEach(PetInventoryTransactionDetailRow.allCases) { row in
-                                    if row != .time {
-                                        Divider().padding(.leading, 12)
+                                    if row != .quantity {
+                                        Divider().overlay(HomeTheme.line)
                                     }
                                     detailRow(row, transaction: transaction, item: item)
                                 }
                             }
-                            .padding(.horizontal, 12)
                         }
 
                         if isLitterReadOnly {
-                            Button("删除这条记录", role: .destructive) {}
-                                .frame(maxWidth: .infinity, minHeight: 48)
-                                .background(HomeTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .disabled(true)
-                            Text("猫砂关联流水不能单独删除或修改，请通过猫砂补充/换洗的成组操作处理。")
-                                .font(.footnote)
+                            Text("猫砂联动流水只读，请通过补充或换洗操作管理。")
+                                .font(HomeTypography.supporting)
                                 .foregroundStyle(HomeTheme.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                        } else if canDeleteTransaction {
+                        }
+                        if isEditing && canDeleteTransaction {
                             Button("删除这条记录", role: .destructive) {
                                 confirmDelete = true
                                 NativeHaptics.warning()
                             }
-                            .font(.body.weight(.semibold))
+                            .font(HomeTypography.body.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 48)
                             .background(HomeTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
@@ -972,7 +969,7 @@ struct PetInventoryTransactionEditorView: View {
                 .padding(HomeMetrics.pageInset)
             }
             .background(HomeTheme.background)
-            .navigationTitle(isEditing ? "编辑记录" : "查看记录")
+            .navigationTitle(isEditing ? (canEditRecord ? "编辑记录" : "记录管理") : "查看记录")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -984,7 +981,7 @@ struct PetInventoryTransactionEditorView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("保存", action: save).disabled(!canSave)
                     }
-                } else if canEditRecord {
+                } else if canEnterEditMode {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("编辑", action: beginEditing)
                     }
@@ -1013,18 +1010,15 @@ struct PetInventoryTransactionEditorView: View {
         transaction: PetInventoryTransaction,
         item: PetItem
     ) -> some View {
-        HStack(alignment: row == .note ? .top : .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             Text(row.title)
-                .font(.footnote)
-                .foregroundStyle(HomeTheme.muted)
-                .fixedSize(horizontal: true, vertical: false)
+                .font(HomeTypography.body)
+                .foregroundStyle(HomeTheme.ink)
             Spacer(minLength: 8)
             rowValue(row, transaction: transaction, item: item)
-                .frame(maxWidth: .infinity, alignment: row == .note ? .leading : .trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.vertical, row == .note ? 10 : 0)
-        .frame(minHeight: row == .note ? 52 : 46)
-        .contentShape(Rectangle())
+        .frame(minHeight: HomeMetrics.controlHeight)
     }
 
     @ViewBuilder
@@ -1034,29 +1028,19 @@ struct PetInventoryTransactionEditorView: View {
         item: PetItem
     ) -> some View {
         switch row {
-        case .time:
-            if isEditing && canEditRecord {
-                DatePicker("时间", selection: $date, displayedComponents: .date)
-                    .labelsHidden()
-                    .datePickerStyle(.compact)
-                    .font(.body)
-                    .accessibilityLabel("时间")
-            } else {
-                Text(fullChineseDate(transaction.occurrenceDate)).font(.body).foregroundStyle(HomeTheme.ink)
-            }
         case .quantity:
             if isEditing && canEditRecord {
                 HStack(spacing: 5) {
                     TextField("数量", text: $quantityText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .font(.body)
+                        .font(HomeTypography.body)
                         .accessibilityLabel("数量")
-                    Text(transaction.unit).font(.body).foregroundStyle(HomeTheme.muted)
+                    Text(transaction.unit).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                 }
             } else {
                 Text("\(transaction.quantityChange > 0 ? "+" : "")\(transaction.quantityChange.formatted())\(transaction.unit)")
-                    .font(.body)
+                    .font(HomeTypography.body)
                     .foregroundStyle(HomeTheme.ink)
             }
         case .totalPrice:
@@ -1065,34 +1049,48 @@ struct PetInventoryTransactionEditorView: View {
                     TextField("未记录", text: $totalPriceText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .font(.body)
+                        .font(HomeTypography.body)
                         .accessibilityLabel("本次总价，可留空")
-                    Text("元").font(.body).foregroundStyle(HomeTheme.muted)
+                    Text("元").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                 }
             } else {
                 Text(displayedTotalPrice(transaction).map(currency2) ?? "未记录")
-                    .font(.body)
-                    .foregroundStyle(HomeTheme.ink)
+                    .font(HomeTypography.body)
+                    .foregroundStyle(displayedTotalPrice(transaction) == nil ? HomeTheme.muted : HomeTheme.ink)
             }
         case .unitPrice:
             let value = isEditing && canEditTotalPrice ? calculatedUnitPrice : displayedUnitPrice(transaction)
             Text(value.map { "\(currency2($0))/\(item.unit)" } ?? "未记录")
-                .font(.body)
+                .font(HomeTypography.body)
                 .foregroundStyle(value == nil ? HomeTheme.muted : HomeTheme.ink)
         case .note:
             if isEditing && canEditRecord {
                 TextField("未填写", text: $note, axis: .vertical)
-                    .lineLimit(1...4)
-                    .multilineTextAlignment(.leading)
-                    .font(.body)
+                    .lineLimit(1...)
+                    .multilineTextAlignment(.trailing)
+                    .font(HomeTypography.body)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel("备注")
             } else {
                 let value = transaction.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 Text(value.isEmpty ? "未填写" : value)
-                    .font(.body)
+                    .font(HomeTypography.body)
                     .foregroundStyle(value.isEmpty ? HomeTheme.muted : HomeTheme.ink)
+                    .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        case .time:
+            if isEditing && canEditRecord {
+                DatePicker("时间", selection: $date, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .font(HomeTypography.body)
+                    .tint(HomeTheme.blue)
+                    .accessibilityLabel("时间")
+            } else {
+                Text(fullChineseDate(transaction.occurrenceDate))
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.ink)
             }
         }
     }
@@ -1113,7 +1111,7 @@ struct PetInventoryTransactionEditorView: View {
     }
 
     private func beginEditing() {
-        guard canEditRecord, let transaction else { return }
+        guard canEnterEditMode, let transaction else { return }
         loadFields(from: transaction)
         isEditing = true
         NativeHaptics.tap()

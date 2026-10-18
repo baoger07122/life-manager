@@ -1168,13 +1168,13 @@ struct PetInventoryTransactionEditorView: View {
 
     private func displayedUnitPrice(_ transaction: PetInventoryTransaction) -> Double? {
         switch transaction.type {
-        case .inbound: transaction.recordedInboundUnitPrice
+        case .inbound: return transaction.recordedInboundUnitPrice
         case .outbound:
             if let unitPrice = transaction.unitPrice, unitPrice.isFinite, unitPrice > 0 { return unitPrice }
             guard let total = transaction.recordedOutboundTotalPrice, transaction.quantityChange != 0 else { return nil }
             let unitPrice = total / abs(transaction.quantityChange)
             return unitPrice.isFinite && unitPrice > 0 ? unitPrice : nil
-        case .adjustment: nil
+        case .adjustment: return nil
         }
     }
 

@@ -495,7 +495,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     private var secondaryAndSortRow: some View {
         HStack(spacing: 4) {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(secondaryCategories) { category in
                         Button {
                             secondaryID = category.id

@@ -351,7 +351,7 @@ struct PetInventoryCostingAcceptance {
         }
         expect(editor.contains("canEnterEditMode") && editor.contains("transaction.type != .adjustment"), "read-only adjustments retain the edit-mode deletion path")
         expect(!editor.contains("更多信息") && !editor.contains("购买渠道") && !editor.contains("来源"), "hidden transaction fields are not displayed")
-        expect(selector.contains("HStack(spacing: 6)") && selector.contains(".fixedSize(horizontal: true, vertical: false)"), "secondary categories use compact intrinsic widths")
+        expect(selector.contains("HStack(spacing: 8)") && selector.contains(".padding(.horizontal, 2)") && selector.contains(".fixedSize(horizontal: true, vertical: false)"), "secondary categories use the tuned intrinsic spacing")
         expect(!selector.contains(".frame(minWidth: HomeMetrics.minimumTapTarget") && !selector.contains(".padding(.horizontal, 4)"), "secondary selector avoids wide tab insets")
         expect(selector.contains(".frame(width: 44, height: HomeMetrics.minimumTapTarget") && selector.contains("ScrollView(.horizontal"), "sorting stays fixed beside the horizontal selector")
         let ordering = ["productReviewCard", "palatabilityCard", "priceCard(item)", "transactionCard(item)"]

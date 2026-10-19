@@ -20,6 +20,9 @@ struct PetInventoryCostingAcceptance {
         try transactionEditorAndDetailEntryContracts()
         try pendingRepurchaseFiltering()
         try pendingRepurchaseCategoryContracts()
+        try palatabilityReviewGrouping()
+        try heroAveragePricePresentation()
+        try petItemDetailPresentationContracts()
         print("Pet inventory moving-average acceptance checks passed.")
     }
 
@@ -474,6 +477,117 @@ struct PetInventoryCostingAcceptance {
             inventoryForItem: { _ in 0 }
         )
         expect(renamedSelection.map(\.id) == ["food"], "renamed category names match the updated product category")
+    }
+
+    private static func palatabilityReviewGrouping() throws {
+        let bling = petProfile("bling", name: "BLING", createdAt: 1)
+        let secondPet = petProfile("second", name: "小猫", createdAt: 2)
+        let deletedPetReviews = [palatabilityReview(
+            "deleted", petID: "deleted-pet", petName: "历史猫", date: "2026-01-04", createdAt: 4,
+            preference: "不喜欢"
+        )]
+        let reviews = [
+            palatabilityReview("second-legacy", petID: secondPet.id, petName: secondPet.name, date: "2026-01-02", createdAt: 2, preference: "一般"),
+            palatabilityReview("bling-old", petID: bling.id, petName: bling.name, date: "2026-01-01", createdAt: 1, preference: "喜欢"),
+            palatabilityReview("bling-new", petID: bling.id, petName: bling.name, date: "2026-01-03", createdAt: 3, score: 3),
+            deletedPetReviews[0],
+            palatabilityReview("other-product", productID: "other", petID: bling.id, petName: bling.name, date: "2026-01-05", createdAt: 5, score: 1)
+        ]
+
+        let groups = PetPalatabilityReviewGrouping.groups(
+            productID: "product",
+            reviews: reviews,
+            activePets: [bling, secondPet]
+        )
+        expect(groups.map(\.petID) == ["bling", "second", "deleted-pet"], "palatability summaries follow active-pet order, then include deleted-pet history")
+        expect(groups[0].petName == "BLING" && groups[0].count == 2, "multiple reviews collapse into one current-pet summary")
+        expectClose(groups[0].averageScore, 4, "legacy preference score participates in the per-pet average")
+        expect(groups[0].records.map(\.id) == ["bling-new", "bling-old"], "expanded history is ordered newest first")
+        expect(groups[1].count == 1, "a single review remains one editable pet entry")
+        expectClose(groups[1].averageScore, 3, "legacy neutral preference maps to its resolved score")
+        expect(groups[2].petName == "历史猫", "deleted pets retain their recorded name")
+        expectClose(groups[2].averageScore, 1, "legacy dislike preference maps to its resolved score")
+
+        var editedReview = reviews.first { $0.id == "bling-new" }!
+        editedReview.score = 1
+        editedReview.preference = "不喜欢"
+        let afterEdit = PetPalatabilityReviewGrouping.groups(
+            productID: "product",
+            reviews: reviews.map { $0.id == editedReview.id ? editedReview : $0 },
+            activePets: [bling, secondPet]
+        )
+        expectClose(afterEdit[0].averageScore, 3, "editing one review immediately changes that pet's average")
+
+        let singleReviewGroup = PetPalatabilityReviewGrouping.groups(
+            productID: "product",
+            reviews: [palatabilityReview("only", petID: bling.id, petName: bling.name, date: "2026-01-01", createdAt: 1, score: 5)],
+            activePets: [bling]
+        )
+        expect(singleReviewGroup.count == 1 && singleReviewGroup[0].count == 1, "one review produces exactly one non-aggregated summary")
+        expectClose(singleReviewGroup[0].averageScore, 5, "one-review summary shows that review's own score")
+    }
+
+    private static func heroAveragePricePresentation() throws {
+        expect(PetItemHeroAveragePrice.text(average: nil, unit: "罐") == nil, "hero omits an unavailable inbound average")
+        expect(PetItemHeroAveragePrice.text(average: 0, unit: "罐") == nil, "hero never displays a zero placeholder price")
+        expect(PetItemHeroAveragePrice.text(average: .infinity, unit: "罐") == nil, "hero omits a non-finite average")
+        expect(PetItemHeroAveragePrice.text(average: 4.67, unit: "罐") == "加权均价 ¥4.67/罐", "hero formats a valid weighted average with its unit")
+    }
+
+    private static func petItemDetailPresentationContracts() throws {
+        let source = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        guard let detail = sourceSlice(
+            source,
+            from: "struct PetItemDetailView: View",
+            to: "private enum PetItemDetailSheet"
+        ), let heroLine = sourceSlice(
+            detail,
+            from: "private func productSpecificationLine(_ item: PetItem) -> some View {",
+            to: "    private func isPetFood(_ item: PetItem) -> Bool {"
+        ), let palatability = sourceSlice(
+            detail,
+            from: "private var palatabilityCard: some View {",
+            to: "    @ViewBuilder private func detailProductImage"
+        ), let priceCard = sourceSlice(
+            detail,
+            from: "private func priceCard(_ item: PetItem) -> some View {",
+            to: "private var productReviewCard: some View {"
+        ) else {
+            fatalError("pet item detail presentation sections are missing")
+        }
+
+        expect(detail.contains("PetPalatabilityReviewGrouping.groups") && detail.contains("store.activePets"), "pet reviews are grouped in current pet-management order")
+        expect(palatability.contains("ForEach(groups)") && palatability.contains("DisclosureGroup(isExpanded:") && palatability.contains("ForEach(group.records)"), "each pet has one collapsed summary and can reveal every review")
+        expect(palatability.contains("group.count == 1") && palatability.contains("sheet = .palatability(reviewID: review.id)"), "a single review opens its original editor directly")
+        expect(palatability.contains("store.petPalatabilityRating(productID: itemID, petID: group.petID)") && palatability.contains("次评价") && palatability.contains("查看 \\(group.count) 条") && palatability.contains("收起"), "multi-review summaries show the per-pet average, count and clear expand control")
+        expect(palatability.contains("review.resolvedScore") && palatability.contains("review.note") && palatability.contains("HomeDateText.display(review.reviewDate)"), "expanded reviews retain resolved score, note, date and edit action")
+        expect(!palatability.contains("records.prefix(6)"), "pet history is not truncated to six records")
+        expect(heroLine.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && heroLine.contains("PetItemHeroAveragePrice.text"), "hero uses the shared weighted-average inbound price")
+        expect(heroLine.contains("ViewThatFits(in: .horizontal)") && heroLine.contains("HStack(alignment: .firstTextBaseline, spacing: 8)") && heroLine.contains("VStack(alignment: .leading"), "hero price stays beside the specification when possible and wraps when needed")
+        expect(heroLine.contains("HomeTypography.supporting") && heroLine.contains("HomeTheme.muted") && !heroLine.contains("Spacer()"), "hero average uses muted supporting text without a far-right spacer")
+        expect(priceCard.contains("入库加权均价") && priceCard.contains("averageUnitPrice"), "price history retains its original weighted-average reference")
+    }
+
+    private static func petProfile(_ id: String, name: String, createdAt: Double) -> PetProfile {
+        PetProfile(id: id, name: name, image: nil, breed: "", birthDate: "", isDeleted: false, createdAt: createdAt, updatedAt: createdAt)
+    }
+
+    private static func palatabilityReview(
+        _ id: String,
+        productID: String = "product",
+        petID: String,
+        petName: String,
+        date: String,
+        createdAt: Double,
+        score: Int? = nil,
+        preference: String = "一般",
+        note: String? = nil
+    ) -> PetPalatabilityReview {
+        PetPalatabilityReview(
+            id: id, productID: productID, petID: petID, petNameSnapshot: petName,
+            reviewDate: date, preference: preference, score: score, note: note,
+            createdAt: createdAt, updatedAt: createdAt
+        )
     }
 
     private static func sourceSlice(_ source: String, from start: String, to end: String) -> String? {

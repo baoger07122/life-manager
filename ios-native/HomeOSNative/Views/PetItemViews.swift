@@ -1412,6 +1412,7 @@ struct PetItemDetailView: View {
     let itemID: String
     @State private var showArchive = false
     @State private var sheet: PetItemDetailSheet?
+    @State private var expandedPalatabilityPetIDs = Set<String>()
     private var item: PetItem? { store.data.petItems.first { $0.id == itemID } }
 
     var body: some View {
@@ -1505,9 +1506,7 @@ struct PetItemDetailView: View {
                     Text(item.displayNameAndVariant)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(HomeTheme.ink)
-                    Text(productSpecification(item))
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
+                    productSpecificationLine(item)
                     Text("\(item.resolvedPrimaryCategory) · \(item.resolvedSecondaryCategory)")
                         .font(HomeTypography.supporting)
                         .foregroundStyle(HomeTheme.muted)
@@ -1729,38 +1728,121 @@ struct PetItemDetailView: View {
     }
 
     private var palatabilityCard: some View {
-        let records = store.data.petPalatabilityReviews.filter { $0.productID == itemID }.sorted { $0.reviewDate > $1.reviewDate }
+        let groups = PetPalatabilityReviewGrouping.groups(
+            productID: itemID,
+            reviews: store.data.petPalatabilityReviews,
+            activePets: store.activePets
+        )
         return HomeCard {
             VStack(alignment: .leading, spacing: 9) {
                 HomeSectionHeader(title: "猫咪评价", actionTitle: "添加") { sheet = .palatability(reviewID: nil) }
-                if records.isEmpty { Text("暂无猫咪评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
-                ForEach(records.prefix(6)) { review in
+                if groups.isEmpty { Text("暂无猫咪评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
+                ForEach(groups) { group in
                     Divider()
-                    Button {
-                        NativeHaptics.selection()
-                        sheet = .palatability(reviewID: review.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(review.petNameSnapshot).font(HomeTypography.cardTitle)
-                                Spacer()
-                                Text("\(review.resolvedScore)分")
-                                    .font(HomeTypography.body)
-                                    .foregroundStyle(palatabilityScoreColor(review.resolvedScore))
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(HomeTheme.muted)
-                            }
-                            if let note = review.note {
-                                Text(note).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                            }
-                            Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
+                    if group.count == 1, let review = group.latestRecord {
+                        Button {
+                            NativeHaptics.selection()
+                            sheet = .palatability(reviewID: review.id)
+                        } label: {
+                            palatabilityGroupSummary(group)
                         }
+                        .buttonStyle(.plain)
+                    } else {
+                        DisclosureGroup(isExpanded: Binding(
+                            get: { expandedPalatabilityPetIDs.contains(group.petID) },
+                            set: { isExpanded in
+                                if isExpanded {
+                                    expandedPalatabilityPetIDs.insert(group.petID)
+                                } else {
+                                    expandedPalatabilityPetIDs.remove(group.petID)
+                                }
+                            }
+                        )) {
+                            VStack(spacing: 6) {
+                                ForEach(group.records) { review in
+                                    palatabilityHistoryEntry(review)
+                                }
+                            }
+                            .padding(.top, 5)
+                        } label: {
+                            palatabilityGroupSummary(group)
+                        }
+                        .tint(HomeTheme.muted)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func palatabilityGroupSummary(_ group: PetPalatabilityReviewGroup) -> some View {
+        let average = store.petPalatabilityRating(productID: itemID, petID: group.petID)?.overall ?? group.averageScore
+        let scoreText = group.count == 1
+            ? "\(group.records[0].resolvedScore)"
+            : average.formatted(.number.precision(.fractionLength(1)))
+        return HStack(alignment: .top, spacing: 8) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(group.petName)
+                    .font(HomeTypography.cardTitle)
+                    .foregroundStyle(HomeTheme.ink)
+                if let latest = group.latestRecord {
+                    HStack(spacing: 6) {
+                        if let note = latest.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                            Text(note).lineLimit(1).truncationMode(.tail)
+                        }
+                        Text(HomeDateText.display(latest.reviewDate))
+                    }
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                }
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(scoreText)分")
+                    .font(HomeTypography.body)
+                    .foregroundStyle(palatabilityScoreColor(average))
+                if group.count > 1 {
+                    Text("\(group.count)次评价")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                    Text(expandedPalatabilityPetIDs.contains(group.petID) ? "收起" : "查看 \(group.count) 条")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private func palatabilityHistoryEntry(_ review: PetPalatabilityReview) -> some View {
+        Button {
+            NativeHaptics.selection()
+            sheet = .palatability(reviewID: review.id)
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(HomeDateText.display(review.reviewDate))
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                    Spacer(minLength: 4)
+                    Text("\(review.resolvedScore)分")
+                        .font(HomeTypography.body)
+                        .foregroundStyle(palatabilityScoreColor(Double(review.resolvedScore)))
+                    Image(systemName: "pencil")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(HomeTheme.muted)
+                }
+                if let note = review.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                    Text(note)
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private func detailProductImage(_ item: PetItem) -> some View {
@@ -1825,6 +1907,35 @@ struct PetItemDetailView: View {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         return values.isEmpty ? "规格未记录" : values.joined(separator: " · ")
+    }
+
+    private func productSpecificationLine(_ item: PetItem) -> some View {
+        let specification = productSpecification(item)
+        let averagePrice = store.petWeightedAverageInboundUnitPrice(for: item.id)
+        let averagePriceText = PetItemHeroAveragePrice.text(average: averagePrice, unit: item.unit)
+        return Group {
+            if let averagePriceText {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(specification)
+                        Text(averagePriceText)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(specification)
+                        Text(averagePriceText)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Text(specification)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .font(HomeTypography.supporting)
+        .foregroundStyle(HomeTheme.muted)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func isPetFood(_ item: PetItem) -> Bool {
@@ -1926,6 +2037,9 @@ private struct PetItemImageEditorSheet: View {
     }
 }
 func palatabilityScoreColor(_ score: Int) -> Color {
+    score >= 4 ? HomeTheme.success : score <= 2 ? HomeTheme.danger : HomeTheme.muted
+}
+func palatabilityScoreColor(_ score: Double) -> Color {
     score >= 4 ? HomeTheme.success : score <= 2 ? HomeTheme.danger : HomeTheme.muted
 }
 func sourceText(_ value: PetInventorySource) -> String {

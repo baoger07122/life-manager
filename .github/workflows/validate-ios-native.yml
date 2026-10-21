@@ -1,0 +1,58 @@
+name: Validate Home OS Native
+
+on:
+  push:
+    branches:
+      - codex/ios-native-rewrite
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/validate-ios-native.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: macos-26
+    steps:
+      - name: Checkout native rewrite branch
+        uses: actions/checkout@v4
+
+      - name: Confirm Apple toolchain
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Run native acceptance checks
+        working-directory: ios-native
+        run: |
+          swiftc \
+            HomeOSNative/Models/HomeModels.swift \
+            HomeOSNative/Models/PetItemDetailPresentation.swift \
+            HomeOSNative/Models/PetPendingRepurchaseFilter.swift \
+            HomeOSNative/Data/PetInventoryCosting.swift \
+            HomeOSNative/Data/PetInventoryHistoryMutation.swift \
+            Tests/PetInventoryCostingAcceptance.swift \
+            -o /tmp/pet-inventory-costing-acceptance
+          /tmp/pet-inventory-costing-acceptance
+
+      - name: Generate the native Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+
+      - name: Compile native Release app without signing
+        working-directory: ios-native
+        run: |
+          xcodebuild \
+            -project HomeOSNative.xcodeproj \
+            -scheme HomeOSNative \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""

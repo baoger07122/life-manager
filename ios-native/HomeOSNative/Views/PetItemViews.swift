@@ -1061,6 +1061,7 @@ struct PetPendingRepurchaseView: View {
     @EnvironmentObject private var store: HomeStore
     @State private var primaryID = ""
     @State private var secondaryID = ""
+    @State private var detailItemID: String?
 
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
     private var selectedPrimary: ManagedCategory? {
@@ -1138,6 +1139,9 @@ struct PetPendingRepurchaseView: View {
         .scrollIndicators(.hidden)
         .navigationTitle("待回购")
         .navigationBarTitleDisplayMode(.inline)
+        .navigationDestination(item: $detailItemID) { itemID in
+            PetItemDetailView(itemID: itemID)
+        }
         .onAppear(perform: synchronizeSelections)
         .onChange(of: primaryID) { _, _ in
             secondaryID = preferredSecondary?.id ?? ""
@@ -1242,8 +1246,9 @@ struct PetPendingRepurchaseView: View {
     }
 
     private func pendingItemRow(_ item: PetItem) -> some View {
-        NavigationLink {
-            PetItemDetailView(itemID: item.id)
+        Button {
+            NativeHaptics.tap()
+            detailItemID = item.id
         } label: {
             HStack(spacing: 0) {
                 PetProductThumbnail(item: item)
@@ -1278,13 +1283,13 @@ struct PetPendingRepurchaseView: View {
                 }
                 .padding(.leading, 11)
                 .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                .contentShape(Rectangle())
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button {
                 store.setPetItemRepurchase(id: item.id, willRepurchase: false)

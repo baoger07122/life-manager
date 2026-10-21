@@ -20,6 +20,7 @@ struct PetInventoryCostingAcceptance {
         try transactionEditorAndDetailEntryContracts()
         try pendingRepurchaseFiltering()
         try pendingRepurchaseCategoryContracts()
+        try pendingRepurchaseNavigationContracts()
         try palatabilityReviewGrouping()
         try heroAveragePricePresentation()
         try petItemDetailPresentationContracts()
@@ -477,6 +478,30 @@ struct PetInventoryCostingAcceptance {
             inventoryForItem: { _ in 0 }
         )
         expect(renamedSelection.map(\.id) == ["food"], "renamed category names match the updated product category")
+    }
+
+    private static func pendingRepurchaseNavigationContracts() throws {
+        let source = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        guard let pending = sourceSlice(
+            source,
+            from: "struct PetPendingRepurchaseView: View",
+            to: "struct PetNoRepurchaseLibraryView: View"
+        ), let row = sourceSlice(
+            pending,
+            from: "    private func pendingItemRow(_ item: PetItem) -> some View {",
+            to: "    private func specificationAndStock(_ item: PetItem) -> String {"
+        ) else {
+            fatalError("pending repurchase navigation source is missing")
+        }
+
+        expect(pending.contains("@State private var primaryID") && pending.contains("@State private var secondaryID"), "pending category selections are stateful across detail navigation")
+        expect(pending.contains(".navigationDestination(item: $detailItemID)") && pending.contains("PetItemDetailView(itemID: itemID)"), "pending rows push product details through a local destination")
+        expect(!row.contains("NavigationLink") && !row.contains("simultaneousGesture"), "pending rows avoid link chevrons and competing tap gestures")
+        expect(row.contains("Button {") && row.contains("detailItemID = item.id"), "the pending row button opens the tapped product")
+        expect(row.components(separatedBy: "NativeHaptics.tap()").count - 1 == 1, "pending row taps emit exactly one haptic")
+        expect(row.contains("PetProductThumbnail(item: item)") && row.contains(".padding(.horizontal, 14)") && row.contains(".padding(.vertical, 8)") && row.contains(".frame(maxWidth: .infinity, alignment: .leading)") && row.contains(".contentShape(Rectangle())"), "the full thumbnail, text and padded row area is tappable")
+        expect(row.contains(".swipeActions(edge: .trailing, allowsFullSwipe: false)") && row.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: false)"), "the no-repurchase swipe action remains attached to the row")
+        expect(pending.contains(".onAppear(perform: synchronizeSelections)") && pending.contains("if !primaryCategories.contains(where: { $0.id == primaryID })"), "returning from detail keeps valid category selections")
     }
 
     private static func palatabilityReviewGrouping() throws {

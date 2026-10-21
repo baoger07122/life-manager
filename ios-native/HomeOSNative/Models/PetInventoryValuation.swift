@@ -119,7 +119,7 @@ enum PetInventoryValuation {
         return roundedAmount.formatted(
             .number
                 .locale(Locale(identifier: "en_US_POSIX"))
-                .grouping(.automatic)
+                .grouping(.always)
                 .precision(.fractionLength(0))
         )
     }

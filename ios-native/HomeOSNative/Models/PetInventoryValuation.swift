@@ -116,12 +116,15 @@ enum PetInventoryValuation {
     static func integerText(_ amount: Double) -> String? {
         guard amount.isFinite else { return nil }
         let roundedAmount = amount.rounded(.toNearestOrAwayFromZero)
-        return roundedAmount.formatted(
-            .number
-                .locale(Locale(identifier: "en_US_POSIX"))
-                .grouping(.always)
-                .precision(.fractionLength(0))
-        )
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSeparator = ","
+        formatter.groupingSize = 3
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: roundedAmount))
     }
 
     static func currencyIntegerText(_ amount: Double) -> String? {

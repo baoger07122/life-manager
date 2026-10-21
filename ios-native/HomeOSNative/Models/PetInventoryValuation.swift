@@ -17,7 +17,7 @@ struct PetInventoryValuationSummary {
     }
 
     var title: String {
-        isIncomplete ? "已计价部分估值" : "当前库存估值"
+        "库存估值"
     }
 
     var amountText: String {
@@ -34,6 +34,23 @@ struct PetInventoryValuationSummary {
             details.append("数据异常商品 \(invalidProductCount) 种未计入")
         }
         return details.isEmpty ? nil : details.joined(separator: " · ")
+    }
+
+    var wholeAmountText: String {
+        if valuedProductCount == 0 && isIncomplete { return "—" }
+        return PetInventoryValuation.currencyIntegerText(amount) ?? "—"
+    }
+
+    var accessibilityLabel: String {
+        var details = [isIncomplete ? "已计价小计" : title]
+        if unpricedProductCount > 0 {
+            details.append("未计价商品 \(unpricedProductCount) 种")
+        }
+        if invalidProductCount > 0 {
+            details.append("数据异常商品 \(invalidProductCount) 种未计入")
+        }
+        details.append(wholeAmountText)
+        return details.joined(separator: "，")
     }
 }
 
@@ -94,5 +111,21 @@ enum PetInventoryValuation {
     static func currencyText(_ amount: Double) -> String? {
         guard amount.isFinite, amount >= 0 else { return nil }
         return "¥\(amount.formatted(.number.precision(.fractionLength(2))))"
+    }
+
+    static func integerText(_ amount: Double) -> String? {
+        guard amount.isFinite else { return nil }
+        let roundedAmount = amount.rounded(.toNearestOrAwayFromZero)
+        return roundedAmount.formatted(
+            .number
+                .locale(Locale(identifier: "en_US_POSIX"))
+                .grouping(.automatic)
+                .precision(.fractionLength(0))
+        )
+    }
+
+    static func currencyIntegerText(_ amount: Double) -> String? {
+        guard let value = integerText(amount), amount >= 0 else { return nil }
+        return "¥\(value)"
     }
 }

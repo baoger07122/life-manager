@@ -376,7 +376,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        let averagePriceText = PetItemHeroAveragePrice.text(
+        let averagePriceText = PetItemHomepageAveragePrice.text(
             average: store.petWeightedAverageInboundUnitPrice(for: item.id),
             unit: item.unit
         )
@@ -396,16 +396,27 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             } label: {
                 HStack(spacing: 11) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
+                                .font(.system(size: 12))
+                                .foregroundStyle(HomeTheme.muted)
+                                .lineLimit(1)
+                            if let averagePriceText {
+                                Text("·")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(HomeTheme.muted)
+                                Text(averagePriceText)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(HomeTheme.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                            }
+                        }
                         Text(item.displayNameAndVariant)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(HomeTheme.ink)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                            .allowsTightening(true)
+                            .minimumScaleFactor(0.84)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .trailing, spacing: 6) {
@@ -413,24 +424,21 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            if let rating = store.petProductRating(productID: item.id) {
-                                Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundStyle(HomeTheme.orange)
-                            } else {
-                                Text("未评分")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(HomeTheme.muted)
+                        if let rating = store.petProductRating(productID: item.id) {
+                            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                                Image(systemName: "star.fill")
+                                Text(rating.overall.formatted(.number.precision(.fractionLength(1))))
                             }
-                            if let averagePriceText {
-                                Text(averagePriceText)
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundStyle(HomeTheme.muted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
-                                    .allowsTightening(true)
-                            }
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(HomeTheme.orange)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                        } else {
+                            Text("未评分")
+                                .font(.system(size: 11))
+                                .foregroundStyle(HomeTheme.muted)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
                     }
                     .frame(width: 106, alignment: .trailing)

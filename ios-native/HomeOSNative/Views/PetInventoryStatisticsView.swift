@@ -39,51 +39,30 @@ struct PetInventoryStatisticsView: View {
     }
 
     private var overviewCard: some View {
-        HomeCard(padding: 14) {
-            VStack(spacing: 12) {
-                HStack(spacing: 0) {
-                    overviewMetric(
-                        icon: "shippingbox.fill",
-                        title: "库存数量",
-                        value: quantity(snapshot.totalQuantity),
-                        suffix: "件"
-                    )
-                    if snapshot.totalMassGrams > 0 || snapshot.totalVolumeMilliliters > 0 {
-                        Divider().frame(height: 52)
-                        overviewMetric(
-                            icon: snapshot.totalMassGrams > 0 ? "scalemass.fill" : "drop.fill",
-                            title: "总净含量",
-                            value: netContent,
-                            suffix: ""
-                        )
-                    }
-                }
-
-                Divider()
-
-                HStack(spacing: 10) {
-                    statisticIcon("dollarsign.circle.fill", size: 38, symbolSize: 17)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(snapshot.valuation.title)
-                            .font(HomeTypography.supporting)
-                            .foregroundStyle(HomeTheme.muted)
-                        Text(snapshot.valuation.amountText)
-                            .font(.system(size: 21, weight: .semibold, design: .rounded))
-                            .foregroundStyle(HomeTheme.blue)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.68)
-                        Text("按当前库存数量 × 入库加权单价估算")
-                            .font(.system(size: 11))
-                            .foregroundStyle(HomeTheme.muted)
-                        if let detailText = snapshot.valuation.detailText {
-                            Text(detailText)
-                                .font(.system(size: 11))
-                                .foregroundStyle(HomeTheme.orange)
-                        }
-                    }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+        HomeCard(padding: 10) {
+            HStack(spacing: 0) {
+                overviewMetric(
+                    icon: "shippingbox.fill",
+                    title: "库存数量",
+                    value: PetInventoryValuation.integerText(snapshot.totalQuantity) ?? "—",
+                    suffix: "件"
+                )
+                Divider().frame(height: 82)
+                overviewMetric(
+                    icon: snapshot.totalMassGrams > 0 ? "scalemass.fill" : "drop.fill",
+                    title: "总净含量",
+                    value: netContent,
+                    suffix: ""
+                )
+                Divider().frame(height: 82)
+                overviewMetric(
+                    icon: "dollarsign.circle.fill",
+                    title: snapshot.valuation.title,
+                    value: snapshot.valuation.wholeAmountText,
+                    suffix: "",
+                    incomplete: snapshot.valuation.isIncomplete,
+                    accessibilityLabel: snapshot.valuation.accessibilityLabel
+                )
             }
         }
     }
@@ -95,28 +74,49 @@ struct PetInventoryStatisticsView: View {
             .padding(.leading, 2)
     }
 
-    private func overviewMetric(icon: String, title: String, value: String, suffix: String) -> some View {
-        HStack(spacing: 10) {
-            statisticIcon(icon, size: 38, symbolSize: 17)
-            VStack(alignment: .leading, spacing: 3) {
+    private func overviewMetric(
+        icon: String,
+        title: String,
+        value: String,
+        suffix: String,
+        incomplete: Bool = false,
+        accessibilityLabel: String? = nil
+    ) -> some View {
+        VStack(spacing: 4) {
+            statisticIcon(icon, size: 30, symbolSize: 14)
+            HStack(spacing: 3) {
                 Text(title)
-                    .font(HomeTypography.supporting)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(HomeTheme.muted)
                     .lineLimit(1)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(value)
-                        .font(.system(size: 21, weight: .semibold, design: .rounded))
-                        .foregroundStyle(HomeTheme.blue)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.68)
-                    if !suffix.isEmpty {
-                        Text(suffix).font(HomeTypography.supporting).foregroundStyle(HomeTheme.blue)
-                    }
+                    .minimumScaleFactor(0.7)
+                if incomplete {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .font(.system(size: 9))
+                        .foregroundStyle(HomeTheme.orange)
+                        .accessibilityHidden(true)
                 }
             }
+            .frame(maxWidth: .infinity)
+            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                Text(value)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundStyle(HomeTheme.blue)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+                if !suffix.isEmpty {
+                    Text(suffix)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(HomeTheme.blue)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel ?? "\(title)，\(value)\(suffix)")
     }
 
     private func categoryCard(_ category: PetInventoryCategorySummary) -> some View {
@@ -196,21 +196,23 @@ struct PetInventoryStatisticsView: View {
 
     private var netContent: String {
         var values: [String] = []
-        if snapshot.totalMassGrams > 0 { values.append(mass(snapshot.totalMassGrams)) }
-        if snapshot.totalVolumeMilliliters > 0 { values.append(volume(snapshot.totalVolumeMilliliters)) }
-        return values.joined(separator: " · ")
+        if snapshot.totalMassGrams.isFinite, snapshot.totalMassGrams > 0 { values.append(mass(snapshot.totalMassGrams)) }
+        if snapshot.totalVolumeMilliliters.isFinite, snapshot.totalVolumeMilliliters > 0 { values.append(volume(snapshot.totalVolumeMilliliters)) }
+        return values.isEmpty ? "—" : values.joined(separator: "·")
     }
 
     private func mass(_ grams: Double) -> String {
-        grams >= 1_000
-            ? "\((grams / 1_000).formatted(.number.precision(.fractionLength(0...2))))kg"
-            : "\(grams.formatted(.number.precision(.fractionLength(0...2))))g"
+        guard grams.isFinite else { return "—" }
+        let scaled = grams >= 1_000 ? grams / 1_000 : grams
+        let unit = grams >= 1_000 ? "kg" : "g"
+        return "\(PetInventoryValuation.integerText(scaled) ?? "—")\(unit)"
     }
 
     private func volume(_ milliliters: Double) -> String {
-        milliliters >= 1_000
-            ? "\((milliliters / 1_000).formatted(.number.precision(.fractionLength(0...2))))L"
-            : "\(milliliters.formatted(.number.precision(.fractionLength(0...2))))ml"
+        guard milliliters.isFinite else { return "—" }
+        let scaled = milliliters >= 1_000 ? milliliters / 1_000 : milliliters
+        let unit = milliliters >= 1_000 ? "L" : "ml"
+        return "\(PetInventoryValuation.integerText(scaled) ?? "—")\(unit)"
     }
 }
 

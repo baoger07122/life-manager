@@ -53,7 +53,7 @@
 
 当前阶段沿用语义原生版本：`主版本.次版本.修订号 (构建号)`。
 
-- `0.1.42 (44)`：最新一次已成功构建的云端 IPA。
+- `0.1.43 (45)`：最新一次已成功构建的云端 IPA。
 - `0.1.9 (10)`：已于 `2026-08-28` 通过云端编译并生成未签名 IPA，对应提交 `9e52642`。
 - `0.1.10 (11)`：已于 `2026-08-28` 使用 macOS 26 / 新版 Xcode 构建成功，系统 `TabView` 恢复 iPhone 原生 Liquid Glass 外观；对应提交 `e4f8080`。
 - `0.1.11 (13)`：已于 `2026-08-29` 构建成功；食品与菜谱采用下拉显示的系统搜索栏，宠物事项筛选与新增入口合并进单一圆角卡片，正式 target 明确排除 Playground 测试夹具；对应提交 `c05b533`，Actions 运行 `33233845797`。
@@ -71,6 +71,7 @@
 - `0.1.40 (42)`：已于 `2026-10-18` 构建成功；宠物待回购页按托管的一级、二级分类展示，沿用首页分类选择与商品行布局；待回购仅显示所选分类中零库存且仍计划回购的商品，分类切换、空状态、取消回购和重命名均有验收覆盖；库存流水数量不再显示正号，调整流水明确显示增减，价格与单位分开排版；提交 `d2dd954`，Actions 运行 `39137279806`，标签 `ios-native-v0.1.40`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.40)，[直接下载 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v0.1.40/HomeOSNative-0.1.40-unsigned.ipa)，文件大小 `4,851,979` 字节，SHA-256 `77dd49c04865c626bef89281a3677e78e0b646c118ff39e13f6cc87f0dea6679`；分类验收与云端 Release 编译通过。
 - `0.1.41 (43)`：已于 `2026-10-19` 构建成功；商品详情按活动宠物顺序汇总猫咪评价，支持展开全部历史并原位编辑；商品规格旁显示有效入库记录的加权均价，无有效价格时隐藏；待回购库保留既有两级分类隔离与相同列表布局，并通过分类回归验收；提交 `39ac443`，Actions 运行 `39186489482`，标签 `ios-native-v0.1.41`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.41)，[直接下载 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v0.1.41/HomeOSNative-0.1.41-unsigned.ipa)，文件大小 `4,888,279` 字节，SHA-256 `6deda142ff13736530a383b8b6391a7fe2c705a6eca97307cfbee7b85a9013a0`；自动验收、Xcode Release 编译和 Release 上传均通过。
 - `0.1.42 (44)`：已于 `2026-10-21` 构建成功；修复待回购商品整行导航，保留分类、单次触感和右滑“不回购”；商品详情规格旁及宠物首页商品行显示有效入库记录的加权单价；食品和用品统计页按当前库存数量乘入库加权单价估算库存价值，缺价商品与异常数据单独标明；提交 `ea021d9`，验收/编译运行 `39589623288`，Release 构建运行 `39589975992`，标签 `ios-native-v0.1.42`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.42)，[直接下载 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v0.1.42/HomeOSNative-0.1.42-unsigned.ipa)，文件大小 `4,901,844` 字节，SHA-256 `0fb17a4858ccaae46d442aff452ed3b64a1abf7ac4231e11008f780a5f2c3c21`；自动验收、Xcode Release 编译和 Release 上传均通过。
+- `0.1.43 (45)`：已于 `2026-10-21` 构建成功；首页物品列表恢复紧凑两行布局，入库加权单价以一位小数显示在品牌旁，评分保持星标与数字水平单行；统计总览三等分横排显示库存数量、净含量和库存估值，展示值四舍五入为整数并为估值保留千位分隔，缺价时显示横线，部分估值以提示图标和旁白标识为已计价小计；商品详情顶部单价及原始计算精度保持不变；提交 `cce36d7`，验收/编译运行 `39596865177`，Release 构建运行 `39597308053`，标签 `ios-native-v0.1.43`；未签名 IPA 已上传至 [GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v0.1.43)，[直接下载 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v0.1.43/HomeOSNative-0.1.43-unsigned.ipa)，文件大小 `4,904,435` 字节，SHA-256 `0019c1e1ff9048370a667039a230978394596e31311b94e4fba9b2e2d31867f3`；自动验收、Xcode Release 编译和 Release 上传均通过。
 - 纯文档、Playgrounds 预览和未进入 IPA 的视觉调整不增加正式发布次数。
 - 一旦某版本 IPA 已提供测试，之后任何正式代码变化必须使用新版本。
 - `project.yml`、设置页展示、Playground `Package.swift` 和交付记录必须一致。

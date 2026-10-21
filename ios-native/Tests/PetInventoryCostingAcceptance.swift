@@ -24,6 +24,8 @@ struct PetInventoryCostingAcceptance {
         try palatabilityReviewGrouping()
         try heroAveragePricePresentation()
         try petItemDetailPresentationContracts()
+        try petHomepagePriceAndInventoryValuationContracts()
+        try inventoryValuation()
         print("Pet inventory moving-average acceptance checks passed.")
     }
 
@@ -397,7 +399,7 @@ struct PetInventoryCostingAcceptance {
         expect(pending.contains("onChange(of: secondaryCategories.map(\\.id))") && pending.contains("onChange(of: primaryCategories.map(\\.id))"), "category additions, removal and reordering update the visible selectors")
         expect(pending.contains("selectedSecondary?.name") && pending.contains("category.name"), "empty state and selector labels follow the current managed category names")
         expect(pending.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: false)"), "marking a pending item as not for repurchase removes it from the filtered list")
-        expect(pending.contains("NavigationLink") && pending.contains("PetItemDetailView(itemID: item.id)"), "pending items retain their detail navigation")
+        expect(pending.contains(".navigationDestination(item: $detailItemID)") && pending.contains("PetItemDetailView(itemID: itemID)"), "pending items retain their detail navigation")
         expect(pending.contains("PetProductThumbnail(item: item)") && pending.contains("panelDivider") && pending.contains("panelBottomCap") && pending.contains(".listStyle(.plain)"), "pending list reuses the home thumbnail and unified divided card layout")
         expect(!pending.contains("quickManagerRow") && !pending.contains("openEditor") && !pending.contains("新增"), "pending list has no stock quick actions or add-item control")
         expect(categoryRename.contains("primaryCategory = cleanName") && categoryRename.contains("secondaryCategory = cleanName"), "renaming a managed category updates the product category names")
@@ -556,7 +558,7 @@ struct PetInventoryCostingAcceptance {
         expect(PetItemHeroAveragePrice.text(average: nil, unit: "罐") == nil, "hero omits an unavailable inbound average")
         expect(PetItemHeroAveragePrice.text(average: 0, unit: "罐") == nil, "hero never displays a zero placeholder price")
         expect(PetItemHeroAveragePrice.text(average: .infinity, unit: "罐") == nil, "hero omits a non-finite average")
-        expect(PetItemHeroAveragePrice.text(average: 4.67, unit: "罐") == "加权均价 ¥4.67/罐", "hero formats a valid weighted average with its unit")
+        expect(PetItemHeroAveragePrice.text(average: 4.67, unit: "罐") == "¥4.67/罐", "hero formats a valid weighted average with its unit and no label")
     }
 
     private static func petItemDetailPresentationContracts() throws {
@@ -591,6 +593,81 @@ struct PetInventoryCostingAcceptance {
         expect(heroLine.contains("ViewThatFits(in: .horizontal)") && heroLine.contains("HStack(alignment: .firstTextBaseline, spacing: 8)") && heroLine.contains("VStack(alignment: .leading"), "hero price stays beside the specification when possible and wraps when needed")
         expect(heroLine.contains("HomeTypography.supporting") && heroLine.contains("HomeTheme.muted") && !heroLine.contains("Spacer()"), "hero average uses muted supporting text without a far-right spacer")
         expect(priceCard.contains("入库加权均价") && priceCard.contains("averageUnitPrice"), "price history retains its original weighted-average reference")
+    }
+
+    private static func petHomepagePriceAndInventoryValuationContracts() throws {
+        let listSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
+        let statisticsSource = try String(contentsOfFile: "HomeOSNative/Views/PetInventoryStatisticsView.swift", encoding: .utf8)
+        let valuationSource = try String(contentsOfFile: "HomeOSNative/Models/PetInventoryValuation.swift", encoding: .utf8)
+        let petHomeSource = try String(contentsOfFile: "HomeOSNative/Views/PetView.swift", encoding: .utf8)
+        guard let homeRow = sourceSlice(
+            listSource,
+            from: "    private func itemRow(_ item: PetItem) -> some View {",
+            to: "    private func quickManagerRow(_ item: PetItem) -> some View {"
+        ), let averagePriceMethod = sourceSlice(
+            storeSource,
+            from: "    func petWeightedAverageInboundUnitPrice(for productID: String) -> Double? {",
+            to: "    func latestPetUnitPrice(for productID: String, in backup: HomeBackup? = nil) -> Double? {"
+        ), let overview = sourceSlice(
+            statisticsSource,
+            from: "    private var overviewCard: some View {",
+            to: "    private func sectionLabel(_ title: String) -> some View {"
+        ), let snapshot = sourceSlice(
+            statisticsSource,
+            from: "private struct PetInventoryStatisticsSnapshot {",
+            to: "private struct PetInventoryCategoryAccumulator {"
+        ) else {
+            fatalError("pet homepage pricing or inventory valuation source is missing")
+        }
+
+        expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHeroAveragePrice.text"), "homepage rows use each product's weighted inbound unit price")
+        expect(homeRow.contains("rating.overall") && homeRow.contains("averagePriceText") && !homeRow.contains("加权均价"), "homepage keeps price beside rating without adding a row or label")
+        expect(homeRow.contains("item.displayNameAndVariant") && homeRow.contains(".minimumScaleFactor(0.5)"), "homepage keeps the complete product name visible in its existing two-row layout")
+        expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
+        expect(overview.contains("snapshot.valuation.title") && overview.contains("snapshot.valuation.amountText") && overview.contains("入库加权单价") && valuationSource.contains("当前库存估值") && valuationSource.contains("已计价部分估值") && valuationSource.contains("未计价商品"), "the existing statistics destination explains full and partial inventory estimates")
+        expect(snapshot.contains("store.petInventory(for: item.id)") && snapshot.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && snapshot.contains("PetInventoryValuation.summarize"), "statistics estimate current stock against live weighted inbound prices")
+        expect(petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: route.capabilityKey)") && petHomeSource.contains("case .food") && petHomeSource.contains("case .supply"), "food and supply count buttons use the existing root-specific statistics destination")
+    }
+
+    private static func inventoryValuation() throws {
+        let full = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "food", quantity: 3, weightedUnitPrice: 4.67),
+            PetInventoryValuationInput(productID: "supply", quantity: 2, weightedUnitPrice: 10)
+        ])
+        expectClose(full.amount, 34.01, "inventory value multiplies on-hand quantity by weighted inbound unit price")
+        expect(full.amountText == "¥34.01" && full.title == "当前库存估值" && !full.isIncomplete, "complete inventory estimates use two currency decimals and a clear label")
+
+        let partial = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "food", quantity: 3, weightedUnitPrice: 4.67),
+            PetInventoryValuationInput(productID: "unpriced", quantity: 2, weightedUnitPrice: nil)
+        ])
+        expect(partial.amountText == "¥14.01" && partial.title == "已计价部分估值", "missing prices never appear as zero and partial estimates are labeled")
+        expect(partial.unpricedProductCount == 1 && partial.detailText == "未计价商品 1 种", "partial estimates identify the number of unpriced products")
+
+        let noPrices = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "unpriced", quantity: 2, weightedUnitPrice: nil)
+        ])
+        expect(noPrices.amountText == "—" && noPrices.unpricedProductCount == 1, "an inventory with no valid prices does not display ¥0.00")
+
+        let invalid = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "infinite-stock", quantity: .infinity, weightedUnitPrice: 2),
+            PetInventoryValuationInput(productID: "overflow", quantity: 1e308, weightedUnitPrice: 1e308),
+            PetInventoryValuationInput(productID: "unpriced", quantity: 1, weightedUnitPrice: .nan)
+        ])
+        expect(invalid.amount.isFinite && invalid.amountText == "—" && invalid.invalidProductCount == 3, "non-finite stock, price and multiplication are excluded safely")
+
+        let sumOverflow = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "first", quantity: 1e308, weightedUnitPrice: 1),
+            PetInventoryValuationInput(productID: "second", quantity: 1e308, weightedUnitPrice: 1)
+        ])
+        expect(sumOverflow.amount.isFinite && sumOverflow.invalidProductCount == 1 && sumOverflow.title == "已计价部分估值", "aggregate overflow is excluded and the remaining amount is marked partial")
+
+        expect(PetInventoryValuation.currencyText(.infinity) == nil, "currency presentation rejects non-finite amounts")
+        let corrected = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "food", quantity: 3, weightedUnitPrice: 5)
+        ])
+        expect(corrected.amountText == "¥15.00" && corrected.amountText != full.amountText, "the summary reflects a corrected source price without a cached total")
     }
 
     private static func petProfile(_ id: String, name: String, createdAt: Double) -> PetProfile {

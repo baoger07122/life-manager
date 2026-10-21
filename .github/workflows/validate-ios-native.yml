@@ -32,6 +32,7 @@ jobs:
           swiftc \
             HomeOSNative/Models/HomeModels.swift \
             HomeOSNative/Models/PetItemDetailPresentation.swift \
+            HomeOSNative/Models/PetInventoryValuation.swift \
             HomeOSNative/Models/PetPendingRepurchaseFilter.swift \
             HomeOSNative/Data/PetInventoryCosting.swift \
             HomeOSNative/Data/PetInventoryHistoryMutation.swift \

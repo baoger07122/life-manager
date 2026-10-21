@@ -72,6 +72,7 @@ enum PetPalatabilityReviewGrouping {
 enum PetItemHeroAveragePrice {
     static func text(average: Double?, unit: String) -> String? {
         guard let average, average.isFinite, average > 0 else { return nil }
-        return "加权均价 ¥\(average.formatted(.number.precision(.fractionLength(2))))/\(unit)"
+        guard let price = PetInventoryValuation.currencyText(average) else { return nil }
+        return "\(price)/\(unit)"
     }
 }

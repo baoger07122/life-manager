@@ -40,22 +40,50 @@ struct PetInventoryStatisticsView: View {
 
     private var overviewCard: some View {
         HomeCard(padding: 14) {
-            HStack(spacing: 0) {
-                overviewMetric(
-                    icon: "shippingbox.fill",
-                    title: "库存数量",
-                    value: quantity(snapshot.totalQuantity),
-                    suffix: "件"
-                )
-                if snapshot.totalMassGrams > 0 || snapshot.totalVolumeMilliliters > 0 {
-                    Divider().frame(height: 52)
+            VStack(spacing: 12) {
+                HStack(spacing: 0) {
                     overviewMetric(
-                        icon: snapshot.totalMassGrams > 0 ? "scalemass.fill" : "drop.fill",
-                        title: "总净含量",
-                        value: netContent,
-                        suffix: ""
+                        icon: "shippingbox.fill",
+                        title: "库存数量",
+                        value: quantity(snapshot.totalQuantity),
+                        suffix: "件"
                     )
+                    if snapshot.totalMassGrams > 0 || snapshot.totalVolumeMilliliters > 0 {
+                        Divider().frame(height: 52)
+                        overviewMetric(
+                            icon: snapshot.totalMassGrams > 0 ? "scalemass.fill" : "drop.fill",
+                            title: "总净含量",
+                            value: netContent,
+                            suffix: ""
+                        )
+                    }
                 }
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    statisticIcon("dollarsign.circle.fill", size: 38, symbolSize: 17)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(snapshot.valuation.title)
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
+                        Text(snapshot.valuation.amountText)
+                            .font(.system(size: 21, weight: .semibold, design: .rounded))
+                            .foregroundStyle(HomeTheme.blue)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
+                        Text("按当前库存数量 × 入库加权单价估算")
+                            .font(.system(size: 11))
+                            .foregroundStyle(HomeTheme.muted)
+                        if let detailText = snapshot.valuation.detailText {
+                            Text(detailText)
+                                .font(.system(size: 11))
+                                .foregroundStyle(HomeTheme.orange)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -191,24 +219,46 @@ private struct PetInventoryStatisticsSnapshot {
     var totalMassGrams: Double
     var totalVolumeMilliliters: Double
     var categories: [PetInventoryCategorySummary]
+    var valuation: PetInventoryValuationSummary
 
     @MainActor
     static func make(store: HomeStore, capabilityKey: String) -> Self {
         guard let root = store.petRootCategory(capabilityKey: capabilityKey) else {
-            return .init(totalQuantity: 0, totalMassGrams: 0, totalVolumeMilliliters: 0, categories: [])
+            return .init(
+                totalQuantity: 0,
+                totalMassGrams: 0,
+                totalVolumeMilliliters: 0,
+                categories: [],
+                valuation: PetInventoryValuation.summarize([])
+            )
         }
 
-        let inventoryByProduct = Dictionary(grouping: store.data.petInventoryTransactions, by: \.productID)
-            .mapValues { transactions in max(0, transactions.reduce(0) { $0 + $1.quantityChange }) }
+        let items = store.activePetItems.filter { $0.resolvedPrimaryCategory == root.name }
+        var inventoryByProduct: [String: Double] = [:]
+        var valuationInputs: [PetInventoryValuationInput] = []
+        for item in items {
+            let stock = store.petInventory(for: item.id)
+            inventoryByProduct[item.id] = stock
+            if stock > 0 || !stock.isFinite {
+                valuationInputs.append(
+                    PetInventoryValuationInput(
+                        productID: item.id,
+                        quantity: stock,
+                        weightedUnitPrice: store.petWeightedAverageInboundUnitPrice(for: item.id)
+                    )
+                )
+            }
+        }
+        let valuation = PetInventoryValuation.summarize(valuationInputs)
         let categoryOrder = Dictionary(uniqueKeysWithValues: store.categories(for: .pet, parentID: root.id).enumerated().map { ($1.name, $0) })
         var accumulators: [String: PetInventoryCategoryAccumulator] = [:]
         var totalQuantity = 0.0
         var totalMass = 0.0
         var totalVolume = 0.0
 
-        for item in store.activePetItems where item.resolvedPrimaryCategory == root.name {
+        for item in items {
             let stock = inventoryByProduct[item.id] ?? 0
-            guard stock > 0 else { continue }
+            guard stock.isFinite, stock > 0 else { continue }
             totalQuantity += stock
 
             let cleanPackage = item.packageType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -247,7 +297,13 @@ private struct PetInventoryStatisticsSnapshot {
                 let right = categoryOrder[$1.name] ?? Int.max
                 return left == right ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : left < right
             }
-        return .init(totalQuantity: totalQuantity, totalMassGrams: totalMass, totalVolumeMilliliters: totalVolume, categories: categories)
+        return .init(
+            totalQuantity: totalQuantity,
+            totalMassGrams: totalMass,
+            totalVolumeMilliliters: totalVolume,
+            categories: categories,
+            valuation: valuation
+        )
     }
 }
 

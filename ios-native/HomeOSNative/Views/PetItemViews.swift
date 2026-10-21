@@ -376,7 +376,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        HStack(spacing: 0) {
+        let averagePriceText = PetItemHeroAveragePrice.text(
+            average: store.petWeightedAverageInboundUnitPrice(for: item.id),
+            unit: item.unit
+        )
+        return HStack(spacing: 0) {
             Button {
                 NativeHaptics.tap()
                 route = .detail(itemID: item.id)
@@ -400,7 +404,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(HomeTheme.ink)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.84)
+                            .minimumScaleFactor(0.5)
+                            .allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .trailing, spacing: 6) {
@@ -408,12 +413,24 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
-                        if let rating = store.petProductRating(productID: item.id) {
-                            Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(HomeTheme.orange)
-                        } else {
-                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            if let rating = store.petProductRating(productID: item.id) {
+                                Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(HomeTheme.orange)
+                            } else {
+                                Text("未评分")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                            if let averagePriceText {
+                                Text(averagePriceText)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(HomeTheme.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
+                                    .allowsTightening(true)
+                            }
                         }
                     }
                     .frame(width: 106, alignment: .trailing)

@@ -333,8 +333,8 @@ struct PetView: View {
     }
 
     private func navigateToPetEvent(_ route: PetViewRoute, haptic: Bool = false) {
-        guard petNavigationPath.isEmpty else { return }
-        petNavigationPath.append(route)
+        guard navigationPath.isEmpty else { return }
+        navigationPath.append(route)
         if haptic { NativeHaptics.tap() }
     }
 

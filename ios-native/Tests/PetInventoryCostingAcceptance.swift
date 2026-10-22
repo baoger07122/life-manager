@@ -598,7 +598,7 @@ struct PetInventoryCostingAcceptance {
         ), let palatabilitySave = sourceSlice(
             storeSource,
             from: "    func savePetPalatabilityReview(",
-            to: "    func petPalatabilityRating(productID: String, petID: String) -> PetRatingSummary? {"
+            to: "    func initializeLitter(amount: Double, occurrenceDate: String) -> Bool {"
         ), let productSave = sourceSlice(
             storeSource,
             from: "    func savePetProductReview(",

@@ -609,7 +609,7 @@ struct PetInventoryCostingAcceptance {
             to: "        } else {"
         ), let palatabilityUpdate = sourceSlice(
             palatabilitySave,
-            from: "        if let id {",
+            from: "        if let id, let index = next.petPalatabilityReviews.firstIndex",
             to: "        } else {"
         ) else {
             fatalError("pet product or cat review presentation source is missing")

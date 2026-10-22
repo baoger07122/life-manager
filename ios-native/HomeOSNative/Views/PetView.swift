@@ -1,24 +1,20 @@
 import SwiftUI
 
+enum PetViewRoute: Hashable {
+    case foodStatistics
+    case supplyStatistics
+    case monthlyExpense
+    case newPetEvent
+    case petEventDetail(String)
+    case petEventEditor(String)
+}
+
 struct PetView: View {
     @EnvironmentObject private var store: HomeStore
     @State private var selectedCategoryID = "all"
     @State private var selectedInventoryPrimaryID = "pet-root-food"
     @State private var litterSheet: LitterSheet?
-    @State private var showMonthlyExpense = false
-    @State private var statisticsPath: [StatisticsRoute] = []
-
-    private enum StatisticsRoute: Hashable {
-        case food
-        case supply
-
-        var capabilityKey: String {
-            switch self {
-            case .food: "petFood"
-            case .supply: "petSupply"
-            }
-        }
-    }
+    @State private var navigationPath: [PetViewRoute] = []
 
     private enum LitterSheet: String, Identifiable {
         case initialize, refill, replace
@@ -26,8 +22,8 @@ struct PetView: View {
     }
 
     var body: some View {
-        NavigationStack(path: $statisticsPath) {
-            PetItemsListView(primaryID: $selectedInventoryPrimaryID) {
+        NavigationStack(path: $navigationPath) {
+            PetItemsListView(primaryID: $selectedInventoryPrimaryID, petNavigationPath: $navigationPath) {
                 header
             } statistics: {
                 itemStatistics
@@ -41,13 +37,37 @@ struct PetView: View {
                 case .replace: LitterOperationView(type: .replace)
                 }
             }
-            .navigationDestination(isPresented: $showMonthlyExpense) {
-                PetMonthlyExpenseView()
-            }
-            .navigationDestination(for: StatisticsRoute.self) { route in
-                PetInventoryStatisticsView(capabilityKey: route.capabilityKey)
+            .navigationDestination(for: PetViewRoute.self) { route in
+                switch route {
+                case .foodStatistics:
+                    PetInventoryStatisticsView(capabilityKey: "petFood")
+                case .supplyStatistics:
+                    PetInventoryStatisticsView(capabilityKey: "petSupply")
+                case .monthlyExpense:
+                    PetMonthlyExpenseView()
+                case .newPetEvent:
+                    PetEventEditorView()
+                case .petEventDetail(let eventID):
+                    PetEventDetailView(eventID: eventID) {
+                        navigate(to: .petEventEditor(eventID))
+                    }
+                case .petEventEditor(let eventID):
+                    PetEventEditorView(eventID: eventID)
+                }
             }
         }
+    }
+
+    private func navigate(to route: PetViewRoute) {
+        let editsVisibleEvent: Bool
+        if case let .petEventEditor(eventID) = route {
+            editsVisibleEvent = navigationPath.last == .petEventDetail(eventID)
+        } else {
+            editsVisibleEvent = false
+        }
+        guard (navigationPath.isEmpty || editsVisibleEvent), !navigationPath.contains(route) else { return }
+        navigationPath.append(route)
+        NativeHaptics.tap()
     }
 
     private var header: some View {
@@ -58,24 +78,21 @@ struct PetView: View {
         return HomeCard(padding: 0) {
             HStack(spacing: 0) {
                 Button {
-                    statisticsPath.append(.food)
-                    NativeHaptics.tap()
+                    navigate(to: .foodStatistics)
                 } label: {
                     inventoryStatistic(title: "宠物食品", value: petInventoryTotal(capabilityKey: "petFood"), suffix: "件")
                 }
                 .buttonStyle(.plain)
                 Divider().frame(height: 52)
                 Button {
-                    statisticsPath.append(.supply)
-                    NativeHaptics.tap()
+                    navigate(to: .supplyStatistics)
                 } label: {
                     inventoryStatistic(title: "宠物用品", value: petInventoryTotal(capabilityKey: "petSupply"), suffix: "件")
                 }
                 .buttonStyle(.plain)
                 Divider().frame(height: 52)
                 Button {
-                    showMonthlyExpense = true
-                    NativeHaptics.tap()
+                    navigate(to: .monthlyExpense)
                 } label: {
                     inventoryStatistic(
                         title: "本月开销",
@@ -195,7 +212,21 @@ struct PetView: View {
 
     private var timelineSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("宠物事项").font(HomeTypography.sectionTitle)
+            HStack(alignment: .center, spacing: 8) {
+                Text("宠物事项").font(HomeTypography.sectionTitle)
+                Spacer(minLength: 8)
+                Button {
+                    navigateToPetEvent(.newPetEvent, haptic: true)
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 19, weight: .regular))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("添加宠物事项")
+            }
             HomeCard(padding: 0) {
                 VStack(spacing: 0) {
                     eventFilters
@@ -219,24 +250,13 @@ struct PetView: View {
 
     private var eventFilters: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 20) {
-                        filterTab(title: "全部", id: "all", selection: $selectedCategoryID, prominent: true)
-                        ForEach(store.activePetEventCategories) { category in
-                            filterTab(title: category.name, id: category.id, selection: $selectedCategoryID, prominent: true)
-                        }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 20) {
+                    filterTab(title: "全部", id: "all", selection: $selectedCategoryID, prominent: true)
+                    ForEach(store.activePetEventCategories) { category in
+                        filterTab(title: category.name, id: category.id, selection: $selectedCategoryID, prominent: true)
                     }
                 }
-                NavigationLink { PetEventEditorView() } label: {
-                    Image(systemName: "plus.circle")
-                        .font(.system(size: 22, weight: .regular))
-                        .foregroundStyle(HomeTheme.muted)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(HomePressButtonStyle())
-                .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
-                .accessibilityLabel("添加宠物事项")
             }
         }
         .padding(.horizontal, 14)
@@ -265,7 +285,9 @@ struct PetView: View {
     }
 
     private func timelineRow(_ event: PetEvent, index: Int, count: Int) -> some View {
-        NavigationLink { PetEventDetailView(eventID: event.id) } label: {
+        Button {
+            navigateToPetEvent(.petEventDetail(event.id))
+        } label: {
             HStack(alignment: .center, spacing: 11) {
                 VStack(spacing: 0) {
                     Rectangle()
@@ -308,6 +330,12 @@ struct PetView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func navigateToPetEvent(_ route: PetViewRoute, haptic: Bool = false) {
+        guard petNavigationPath.isEmpty else { return }
+        petNavigationPath.append(route)
+        if haptic { NativeHaptics.tap() }
     }
 
     private func shouldShowType(for event: PetEvent) -> Bool {

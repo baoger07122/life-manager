@@ -22,6 +22,8 @@ struct PetInventoryCostingAcceptance {
         try pendingRepurchaseCategoryContracts()
         try pendingRepurchaseNavigationContracts()
         try palatabilityReviewGrouping()
+        try petProductReviewDimensionOrdering()
+        try petEventNavigationContracts()
         try heroAveragePricePresentation()
         try petItemDetailPresentationContracts()
         try petHomepagePriceAndInventoryValuationContracts()
@@ -588,6 +590,14 @@ struct PetInventoryCostingAcceptance {
         }
 
         expect(detail.contains("PetPalatabilityReviewGrouping.groups") && detail.contains("store.activePets"), "pet reviews are grouped in current pet-management order")
+        let detailOrder = ["productHeroCard(item)", "inventoryCard(item)", "productReviewCard", "priceCard(item)", "productNotesCard(item)", "transactionCard(item)"]
+        let detailPositions = detailOrder.compactMap { detail.range(of: $0)?.lowerBound }
+        expect(detailPositions.count == detailOrder.count && detailPositions == detailPositions.sorted(), "the optional item-notes card is second-to-last, immediately before inventory history")
+        if let noteCard = sourceSlice(detail, from: "private func productNotesCard(_ item: PetItem)", to: "private func inventoryCard(_ item: PetItem)") {
+            expect(noteCard.contains("if !note.isEmpty"), "the moved item-notes card remains hidden when there is no note")
+        } else {
+            fatalError("pet item notes card source is missing")
+        }
         expect(palatability.contains("ForEach(groups)") && palatability.contains("DisclosureGroup(isExpanded:") && palatability.contains("ForEach(group.records)"), "each pet has one collapsed summary and can reveal every review")
         expect(palatability.contains("group.count == 1") && palatability.contains("sheet = .palatability(reviewID: review.id)"), "a single review opens its original editor directly")
         expect(palatability.contains("store.petPalatabilityRating(productID: itemID, petID: group.petID)") && palatability.contains("次评价") && palatability.contains("查看 \\(group.count) 条") && palatability.contains("收起"), "multi-review summaries show the per-pet average, count and clear expand control")
@@ -597,6 +607,59 @@ struct PetInventoryCostingAcceptance {
         expect(heroLine.contains("ViewThatFits(in: .horizontal)") && heroLine.contains("HStack(alignment: .firstTextBaseline, spacing: 8)") && heroLine.contains("VStack(alignment: .leading"), "hero price stays beside the specification when possible and wraps when needed")
         expect(heroLine.contains("HomeTypography.supporting") && heroLine.contains("HomeTheme.muted") && !heroLine.contains("Spacer()"), "hero average uses muted supporting text without a far-right spacer")
         expect(priceCard.contains("入库加权均价") && priceCard.contains("averageUnitPrice"), "price history retains its original weighted-average reference")
+    }
+
+    private static func petProductReviewDimensionOrdering() throws {
+        let foodOrder = ["适口性", "品质", "性价比", "回购意愿"]
+        let supplyOrder = ["使用效果", "便利性", "耐用性", "性价比"]
+        let litterOrder = ["除臭性", "结团性", "耐用性", "性价比"]
+        let foodScores = ["回购意愿": 4, "性价比": 2, "品质": 5, "适口性": 3]
+        let supplyScores = ["性价比": 4, "耐用性": 3, "便利性": 5, "使用效果": 2]
+        let litterScores = ["耐用性": 4, "性价比": 3, "结团性": 5, "除臭性": 2]
+        expect(PetProductReviewDimensionOrdering.ordered(scores: foodScores, standardOrder: foodOrder) == foodOrder, "food reviews follow the food standard order")
+        expect(PetProductReviewDimensionOrdering.ordered(scores: supplyScores, standardOrder: supplyOrder) == supplyOrder, "supply reviews follow the supply standard order")
+        expect(PetProductReviewDimensionOrdering.ordered(scores: litterScores, standardOrder: litterOrder) == litterOrder, "litter reviews follow the litter standard order")
+
+        let legacyScores = foodScores.merging(["历史维度 A": 1, "历史维度 B": 5]) { current, _ in current }
+        let orderedLegacyScores = PetProductReviewDimensionOrdering.ordered(scores: legacyScores, standardOrder: foodOrder)
+        expect(Array(orderedLegacyScores.prefix(foodOrder.count)) == foodOrder, "known food dimensions stay in standard order before historical extras")
+        expect(Set(orderedLegacyScores.dropFirst(foodOrder.count)) == Set(["历史维度 A", "历史维度 B"]), "unknown historical dimensions are retained after standard dimensions")
+        expect(legacyScores["历史维度 A"] == 1 && legacyScores["历史维度 B"] == 5, "dimension ordering never changes historical scores")
+        expect(PetProductReviewDimensionOrdering.ordered(scores: ["品质": 4], standardOrder: foodOrder) == ["品质"], "legacy reviews do not gain missing dimensions during editing")
+
+        let inventorySource = try String(contentsOfFile: "HomeOSNative/Views/PetInventoryViews.swift", encoding: .utf8)
+        let itemSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        guard let editor = sourceSlice(inventorySource, from: "struct PetProductReviewEditorView", to: "struct PetPalatabilityEditorView"),
+              let reviewCard = sourceSlice(itemSource, from: "private var productReviewCard: some View {", to: "private var palatabilityCard: some View {") else {
+            fatalError("product review history presentation source is missing")
+        }
+        expect(editor.contains("orderedPetReviewDimensions(existingReview.resolvedDimensionScores, item: item)"), "history editor orders persisted review dimensions by the selected item's type")
+        expect(reviewCard.contains("orderedPetReviewDimensions(review.resolvedDimensionScores, item: item)"), "history summary orders dimensions by the selected item's type")
+        expect(reviewCard.contains(".sorted { $0.reviewDate > $1.reviewDate }"), "review records retain their existing date ordering")
+    }
+
+    private static func petEventNavigationContracts() throws {
+        let petViewSource = try String(contentsOfFile: "HomeOSNative/Views/PetView.swift", encoding: .utf8)
+        let itemViewSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        let eventViewSource = try String(contentsOfFile: "HomeOSNative/Views/PetEventViews.swift", encoding: .utf8)
+        guard let petView = sourceSlice(petViewSource, from: "struct PetView: View", to: "    private var header: some View {"),
+              let timeline = sourceSlice(petViewSource, from: "    private var timelineSection: some View {", to: "    private func filterTab("),
+              let filterRow = sourceSlice(petViewSource, from: "    private var eventFilters: some View {", to: "    private var filteredEvents: [PetEvent] {"),
+              let timelineRow = sourceSlice(petViewSource, from: "    private func timelineRow(", to: "    private func shouldShowType(for event: PetEvent) -> Bool {"),
+              let eventDetail = sourceSlice(eventViewSource, from: "struct PetEventDetailView: View", to: "    private func detailRow("),
+              let eventEditor = sourceSlice(eventViewSource, from: "struct PetEventEditorView: View", to: "struct PetEventDetailView: View") else {
+            fatalError("pet event navigation source sections are missing")
+        }
+        expect(petView.contains("NavigationStack(path: $navigationPath)") && petView.contains(".navigationDestination(for: PetViewRoute.self)"), "pet statistics and event screens share one explicit navigation path")
+        expect(petView.contains("editsVisibleEvent = navigationPath.last == .petEventDetail(eventID)") && petView.contains("!navigationPath.contains(route)"), "only the visible event detail can push its matching editor, with repeat pushes ignored")
+        expect(timeline.contains("Text(\"宠物事项\")") && timeline.contains("Button {") && timeline.contains(".newPetEvent") && timeline.contains("Image(systemName: \"plus.circle\")"), "the add button is placed on the pet-events title row")
+        expect(!timeline.contains("NavigationLink") && !timeline.contains("simultaneousGesture") && !filterRow.contains("NavigationLink"), "the single list-footer row contains no competing event links or gesture recognizers")
+        expect(timelineRow.contains("Button {") && timelineRow.contains(".petEventDetail(event.id)") && !timelineRow.contains("NavigationLink") && petViewSource.contains("guard petNavigationPath.isEmpty else { return }"), "each history row routes once to its own event, ignoring rapid taps during transitions")
+        expect(petViewSource.contains("ForEach(store.activePetEventCategories)") && petViewSource.contains("selectedCategoryID == \"all\" || event.categoryID == selectedCategoryID"), "category filters continue to select the matching event history")
+        expect(eventDetail.contains("Button(\"编辑\", action: onEdit)") && !eventDetail.contains("NavigationLink"), "editing pushes one explicit editor route from the active detail")
+        expect(eventEditor.contains("if store.activePetEventCategories.isEmpty") && eventEditor.contains("PetEventCategorySettingsView()"), "the empty-category editor state still offers category setup")
+        expect(eventDetail.contains("if event.litterOperationID == nil") && eventDetail.contains("不能单独删除"), "generated litter events keep their existing edit and delete restrictions")
+        expect(petViewSource.contains("if $0.occurrenceDate == $1.occurrenceDate { return $0.createdAt > $1.createdAt }") && petViewSource.contains("return $0.occurrenceDate > $1.occurrenceDate"), "event ordering by occurrence date and creation time is unchanged")
     }
 
     private static func petHomepagePriceAndInventoryValuationContracts() throws {
@@ -662,7 +725,7 @@ struct PetInventoryCostingAcceptance {
         expect(overview.contains("PetInventoryValuation.integerText(snapshot.totalQuantity)") && netContent.contains("mass(snapshot.totalMassGrams)") && netContent.contains("volume(snapshot.totalVolumeMilliliters)") && statisticsSource.contains("PetInventoryValuation.integerText(scaled)"), "quantity and net-content overview values use integer-only display formatting")
         expect(valuationSource.contains("\"库存估值\"") && valuationSource.contains("\"已计价小计\"") && valuationSource.contains("未计价商品"), "partial valuation is distinguished in its accessible summary without a visible note row")
         expect(snapshot.contains("store.petInventory(for: item.id)") && snapshot.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && snapshot.contains("PetInventoryValuation.summarize"), "statistics estimate current stock against live weighted inbound prices")
-        expect(petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: route.capabilityKey)") && petHomeSource.contains("case .food") && petHomeSource.contains("case .supply"), "food and supply count buttons use the existing root-specific statistics destination")
+        expect(petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petFood\")") && petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petSupply\")"), "food and supply count buttons use their root-specific statistics destinations")
     }
 
     private static func inventoryValuation() throws {

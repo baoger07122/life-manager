@@ -163,6 +163,7 @@ struct PetEventDetailView: View {
     @EnvironmentObject private var store: HomeStore
     @Environment(\.dismiss) private var dismiss
     let eventID: String
+    let onEdit: () -> Void
     @State private var showDelete = false
 
     private var event: PetEvent? {
@@ -221,7 +222,7 @@ struct PetEventDetailView: View {
             if let event {
                 ToolbarItemGroup(placement: .primaryAction) {
                     if event.litterOperationID == nil {
-                        NavigationLink("编辑") { PetEventEditorView(eventID: event.id) }
+                        Button("编辑", action: onEdit)
                         Button(role: .destructive) { showDelete = true } label: { Image(systemName: "trash") }
                     }
                 }

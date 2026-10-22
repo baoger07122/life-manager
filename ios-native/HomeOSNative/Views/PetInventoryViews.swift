@@ -1261,7 +1261,9 @@ struct PetProductReviewEditorView: View {
         return store.data.petProductReviews.first { $0.id == reviewID && $0.productID == productID }
     }
     private var dimensions: [String] {
-        if let existingReview { return orderedPetReviewDimensions(existingReview.resolvedDimensionScores) }
+        if let existingReview {
+            return orderedPetReviewDimensions(existingReview.resolvedDimensionScores, item: item)
+        }
         return item.map(petRatingDimensions) ?? ["使用体验", "品质", "性价比", "回购意愿"]
     }
     private var overallScore: Double {

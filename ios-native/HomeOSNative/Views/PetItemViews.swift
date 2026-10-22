@@ -35,6 +35,7 @@ extension PetItem {
 struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterContent: View>: View {
     @EnvironmentObject private var store: HomeStore
     @Binding var primaryID: String
+    @Binding var petNavigationPath: [PetViewRoute]
     private let headerContent: HeaderContent
     private let statisticsContent: StatisticsContent
     private let footerContent: FooterContent
@@ -145,11 +146,13 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
 
     init(
         primaryID: Binding<String>,
+        petNavigationPath: Binding<[PetViewRoute]>,
         @ViewBuilder header: () -> HeaderContent,
         @ViewBuilder statistics: () -> StatisticsContent,
         @ViewBuilder footer: () -> FooterContent
     ) {
         _primaryID = primaryID
+        _petNavigationPath = petNavigationPath
         headerContent = header()
         statisticsContent = statistics()
         footerContent = footer()
@@ -1450,11 +1453,11 @@ struct PetItemDetailView: View {
             if let item {
                 LazyVStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
                     productHeroCard(item)
-                    productNotesCard(item)
                     inventoryCard(item)
                     productReviewCard
                     if isPetFood(item) { palatabilityCard }
                     priceCard(item)
+                    productNotesCard(item)
                     transactionCard(item)
                 }.padding(HomeMetrics.pageInset)
             } else {
@@ -1744,7 +1747,7 @@ struct PetItemDetailView: View {
                                     .foregroundStyle(HomeTheme.muted)
                             }
                             if !review.reviewText.isEmpty { Text(review.reviewText).font(HomeTypography.body).foregroundStyle(HomeTheme.ink) }
-                            Text(orderedPetReviewDimensions(review.resolvedDimensionScores).map { dimension in
+                            Text(orderedPetReviewDimensions(review.resolvedDimensionScores, item: item).map { dimension in
                                 "\(dimension) \(review.resolvedDimensionScores[dimension] ?? 0)"
                             }.joined(separator: " · "))
                             .font(HomeTypography.supporting)
@@ -2086,14 +2089,11 @@ func petRatingDimensions(_ item: PetItem) -> [String] {
     return ["使用效果", "便利性", "耐用性", "性价比"]
 }
 
-func orderedPetReviewDimensions(_ scores: [String: Int]) -> [String] {
-    let preferredOrder = [
-        "除臭性", "结团性", "耐用性", "性价比",
-        "使用效果", "便利性", "适口性", "品质", "回购意愿", "使用体验"
-    ]
-    let known = preferredOrder.filter { scores[$0] != nil }
-    let remaining = scores.keys.filter { !preferredOrder.contains($0) }.sorted()
-    return known + remaining
+func orderedPetReviewDimensions(_ scores: [String: Int], item: PetItem?) -> [String] {
+    PetProductReviewDimensionOrdering.ordered(
+        scores: scores,
+        standardOrder: item.map(petRatingDimensions) ?? []
+    )
 }
 
 func transactionTypeTitle(_ type: PetInventoryTransactionType) -> String {

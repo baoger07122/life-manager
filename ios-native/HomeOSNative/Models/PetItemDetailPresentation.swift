@@ -1,5 +1,16 @@
 import Foundation
 
+enum PetProductReviewDimensionOrdering {
+    static func ordered(scores: [String: Int], standardOrder: [String]) -> [String] {
+        let standardDimensions = Set(standardOrder)
+        let existingStandardDimensions = standardOrder.filter { scores[$0] != nil }
+        let historicalExtraDimensions = scores.keys
+            .filter { !standardDimensions.contains($0) }
+            .sorted()
+        return existingStandardDimensions + historicalExtraDimensions
+    }
+}
+
 struct PetPalatabilityReviewGroup: Identifiable {
     let petID: String
     let petName: String

@@ -7,7 +7,7 @@
 - Web 功能基线：`v8.25.1`。
 - 原生分支：`codex/ios-native-rewrite`。
 - 原生 Bundle ID：`com.bao.homeos.native`，可与旧 Capacitor App 并存。
-- 最近一次云端成功构建并发布 IPA：`10.22.1 (46)`，GitHub Actions 运行 `39727100617`；[GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v10.22.1)，文件 `HomeOSNative-10.22.1-unsigned.ipa`。
+- 最近一次云端成功构建并发布 IPA：`10.22.2 (47)`，验收/Release 编译运行 `39772975394`，Release 上传运行 `39773340974`；[GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v10.22.2)，文件 `HomeOSNative-10.22.2-unsigned.ipa`，大小 `4,931,445` 字节，SHA-256 `0f3cdde35542d40898977fbdff415eb915431b9b8236ef0244d0860540207730`。
 - 当前原生代码已使用 macOS 26 / 新版 Apple SDK 编译，系统 `TabView` 采用 iPhone 原生 Liquid Glass 外观。
 - 已确认主导航：系统 `TabView`；首页 `house.fill`、食品 `takeoutbag.and.cup.and.straw.fill`、菜谱 `list.bullet.clipboard.fill`、宠物 `cat.fill`、设置 `gearshape.fill`。
 

@@ -11,14 +11,34 @@ enum PetProductReviewDimensionOrdering {
     }
 }
 
+enum PetReviewDateText {
+    static func display(_ storedValue: String) -> String {
+        guard !storedValue.isEmpty else { return "--" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: storedValue) else { return storedValue }
+        return formatter.string(from: date)
+    }
+}
+
 struct PetPalatabilityReviewGroup: Identifiable {
     let petID: String
     let petName: String
     let records: [PetPalatabilityReview]
+    let latestReviewDateRecord: PetPalatabilityReview?
 
     var id: String { petID }
     var count: Int { records.count }
     var latestRecord: PetPalatabilityReview? { records.first }
+    var oldestFirstRecords: [PetPalatabilityReview] {
+        records.sorted {
+            if $0.createdAt != $1.createdAt { return $0.createdAt < $1.createdAt }
+            return $0.id < $1.id
+        }
+    }
     var averageScore: Double {
         guard !records.isEmpty else { return 0 }
         return Double(records.reduce(0) { $0 + $1.resolvedScore }) / Double(records.count)
@@ -42,21 +62,23 @@ enum PetPalatabilityReviewGrouping {
             return PetPalatabilityReviewGroup(
                 petID: pet.id,
                 petName: pet.name,
-                records: sorted(petReviews)
+                records: sortedByCreationDate(petReviews),
+                latestReviewDateRecord: sortedByReviewDate(petReviews).first
             )
         }
 
         let historicalGroups = grouped.compactMap { petID, petReviews -> PetPalatabilityReviewGroup? in
             guard !activePetIDs.contains(petID) else { return nil }
-            let orderedReviews = sorted(petReviews)
-            let snapshot = orderedReviews.first?.petNameSnapshot.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let latestReviewDateRecord = sortedByReviewDate(petReviews).first
+            let snapshot = latestReviewDateRecord?.petNameSnapshot.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             return PetPalatabilityReviewGroup(
                 petID: petID,
                 petName: snapshot.isEmpty ? petID : snapshot,
-                records: orderedReviews
+                records: sortedByCreationDate(petReviews),
+                latestReviewDateRecord: latestReviewDateRecord
             )
         }.sorted { left, right in
-            guard let leftLatest = left.latestRecord, let rightLatest = right.latestRecord else {
+            guard let leftLatest = left.latestReviewDateRecord, let rightLatest = right.latestReviewDateRecord else {
                 return left.petName.localizedStandardCompare(right.petName) == .orderedAscending
             }
             if leftLatest.reviewDate != rightLatest.reviewDate {
@@ -71,7 +93,14 @@ enum PetPalatabilityReviewGrouping {
         return activeGroups + historicalGroups
     }
 
-    private static func sorted(_ reviews: [PetPalatabilityReview]) -> [PetPalatabilityReview] {
+    private static func sortedByCreationDate(_ reviews: [PetPalatabilityReview]) -> [PetPalatabilityReview] {
+        reviews.sorted {
+            if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }
+            return $0.id < $1.id
+        }
+    }
+
+    private static func sortedByReviewDate(_ reviews: [PetPalatabilityReview]) -> [PetPalatabilityReview] {
         reviews.sorted {
             if $0.reviewDate != $1.reviewDate { return $0.reviewDate > $1.reviewDate }
             if $0.createdAt != $1.createdAt { return $0.createdAt > $1.createdAt }

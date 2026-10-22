@@ -1303,8 +1303,8 @@ struct PetProductReviewEditorView: View {
                     }
                     LabeledContent("本次综合评分", value: overallScore.formatted(.number.precision(.fractionLength(1))))
                 }
-                DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("产品评价", text: $review, axis: .vertical).font(HomeTypography.body)
+                DatePicker("评价日期", selection: $date, displayedComponents: .date)
             }
             .navigationTitle(reviewID == nil ? "添加产品评价" : "编辑产品评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -1358,8 +1358,8 @@ struct PetPalatabilityEditorView: View {
             Form {
                 petSelector
                 Picker("评价", selection: $score) { ForEach(1...5, id: \.self) { Text("\($0)分").tag($0) } }.pickerStyle(.segmented)
-                DatePicker("评价日期", selection: $date, displayedComponents: .date)
                 TextField("备注（可选）", text: $note, axis: .vertical).font(HomeTypography.body)
+                DatePicker("评价日期", selection: $date, displayedComponents: .date)
             }
             .navigationTitle(reviewID == nil ? "添加猫咪评价" : "编辑猫咪评价").navigationBarTitleDisplayMode(.inline)
             .toolbar {

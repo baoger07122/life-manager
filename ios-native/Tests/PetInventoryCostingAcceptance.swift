@@ -22,6 +22,7 @@ struct PetInventoryCostingAcceptance {
         try pendingRepurchaseCategoryContracts()
         try pendingRepurchaseNavigationContracts()
         try palatabilityReviewGrouping()
+        try petReviewPresentationContracts()
         try petProductReviewDimensionOrdering()
         try petEventNavigationContracts()
         try heroAveragePricePresentation()
@@ -384,6 +385,10 @@ struct PetInventoryCostingAcceptance {
             petItemsSource,
             from: "struct PetPendingRepurchaseView: View",
             to: "struct PetNoRepurchaseLibraryView: View"
+        ), let noRepurchase = sourceSlice(
+            petItemsSource,
+            from: "struct PetNoRepurchaseLibraryView: View",
+            to: "struct PetItemDetailView: View"
         ), let categoryRename = sourceSlice(
             storeSource,
             from: "    func renameManagedCategory(id: String, name: String) -> Bool {",
@@ -404,6 +409,12 @@ struct PetInventoryCostingAcceptance {
         expect(pending.contains(".navigationDestination(item: $detailItemID)") && pending.contains("PetItemDetailView(itemID: itemID)"), "pending items retain their detail navigation")
         expect(pending.contains("PetProductThumbnail(item: item)") && pending.contains("panelDivider") && pending.contains("panelBottomCap") && pending.contains(".listStyle(.plain)"), "pending list reuses the home thumbnail and unified divided card layout")
         expect(!pending.contains("quickManagerRow") && !pending.contains("openEditor") && !pending.contains("新增"), "pending list has no stock quick actions or add-item control")
+        expect(noRepurchase.contains("store.categories(for: .pet)") && noRepurchase.contains("store.categories(for: .pet, parentID: $0.id)"), "no-repurchase library reuses the live two-level pet categories")
+        expect(noRepurchase.contains("ForEach(primaryCategories)") && noRepurchase.contains("ForEach(secondaryCategories)") && noRepurchase.contains("HomeUnderlineTab"), "no-repurchase library displays both category levels with the same home selectors")
+        expect(noRepurchase.contains("$0.resolvedPrimaryCategory == selectedPrimary.name") && noRepurchase.contains("$0.resolvedSecondaryCategory == selectedSecondary.name"), "no-repurchase products are isolated by both selected category levels")
+        expect(noRepurchase.contains("secondaryID = preferredSecondary?.id ?? \"\"") && noRepurchase.contains("onChange(of: secondaryCategories.map(\\.id))"), "no-repurchase category selection stays valid as managed categories change")
+        expect(noRepurchase.contains("panelDivider") && noRepurchase.contains("panelBottomCap") && noRepurchase.contains(".listStyle(.plain)"), "no-repurchase products use the same rounded divided-card list layout")
+        expect(noRepurchase.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: true)") && noRepurchase.contains("permanentlyDeletePetItem(id: item.id)"), "category filtering retains restore and permanent-delete actions")
         expect(categoryRename.contains("primaryCategory = cleanName") && categoryRename.contains("secondaryCategory = cleanName"), "renaming a managed category updates the product category names")
     }
 
@@ -517,8 +528,9 @@ struct PetInventoryCostingAcceptance {
         )]
         let reviews = [
             palatabilityReview("second-legacy", petID: secondPet.id, petName: secondPet.name, date: "2026-01-02", createdAt: 2, preference: "一般"),
-            palatabilityReview("bling-old", petID: bling.id, petName: bling.name, date: "2026-01-01", createdAt: 1, preference: "喜欢"),
-            palatabilityReview("bling-new", petID: bling.id, petName: bling.name, date: "2026-01-03", createdAt: 3, score: 3),
+            palatabilityReview("bling-old", petID: bling.id, petName: bling.name, date: "2026-01-05", createdAt: 1, preference: "喜欢"),
+            palatabilityReview("bling-same-day", petID: bling.id, petName: bling.name, date: "2026-01-01", createdAt: 2, score: 4),
+            palatabilityReview("bling-new", petID: bling.id, petName: bling.name, date: "2026-01-01", createdAt: 3, score: 3, note: "最近添加的记录"),
             deletedPetReviews[0],
             palatabilityReview("other-product", productID: "other", petID: bling.id, petName: bling.name, date: "2026-01-05", createdAt: 5, score: 1)
         ]
@@ -529,9 +541,11 @@ struct PetInventoryCostingAcceptance {
             activePets: [bling, secondPet]
         )
         expect(groups.map(\.petID) == ["bling", "second", "deleted-pet"], "palatability summaries follow active-pet order, then include deleted-pet history")
-        expect(groups[0].petName == "BLING" && groups[0].count == 2, "multiple reviews collapse into one current-pet summary")
+        expect(groups[0].petName == "BLING" && groups[0].count == 3, "multiple reviews collapse into one current-pet summary")
         expectClose(groups[0].averageScore, 4, "legacy preference score participates in the per-pet average")
-        expect(groups[0].records.map(\.id) == ["bling-new", "bling-old"], "expanded history is ordered newest first")
+        expect(groups[0].records.map(\.id) == ["bling-new", "bling-same-day", "bling-old"], "collapsed latest record and source history follow creation time even when review dates differ")
+        expect(groups[0].latestRecord?.note == "最近添加的记录", "the collapsed summary uses the note from the most recently added review")
+        expect(groups[0].oldestFirstRecords.map(\.id) == ["bling-old", "bling-same-day", "bling-new"], "expanded history is chronologically ordered by creation time with stable same-day records")
         expect(groups[1].count == 1, "a single review remains one editable pet entry")
         expectClose(groups[1].averageScore, 3, "legacy neutral preference maps to its resolved score")
         expect(groups[2].petName == "历史猫", "deleted pets retain their recorded name")
@@ -540,12 +554,15 @@ struct PetInventoryCostingAcceptance {
         var editedReview = reviews.first { $0.id == "bling-new" }!
         editedReview.score = 1
         editedReview.preference = "不喜欢"
+        editedReview.reviewDate = "2025-12-31"
+        expect(editedReview.createdAt == 3, "editing a historical review date preserves its creation timestamp")
         let afterEdit = PetPalatabilityReviewGrouping.groups(
             productID: "product",
             reviews: reviews.map { $0.id == editedReview.id ? editedReview : $0 },
             activePets: [bling, secondPet]
         )
-        expectClose(afterEdit[0].averageScore, 3, "editing one review immediately changes that pet's average")
+        expectClose(afterEdit[0].averageScore, 10.0 / 3.0, "editing one review immediately changes that pet's average")
+        expect(afterEdit[0].latestRecord?.id == "bling-new", "editing a review date does not make it stop being the newest-added summary")
 
         let singleReviewGroup = PetPalatabilityReviewGrouping.groups(
             productID: "product",
@@ -554,6 +571,82 @@ struct PetInventoryCostingAcceptance {
         )
         expect(singleReviewGroup.count == 1 && singleReviewGroup[0].count == 1, "one review produces exactly one non-aggregated summary")
         expectClose(singleReviewGroup[0].averageScore, 5, "one-review summary shows that review's own score")
+    }
+
+    private static func petReviewPresentationContracts() throws {
+        let presentationSource = try String(contentsOfFile: "HomeOSNative/Models/PetItemDetailPresentation.swift", encoding: .utf8)
+        let itemViewSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        let editorSource = try String(contentsOfFile: "HomeOSNative/Views/PetInventoryViews.swift", encoding: .utf8)
+        let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
+        let designSource = try String(contentsOfFile: "HomeOSNative/Design/DesignSystem.swift", encoding: .utf8)
+        guard let productCard = sourceSlice(
+            itemViewSource,
+            from: "    private var productReviewCard: some View {",
+            to: "    private var palatabilityCard: some View {"
+        ), let palatability = sourceSlice(
+            itemViewSource,
+            from: "    private var palatabilityCard: some View {",
+            to: "    @ViewBuilder private func detailProductImage"
+        ), let productEditor = sourceSlice(
+            editorSource,
+            from: "struct PetProductReviewEditorView: View",
+            to: "struct PetPalatabilityEditorView: View"
+        ), let catEditor = sourceSlice(
+            editorSource,
+            from: "struct PetPalatabilityEditorView: View",
+            to: "struct PetPreferenceSummaryView: View"
+        ), let palatabilitySave = sourceSlice(
+            storeSource,
+            from: "    func savePetPalatabilityReview(",
+            to: "    func petPalatabilityRating(productID: String, petID: String) -> PetRatingSummary? {"
+        ), let productSave = sourceSlice(
+            storeSource,
+            from: "    func savePetProductReview(",
+            to: "    func petProductRating(productID: String) -> PetRatingSummary? {"
+        ), let productUpdate = sourceSlice(
+            productSave,
+            from: "        if let id {",
+            to: "        } else {"
+        ), let palatabilityUpdate = sourceSlice(
+            palatabilitySave,
+            from: "        if let id {",
+            to: "        } else {"
+        ) else {
+            fatalError("pet product or cat review presentation source is missing")
+        }
+
+        expect(PetReviewDateText.display("2026-10-22") == "2026-10-22", "product detail dates keep the yyyy-MM-dd numeric form")
+        expect(PetReviewDateText.display("") == "--" && PetReviewDateText.display("legacy date") == "legacy date", "empty and legacy review dates remain readable")
+        expect(presentationSource.contains("dateFormat = \"yyyy-MM-dd\"") && designSource.contains("enum HomeDateText") && designSource.contains("yyyy年M月d日"), "numeric review dates do not change the global date presentation")
+
+        expect(productCard.contains("sorted { $0.reviewDate > $1.reviewDate }") && productCard.contains("LazyVStack") && productCard.contains("ForEach(records)"), "product review history preserves review-date order and renders every record lazily")
+        expect(!productCard.contains("prefix(") && productCard.contains("PetReviewDateText.display(review.reviewDate)"), "product review history is unlimited and uses numeric dates")
+        if let dimensionPosition = productCard.range(of: "Text(orderedPetReviewDimensions")?.lowerBound,
+           let datePosition = productCard.range(of: "Text(PetReviewDateText.display(review.reviewDate))")?.lowerBound {
+            expect(dimensionPosition < datePosition, "product review date follows the note and dimension summary")
+        } else {
+            fatalError("product review note, dimensions or date source is missing")
+        }
+        let productNotePosition = productEditor.range(of: "TextField(\"产品评价\"")?.lowerBound
+        let productDatePosition = productEditor.range(of: "DatePicker(\"评价日期\"")?.lowerBound
+        expect(productNotePosition != nil && productDatePosition != nil && productNotePosition! < productDatePosition!, "product review editor puts its date picker after the note")
+        let catNotePosition = catEditor.range(of: "TextField(\"备注（可选）\"")?.lowerBound
+        let catDatePosition = catEditor.range(of: "DatePicker(\"评价日期\"")?.lowerBound
+        expect(catNotePosition != nil && catDatePosition != nil && catNotePosition! < catDatePosition!, "cat review editor puts its date picker after the note")
+
+        expect(!palatability.contains("DisclosureGroup") && palatability.contains("ForEach(group.oldestFirstRecords)") && palatability.contains("LazyVStack"), "multi-review groups expand inline and render oldest-first history lazily")
+        guard let summary = sourceSlice(palatability, from: "private func palatabilityGroupSummary", to: "private func palatabilitySingleReviewRow"),
+              let single = sourceSlice(palatability, from: "private func palatabilitySingleReviewRow", to: "private func palatabilityHistoryEntry"),
+              let history = sourceSlice(palatability, from: "private func palatabilityHistoryEntry", to: "private func ratingStars") else {
+            fatalError("cat review row sources are missing")
+        }
+        expect(summary.contains("if group.count > 1") && summary.contains("Text(\"\\(group.count)条\")"), "cat review count appears beside the name only for multiple reviews")
+        expect(summary.contains("group.latestRecord") && summary.contains("if !isExpanded") && summary.contains(".fixedSize(horizontal: false, vertical: true)"), "collapsed cat groups show the full latest-added note and hide it while expanded")
+        expect(summary.contains("average.formatted") && summary.contains("分") && !summary.contains("chevron") && !summary.contains("查看"), "cat group summary shows one average score without disclosure clutter")
+        expect(single.contains("review.resolvedScore") && single.contains("PetReviewDateText.display(review.reviewDate)") && single.contains("review.note"), "a single cat review shows its score, complete note and numeric date")
+        expect(history.contains("review.resolvedScore") && history.contains("review.note") && history.contains("PetReviewDateText.display(review.reviewDate)") && history.contains("sheet = .palatability(reviewID: review.id)"), "expanded cat history keeps full notes, dates and the existing edit sheet")
+        expect(productUpdate.contains("reviewDate = date") && !productUpdate.contains("createdAt ="), "editing a product review keeps its original creation timestamp")
+        expect(palatabilityUpdate.contains("reviewDate = date") && !palatabilityUpdate.contains("createdAt ="), "editing a cat review keeps its original creation timestamp")
     }
 
     private static func heroAveragePricePresentation() throws {
@@ -598,10 +691,10 @@ struct PetInventoryCostingAcceptance {
         } else {
             fatalError("pet item notes card source is missing")
         }
-        expect(palatability.contains("ForEach(groups)") && palatability.contains("DisclosureGroup(isExpanded:") && palatability.contains("ForEach(group.records)"), "each pet has one collapsed summary and can reveal every review")
+        expect(palatability.contains("ForEach(groups)") && !palatability.contains("DisclosureGroup(isExpanded:") && palatability.contains("ForEach(group.oldestFirstRecords)"), "each pet has one collapsed summary and can reveal every review inline")
         expect(palatability.contains("group.count == 1") && palatability.contains("sheet = .palatability(reviewID: review.id)"), "a single review opens its original editor directly")
-        expect(palatability.contains("store.petPalatabilityRating(productID: itemID, petID: group.petID)") && palatability.contains("次评价") && palatability.contains("查看 \\(group.count) 条") && palatability.contains("收起"), "multi-review summaries show the per-pet average, count and clear expand control")
-        expect(palatability.contains("review.resolvedScore") && palatability.contains("review.note") && palatability.contains("HomeDateText.display(review.reviewDate)"), "expanded reviews retain resolved score, note, date and edit action")
+        expect(palatability.contains("group.count > 1") && palatability.contains("Text(\"\\(group.count)条\")") && palatability.contains("average.formatted") && palatability.contains("分"), "multi-review summaries show only the adjacent count and average score")
+        expect(palatability.contains("review.resolvedScore") && palatability.contains("review.note") && palatability.contains("PetReviewDateText.display(review.reviewDate)"), "expanded and single reviews retain resolved score, full note, numeric date and edit action")
         expect(!palatability.contains("records.prefix(6)"), "pet history is not truncated to six records")
         expect(heroLine.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && heroLine.contains("PetItemHeroAveragePrice.text"), "hero uses the shared weighted-average inbound price")
         expect(heroLine.contains("ViewThatFits(in: .horizontal)") && heroLine.contains("HStack(alignment: .firstTextBaseline, spacing: 8)") && heroLine.contains("VStack(alignment: .leading"), "hero price stays beside the specification when possible and wraps when needed")
@@ -674,8 +767,12 @@ struct PetInventoryCostingAcceptance {
             to: "    private func quickManagerRow(_ item: PetItem) -> some View {"
         ), let brandPriceLine = sourceSlice(
             homeRow,
-            from: "HStack(spacing: 4) {",
-            to: "Text(item.displayNameAndVariant)"
+            from: "Text(item.brand",
+            to: "Text(item.name)"
+        ), let nameFlavorLine = sourceSlice(
+            homeRow,
+            from: "Text(item.name)",
+            to: "VStack(alignment: .trailing, spacing: 6) {"
         ), let averagePriceMethod = sourceSlice(
             storeSource,
             from: "    func petWeightedAverageInboundUnitPrice(for productID: String) -> Double? {",
@@ -694,18 +791,19 @@ struct PetInventoryCostingAcceptance {
 
         guard let brandPosition = homeRow.range(of: "item.brand")?.lowerBound,
               let pricePosition = homeRow.range(of: "Text(averagePriceText)")?.lowerBound,
-              let namePosition = homeRow.range(of: "Text(item.displayNameAndVariant)")?.lowerBound,
+              let namePosition = homeRow.range(of: "Text(item.name)")?.lowerBound,
               let specificationPosition = homeRow.range(of: "Text(specificationAndStock(item))")?.lowerBound,
               let ratingPosition = homeRow.range(of: "rating.overall")?.lowerBound else {
             fatalError("homepage price, item name, specification or rating source is missing")
         }
         expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHomepageAveragePrice.text"), "homepage rows use each product's weighted inbound unit price")
-        expect(brandPosition < pricePosition && pricePosition < namePosition && specificationPosition < ratingPosition, "homepage price follows the brand on row one and remains left of the row-two rating")
-        expect(brandPriceLine.contains("item.brand") && brandPriceLine.contains("Text(averagePriceText)") && brandPriceLine.contains("HomeTheme.muted"), "homepage price is low-emphasis text immediately after the brand on the first line")
+        expect(brandPosition < pricePosition && pricePosition < namePosition && ratingPosition < specificationPosition, "homepage brand and price appear on row one, with rating before spec and stock on row two")
+        expect(brandPriceLine.contains("item.brand") && brandPriceLine.contains("Text(averagePriceText)") && brandPriceLine.contains("HomeTheme.muted") && brandPriceLine.contains("size: 14, weight: .medium") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand is moderately emphasized and its weighted price stays muted")
         expect(homeRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && homeRow.contains("Image(systemName: \"star.fill\")") && homeRow.contains(".fixedSize(horizontal: true, vertical: false)"), "homepage rating icon and score remain together on one horizontal line")
         expect(homeRow.contains("Text(\"未评分\")") && homeRow.contains(".frame(width: 106, alignment: .trailing)"), "unrated products retain a single-line rating field in the original trailing column")
         expect(homeRow.contains(".frame(minHeight: 48") && homeRow.contains(".padding(.vertical, 8)") && homeRow.contains(".padding(.horizontal, 14)"), "homepage item rows keep their original height and insets")
-        expect(homeRow.contains("item.displayNameAndVariant") && homeRow.contains(".minimumScaleFactor(0.84)"), "homepage name and flavor retain their original compact second row")
+        expect(nameFlavorLine.contains("Text(item.name)") && nameFlavorLine.contains("size: 13, weight: .semibold") && nameFlavorLine.contains("Text(flavor)") && nameFlavorLine.contains("font(.system(size: 13))") && nameFlavorLine.contains("HomeTheme.muted") && nameFlavorLine.contains(".minimumScaleFactor(0.78)"), "homepage name and flavor use separate compact text styles")
+        expect(!homeRow.contains("item.displayNameAndVariant") && nameFlavorLine.contains(".lineLimit(1)"), "homepage name and flavor stay separate and compress on the same compact row")
         expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
         let metricCalls = overview.components(separatedBy: "overviewMetric(").count - 1
         guard let metric = sourceSlice(

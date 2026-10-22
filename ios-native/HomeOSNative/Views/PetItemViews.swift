@@ -401,9 +401,10 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 4) {
                             Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                                .font(.system(size: 12))
-                                .foregroundStyle(HomeTheme.muted)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(HomeTheme.ink)
                                 .lineLimit(1)
+                                .minimumScaleFactor(0.75)
                             if let averagePriceText {
                                 Text("·")
                                     .font(.system(size: 12))
@@ -415,18 +416,24 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                                     .minimumScaleFactor(0.75)
                             }
                         }
-                        Text(item.displayNameAndVariant)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(HomeTheme.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.84)
+                        HStack(spacing: 4) {
+                            Text(item.name)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(HomeTheme.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+                                .layoutPriority(1)
+                            if let flavor = item.displayVariant {
+                                Text(flavor)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(HomeTheme.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.72)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .trailing, spacing: 6) {
-                        Text(specificationAndStock(item))
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
                         if let rating = store.petProductRating(productID: item.id) {
                             HStack(alignment: .firstTextBaseline, spacing: 3) {
                                 Image(systemName: "star.fill")
@@ -443,6 +450,10 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
+                        Text(specificationAndStock(item))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
                     }
                     .frame(width: 106, alignment: .trailing)
                     .frame(minHeight: 48, alignment: .trailing)
@@ -1339,17 +1350,36 @@ struct PetPendingRepurchaseView: View {
 
 struct PetNoRepurchaseLibraryView: View {
     @EnvironmentObject private var store: HomeStore
-    @State private var primaryID = "pet-root-food"
+    @State private var primaryID = ""
+    @State private var secondaryID = ""
+    @State private var detailItemID: String?
     @State private var deleteCandidate: PetItem?
 
     private var primaryCategories: [ManagedCategory] { store.categories(for: .pet) }
     private var selectedPrimary: ManagedCategory? {
-        primaryCategories.first { $0.id == primaryID } ?? primaryCategories.first
+        primaryCategories.first { $0.id == primaryID }
+            ?? primaryCategories.first { $0.capabilityKey == "petFood" }
+            ?? primaryCategories.first
+    }
+    private var secondaryCategories: [ManagedCategory] {
+        selectedPrimary.map { store.categories(for: .pet, parentID: $0.id) } ?? []
+    }
+    private var selectedSecondary: ManagedCategory? {
+        secondaryCategories.first { $0.id == secondaryID } ?? preferredSecondary
+    }
+    private var preferredSecondary: ManagedCategory? {
+        let preferredNames = selectedPrimary?.capabilityKey == "petFood" ? ["主食罐"] : ["矿砂"]
+        return preferredNames.compactMap { name in secondaryCategories.first { $0.name == name } }.first
+            ?? secondaryCategories.first
     }
     private var items: [PetItem] {
-        guard let selectedPrimary else { return [] }
+        guard let selectedPrimary, let selectedSecondary else { return [] }
         return store.data.petItems
-            .filter { !$0.resolvedWillRepurchase && $0.resolvedPrimaryCategory == selectedPrimary.name }
+            .filter {
+                !$0.resolvedWillRepurchase
+                    && $0.resolvedPrimaryCategory == selectedPrimary.name
+                    && $0.resolvedSecondaryCategory == selectedSecondary.name
+            }
             .sorted {
                 let left = $0.updatedAt ?? $0.createdAt ?? 0
                 let right = $1.updatedAt ?? $1.createdAt ?? 0
@@ -1359,35 +1389,31 @@ struct PetNoRepurchaseLibraryView: View {
 
     var body: some View {
         List {
-            Section {
-                Picker("类型", selection: $primaryID) {
-                    ForEach(primaryCategories) { category in
-                        Text(category.name).tag(category.id)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: primaryID) { _, _ in NativeHaptics.selection() }
-            }
+            categorySelectorPanel
+                .listRowInsets(.init(top: 10, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+
             if items.isEmpty {
-                Section {
-                    EmptyState(icon: "archivebox", title: "不回购库为空", message: "将商品设为不回购后会保留在这里。")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                }
+                EmptyState(
+                    icon: "archivebox",
+                    title: "不回购库为空",
+                    message: "“\(selectedSecondary?.name ?? selectedPrimary?.name ?? "当前")”分类里没有设置为不回购的商品。"
+                )
+                .padding(.vertical, 10)
+                .background(HomeTheme.card)
+                .overlay(alignment: .top) { panelDivider }
+                .listRowInsets(panelRowInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             } else {
-                Section("不回购商品") {
-                    ForEach(items) { item in
-                        NavigationLink { PetItemDetailView(itemID: item.id) } label: {
-                            HStack(spacing: 11) {
-                                libraryImage(item)
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.displayTitle).font(.system(size: 14, weight: .semibold)).foregroundStyle(HomeTheme.ink)
-                                    Text("\(item.resolvedSecondaryCategory) · 库存 \(store.petInventory(for: item.id).formatted())\(item.unit)")
-                                        .font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                }
-                            }
-                        }
-                        .simultaneousGesture(TapGesture().onEnded { NativeHaptics.tap() })
+                ForEach(items) { item in
+                    noRepurchaseItemRow(item)
+                        .background(HomeTheme.card)
+                        .overlay(alignment: .top) { panelDivider }
+                        .listRowInsets(panelRowInsets)
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button {
                                 store.setPetItemRepurchase(id: item.id, willRepurchase: true)
@@ -1399,18 +1425,31 @@ struct PetNoRepurchaseLibraryView: View {
                                 Label("删除", systemImage: "trash")
                             }
                         }
-                    }
                 }
             }
+
+            panelBottomCap
+                .listRowInsets(panelRowInsets)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .environment(\.defaultMinListRowHeight, 1)
+        .scrollContentBackground(.hidden)
+        .background(HomeTheme.background)
+        .scrollIndicators(.hidden)
         .navigationTitle("不回购库")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            if !primaryCategories.contains(where: { $0.id == primaryID }) {
-                primaryID = primaryCategories.first?.id ?? ""
-            }
+        .navigationDestination(item: $detailItemID) { itemID in
+            PetItemDetailView(itemID: itemID)
         }
+        .onAppear(perform: synchronizeSelections)
+        .onChange(of: primaryID) { _, _ in
+            secondaryID = preferredSecondary?.id ?? ""
+            NativeHaptics.selection()
+        }
+        .onChange(of: primaryCategories.map(\.id)) { _, _ in synchronizeSelections() }
+        .onChange(of: secondaryCategories.map(\.id)) { _, _ in synchronizeSelections() }
         .alert("永久删除这个物品？", isPresented: Binding(
             get: { deleteCandidate != nil },
             set: { if !$0 { deleteCandidate = nil } }
@@ -1425,17 +1464,149 @@ struct PetNoRepurchaseLibraryView: View {
         }
     }
 
-    @ViewBuilder private func libraryImage(_ item: PetItem) -> some View {
-        if let image = item.image, !image.isEmpty {
-            PetStoredImage(reference: image)
-                .frame(width: 46, height: 46)
-                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-        } else {
-            Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "shippingbox.fill")
-                .foregroundStyle(HomeTheme.blue)
-                .frame(width: 46, height: 46)
-                .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+    private var categorySelectorPanel: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ForEach(primaryCategories) { category in
+                    Button {
+                        primaryID = category.id
+                    } label: {
+                        HomeUnderlineTab(
+                            title: category.name,
+                            selected: selectedPrimary?.id == category.id,
+                            prominent: true
+                        )
+                        .padding(.horizontal, 6)
+                        .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(secondaryCategories) { category in
+                        Button {
+                            secondaryID = category.id
+                            NativeHaptics.selection()
+                        } label: {
+                            HomeUnderlineTab(title: category.name, selected: selectedSecondary?.id == category.id)
+                                .padding(.horizontal, 2)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .frame(minHeight: HomeMetrics.minimumTapTarget)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 7)
+            .padding(.bottom, 7)
         }
+        .background(
+            HomeTheme.card,
+            in: UnevenRoundedRectangle(
+                topLeadingRadius: 18,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 18,
+                style: .continuous
+            )
+        )
+    }
+
+    private var panelRowInsets: EdgeInsets {
+        .init(top: 0, leading: HomeMetrics.pageInset, bottom: 0, trailing: HomeMetrics.pageInset)
+    }
+
+    private var panelDivider: some View {
+        Rectangle()
+            .fill(HomeTheme.line.opacity(0.72))
+            .frame(height: 0.5)
+            .padding(.horizontal, 14)
+    }
+
+    private var panelBottomCap: some View {
+        Color.clear
+            .frame(height: 10)
+            .background(
+                HomeTheme.card,
+                in: UnevenRoundedRectangle(
+                    topLeadingRadius: 0,
+                    bottomLeadingRadius: 18,
+                    bottomTrailingRadius: 18,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+            )
+    }
+
+    private func synchronizeSelections() {
+        if !primaryCategories.contains(where: { $0.id == primaryID }) {
+            primaryID = primaryCategories.first(where: { $0.capabilityKey == "petFood" })?.id
+                ?? primaryCategories.first?.id
+                ?? ""
+        }
+        if !secondaryCategories.contains(where: { $0.id == secondaryID }) {
+            secondaryID = preferredSecondary?.id ?? ""
+        }
+    }
+
+    private func noRepurchaseItemRow(_ item: PetItem) -> some View {
+        Button {
+            NativeHaptics.tap()
+            detailItemID = item.id
+        } label: {
+            HStack(spacing: 0) {
+                PetProductThumbnail(item: item)
+                HStack(spacing: 11) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                        Text(item.displayNameAndVariant)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(HomeTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.84)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .trailing, spacing: 6) {
+                        Text(specificationAndStock(item))
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                        Text("不回购")
+                            .font(.system(size: 12))
+                            .foregroundStyle(HomeTheme.muted)
+                    }
+                    .frame(width: 106, alignment: .trailing)
+                    .frame(minHeight: 48, alignment: .trailing)
+                }
+                .padding(.leading, 11)
+                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func specificationAndStock(_ item: PetItem) -> String {
+        let quantity = store.petInventory(for: item.id).formatted()
+        let package = (item.packageType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stockText = "\(quantity)\(package.isEmpty ? item.unit : package)"
+        let spec = item.spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
     }
 }
 
@@ -1730,31 +1901,43 @@ struct PetItemDetailView: View {
                 } else {
                     Text("暂无物品评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
                 }
-                ForEach(records.prefix(5)) { review in
-                    Divider()
-                    Button {
-                        NativeHaptics.selection()
-                        sheet = .productReview(reviewID: review.id)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(HomeDateText.display(review.reviewDate)).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                Spacer()
-                                Text("本次 \(review.overallScore.formatted(.number.precision(.fractionLength(1))))")
-                                    .font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.blue)
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 11, weight: .medium))
+                LazyVStack(spacing: 0) {
+                    ForEach(records) { review in
+                        Divider()
+                        Button {
+                            NativeHaptics.selection()
+                            sheet = .productReview(reviewID: review.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Spacer(minLength: 4)
+                                    Text("本次 \(review.overallScore.formatted(.number.precision(.fractionLength(1))))")
+                                        .font(HomeTypography.cardTitle).foregroundStyle(HomeTheme.blue)
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(HomeTheme.muted)
+                                }
+                                if !review.reviewText.isEmpty {
+                                    Text(review.reviewText)
+                                        .font(HomeTypography.body)
+                                        .foregroundStyle(HomeTheme.ink)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Text(orderedPetReviewDimensions(review.resolvedDimensionScores, item: item).map { dimension in
+                                    "\(dimension) \(review.resolvedDimensionScores[dimension] ?? 0)"
+                                }.joined(separator: " · "))
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.muted)
+                                Text(PetReviewDateText.display(review.reviewDate))
+                                    .font(HomeTypography.supporting)
                                     .foregroundStyle(HomeTheme.muted)
                             }
-                            if !review.reviewText.isEmpty { Text(review.reviewText).font(HomeTypography.body).foregroundStyle(HomeTheme.ink) }
-                            Text(orderedPetReviewDimensions(review.resolvedDimensionScores, item: item).map { dimension in
-                                "\(dimension) \(review.resolvedDimensionScores[dimension] ?? 0)"
-                            }.joined(separator: " · "))
-                            .font(HomeTypography.supporting)
-                            .foregroundStyle(HomeTheme.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -1772,76 +1955,109 @@ struct PetItemDetailView: View {
                 if groups.isEmpty { Text("暂无猫咪评价").font(HomeTypography.body).foregroundStyle(HomeTheme.muted) }
                 ForEach(groups) { group in
                     Divider()
-                    if group.count == 1, let review = group.latestRecord {
-                        Button {
-                            NativeHaptics.selection()
-                            sheet = .palatability(reviewID: review.id)
-                        } label: {
-                            palatabilityGroupSummary(group)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        DisclosureGroup(isExpanded: Binding(
-                            get: { expandedPalatabilityPetIDs.contains(group.petID) },
-                            set: { isExpanded in
-                                if isExpanded {
-                                    expandedPalatabilityPetIDs.insert(group.petID)
-                                } else {
-                                    expandedPalatabilityPetIDs.remove(group.petID)
-                                }
-                            }
-                        )) {
-                            VStack(spacing: 6) {
-                                ForEach(group.records) { review in
-                                    palatabilityHistoryEntry(review)
-                                }
-                            }
-                            .padding(.top, 5)
-                        } label: {
-                            palatabilityGroupSummary(group)
-                        }
-                        .tint(HomeTheme.muted)
-                    }
+                    palatabilityGroupView(group)
                 }
             }
         }
     }
 
+    @ViewBuilder
+    private func palatabilityGroupView(_ group: PetPalatabilityReviewGroup) -> some View {
+        if group.count == 1, let review = group.latestRecord {
+            Button {
+                NativeHaptics.selection()
+                sheet = .palatability(reviewID: review.id)
+            } label: {
+                palatabilitySingleReviewRow(group: group, review: review)
+            }
+            .buttonStyle(.plain)
+        } else {
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    togglePalatabilityGroup(group)
+                } label: {
+                    palatabilityGroupSummary(group)
+                }
+                .buttonStyle(.plain)
+
+                if expandedPalatabilityPetIDs.contains(group.petID) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(group.oldestFirstRecords) { review in
+                            Divider()
+                            palatabilityHistoryEntry(review)
+                                .padding(.vertical, 5)
+                        }
+                    }
+                    .padding(.top, 4)
+                    .padding(.leading, 10)
+                }
+            }
+        }
+    }
+
+    private func togglePalatabilityGroup(_ group: PetPalatabilityReviewGroup) {
+        if expandedPalatabilityPetIDs.contains(group.petID) {
+            expandedPalatabilityPetIDs.remove(group.petID)
+        } else {
+            expandedPalatabilityPetIDs.insert(group.petID)
+        }
+        NativeHaptics.selection()
+    }
+
     private func palatabilityGroupSummary(_ group: PetPalatabilityReviewGroup) -> some View {
         let average = store.petPalatabilityRating(productID: itemID, petID: group.petID)?.overall ?? group.averageScore
-        let scoreText = group.count == 1
-            ? "\(group.records[0].resolvedScore)"
-            : average.formatted(.number.precision(.fractionLength(1)))
+        let isExpanded = expandedPalatabilityPetIDs.contains(group.petID)
         return HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(group.petName)
-                    .font(HomeTypography.cardTitle)
-                    .foregroundStyle(HomeTheme.ink)
-                if let latest = group.latestRecord {
-                    HStack(spacing: 6) {
-                        if let note = latest.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
-                            Text(note).lineLimit(1).truncationMode(.tail)
-                        }
-                        Text(HomeDateText.display(latest.reviewDate))
+                HStack(spacing: 6) {
+                    Text(group.petName)
+                        .font(HomeTypography.cardTitle)
+                        .foregroundStyle(HomeTheme.ink)
+                    if group.count > 1 {
+                        Text("\(group.count)条")
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
                     }
-                    .font(HomeTypography.supporting)
-                    .foregroundStyle(HomeTheme.muted)
+                }
+                if !isExpanded,
+                   let latest = group.latestRecord,
+                   let note = latest.note?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !note.isEmpty {
+                    Text(note)
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(scoreText)分")
+            Text("\(average.formatted(.number.precision(.fractionLength(1))))分")
+                .font(HomeTypography.body)
+                .foregroundStyle(palatabilityScoreColor(average))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+
+    private func palatabilitySingleReviewRow(group: PetPalatabilityReviewGroup, review: PetPalatabilityReview) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(group.petName)
+                    .font(HomeTypography.cardTitle)
+                    .foregroundStyle(HomeTheme.ink)
+                Spacer(minLength: 4)
+                Text("\(review.resolvedScore)分")
                     .font(HomeTypography.body)
-                    .foregroundStyle(palatabilityScoreColor(average))
-                if group.count > 1 {
-                    Text("\(group.count)次评价")
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
-                    Text(expandedPalatabilityPetIDs.contains(group.petID) ? "收起" : "查看 \(group.count) 条")
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
-                }
+                    .foregroundStyle(palatabilityScoreColor(Double(review.resolvedScore)))
             }
+            if let note = review.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                Text(note)
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(PetReviewDateText.display(review.reviewDate))
+                .font(HomeTypography.supporting)
+                .foregroundStyle(HomeTheme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
@@ -1853,24 +2069,21 @@ struct PetItemDetailView: View {
             sheet = .palatability(reviewID: review.id)
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(HomeDateText.display(review.reviewDate))
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
+                HStack(alignment: .top, spacing: 8) {
+                    if let note = review.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
+                        Text(note)
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Spacer(minLength: 4)
                     Text("\(review.resolvedScore)分")
                         .font(HomeTypography.body)
                         .foregroundStyle(palatabilityScoreColor(Double(review.resolvedScore)))
-                    Image(systemName: "pencil")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(HomeTheme.muted)
                 }
-                if let note = review.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
-                    Text(note)
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(PetReviewDateText.display(review.reviewDate))
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())

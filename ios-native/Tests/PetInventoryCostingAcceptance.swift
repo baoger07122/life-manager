@@ -637,7 +637,7 @@ struct PetInventoryCostingAcceptance {
         expect(!palatability.contains("DisclosureGroup") && palatability.contains("ForEach(group.oldestFirstRecords)") && palatability.contains("LazyVStack"), "multi-review groups expand inline and render oldest-first history lazily")
         guard let summary = sourceSlice(palatability, from: "private func palatabilityGroupSummary", to: "private func palatabilitySingleReviewRow"),
               let single = sourceSlice(palatability, from: "private func palatabilitySingleReviewRow", to: "private func palatabilityHistoryEntry"),
-              let history = sourceSlice(palatability, from: "private func palatabilityHistoryEntry", to: "private func ratingStars") else {
+              let history = sourceSlice(itemViewSource, from: "private func palatabilityHistoryEntry", to: "@ViewBuilder private func detailProductImage") else {
             fatalError("cat review row sources are missing")
         }
         expect(summary.contains("if group.count > 1") && summary.contains("Text(\"\\(group.count)条\")"), "cat review count appears beside the name only for multiple reviews")

@@ -1354,7 +1354,7 @@ struct PetPendingRepurchaseView: View {
         )
         let expirationText = store.petInventoryEarliestExpirationDate(for: item.id)
             .map(petExpirationDisplayDate) ?? "未设日期"
-        Button {
+        return Button {
             NativeHaptics.tap()
             detailItemID = item.id
         } label: {

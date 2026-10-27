@@ -483,6 +483,7 @@ final class HomeStore: ObservableObject {
         guard let balances = try? PetInventoryBatchLedger.balances(
             productID: productID,
             transactions: source.petInventoryTransactions,
+            balanceAllocations: source.petInventoryBalanceAllocations,
             excludingTransactionID: excludingTransactionID
         ) else { return [] }
         return PetInventoryBatchLedger.groups(from: balances)
@@ -494,6 +495,84 @@ final class HomeStore: ObservableObject {
 
     func petInventoryBatchBreakdown(for productID: String) -> [PetInventoryExpiryGroup] {
         petInventoryBatchGroups(for: productID)
+    }
+
+    func reassignPetInventoryBalance(
+        productID: String,
+        sourceGroupID: String,
+        transfers: [PetInventoryBalanceDateTransfer]
+    ) -> Bool {
+        guard !transfers.isEmpty else { return fail("请至少添加一个日期分配。") }
+        guard data.petItems.contains(where: { $0.id == productID && !$0.isArchived }) else {
+            return fail("找不到该宠物物品。")
+        }
+        guard transfers.allSatisfy({
+            $0.quantity.isFinite && $0.quantity > 0
+                && ($0.expirationDate == nil || PetInventoryBatchLedger.validExpirationDate($0.expirationDate) != nil)
+        }) else {
+            return fail("日期和分配数量无效。")
+        }
+
+        do {
+            let currentBalances = try PetInventoryBatchLedger.balances(
+                productID: productID,
+                transactions: data.petInventoryTransactions,
+                balanceAllocations: data.petInventoryBalanceAllocations
+            )
+            let groups = PetInventoryBatchLedger.groups(from: currentBalances)
+            guard let sourceGroup = groups.first(where: { $0.id == sourceGroupID }) else {
+                return fail("这个日期组已变化，请重新打开后再试。")
+            }
+            let requestedTotal = transfers.reduce(0) { $0 + $1.quantity }
+            guard requestedTotal.isFinite, requestedTotal <= sourceGroup.remainingQuantity + 0.000_001 else {
+                return fail("分配总量不能超过当前组的剩余库存。")
+            }
+
+            var next = data
+            let now = Date().timeIntervalSince1970
+            let effectiveDate = LitterPredictionService.format(Date())
+            var availableBySource = Dictionary(uniqueKeysWithValues: sourceGroup.batches.map {
+                ($0.id, $0.remainingQuantity)
+            })
+            for transfer in transfers where transfer.expirationDate != sourceGroup.expirationDate {
+                var remaining = transfer.quantity
+                for batch in sourceGroup.batches where remaining > 0.000_001 {
+                    let available = availableBySource[batch.id, default: 0]
+                    let amount = min(remaining, available)
+                    guard amount > 0.000_001 else { continue }
+                    next.petInventoryBalanceAllocations.append(PetInventoryBalanceAllocation(
+                        id: UUID().uuidString,
+                        productID: productID,
+                        sourceBatchID: batch.id,
+                        sourceAvailableBefore: available,
+                        expirationDate: transfer.expirationDate,
+                        quantity: amount,
+                        effectiveDate: effectiveDate,
+                        createdAt: now
+                    ))
+                    availableBySource[batch.id] = max(0, available - amount)
+                    remaining -= amount
+                }
+                guard remaining <= 0.000_001 else {
+                    return fail("分配总量不能重复使用同一份库存。")
+                }
+            }
+            guard next.petInventoryBalanceAllocations.count > data.petInventoryBalanceAllocations.count else {
+                return fail("目标日期与当前组相同，无需调整。")
+            }
+            _ = try PetInventoryBatchLedger.balances(
+                productID: productID,
+                transactions: next.petInventoryTransactions,
+                balanceAllocations: next.petInventoryBalanceAllocations
+            )
+            guard commit(next) else { return false }
+            NativeHaptics.success()
+            return true
+        } catch let error as PetInventoryBatchLedger.InvalidLedger {
+            return fail(error.message)
+        } catch {
+            return fail("日期分配未保存，请重试。")
+        }
     }
 
     func petTransactions(for productID: String) -> [PetInventoryTransaction] {
@@ -805,6 +884,7 @@ final class HomeStore: ObservableObject {
         var next = data
         next.petItems.removeAll { $0.id == id }
         next.petInventoryTransactions.removeAll { $0.productID == id }
+        next.petInventoryBalanceAllocations.removeAll { $0.productID == id }
         next.petProductReviews.removeAll { $0.productID == id }
         next.petPalatabilityReviews.removeAll { $0.productID == id }
         next.activities.removeAll { $0.type == "pet" && $0.targetId == id }
@@ -1338,6 +1418,7 @@ final class HomeStore: ObservableObject {
         let balances = try PetInventoryBatchLedger.balances(
             productID: productID,
             transactions: backup.petInventoryTransactions,
+            balanceAllocations: backup.petInventoryBalanceAllocations,
             excludingTransactionID: excludingTransactionID
         )
         let groups = PetInventoryBatchLedger.groups(from: balances)

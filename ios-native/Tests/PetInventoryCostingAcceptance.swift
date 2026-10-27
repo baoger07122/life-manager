@@ -8,6 +8,9 @@ struct PetInventoryCostingAcceptance {
         try expiryBatchLedgerAllocatesWithinSameDateFIFO()
         try expiryBatchLedgerRejectsOverAllocation()
         try expiryBatchLedgerRejectsFutureReceiptAllocation()
+        try balanceDateAssignmentsPreserveLegacyBalanceAndBackupCompatibility()
+        try balanceDateAssignmentsRestoreOutboundAndKeepOldSourceHistory()
+        try balanceDateAssignmentsRejectOveruseAndUnsafeSourceDeletion()
         try expiryBatchFieldsRemainBackwardCompatible()
         try untrackedLegacyReceiptCannotBeAssignedAnExpiryDate()
         try futurePurchaseDoesNotRepriceEarlierOutbound()
@@ -139,6 +142,144 @@ struct PetInventoryCostingAcceptance {
         let decoded = try JSONDecoder().decode(HomeBackup.self, from: Data(oldBackup.utf8))
         let record = decoded.petInventoryTransactions.first!
         expect(record.tracksExpirationBatch == nil && record.batchAllocations == nil, "older backups decode with no invented batch tracking or allocation")
+        expect(decoded.petInventoryBalanceAllocations.isEmpty, "older backups decode without invented balance date assignments")
+    }
+
+    private static func balanceDateAssignmentsPreserveLegacyBalanceAndBackupCompatibility() throws {
+        let receipt = transaction("legacy-in", .inbound, 11, "2026-01-01", 1, total: 110)
+        let oldOutbound = transaction("legacy-out", .outbound, -2, "2026-01-02", 2)
+        let mappings = [
+            balanceAllocation("date-a", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 9, expiry: "2026-02-01", quantity: 3, date: "2026-01-03", createdAt: 3),
+            balanceAllocation("date-b", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 6, expiry: "2026-03-01", quantity: 6, date: "2026-01-03", createdAt: 4)
+        ]
+        let source = backup(
+            transactions: [receipt, oldOutbound],
+            activities: [activity(receipt), activity(oldOutbound)],
+            quantity: 9,
+            price: 10
+        )
+        let balances = try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: mappings
+        )
+        let groups = PetInventoryBatchLedger.groups(from: balances)
+        expect(groups.map(\.expirationDate) == ["2026-02-01", "2026-03-01"], "legacy undated balance can be split across multiple expiry dates")
+        expectClose(groups[0].remainingQuantity, 3, "first mapped expiry balance")
+        expectClose(groups[1].remainingQuantity, 6, "second mapped expiry balance")
+        expectClose(groups.reduce(0) { $0 + $1.remainingQuantity }, 9, "date assignments preserve the existing stock quantity")
+        expect(source.petInventoryTransactions == [receipt, oldOutbound], "date assignment does not create or edit inventory transactions")
+        expect(source.activities == [activity(receipt), activity(oldOutbound)], "date assignment does not add inventory activity records")
+
+        var encodedBackup = source
+        encodedBackup.petInventoryBalanceAllocations = mappings
+        let encoded = try JSONEncoder().encode(encodedBackup)
+        let decoded = try JSONDecoder().decode(HomeBackup.self, from: encoded)
+        expect(decoded.petInventoryBalanceAllocations == mappings, "balance date assignments survive backup encode and decode")
+        let reopenedGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: decoded.petInventoryTransactions,
+            balanceAllocations: decoded.petInventoryBalanceAllocations
+        ))
+        expect(reopenedGroups == groups, "reopened backup recreates the same expiry groups and balances")
+
+        let replay = try PetInventoryCosting.replay([receipt, oldOutbound].map(costEvent))
+        expectClose(replay.currentQuantity, 9, "weighted-cost replay retains the same quantity after date assignment")
+        expectClose(PetInventoryCosting.weightedAverageInboundUnitPrice([receipt, oldOutbound].map(costEvent)), 10, "weighted inbound price is independent of date assignment")
+        let outboundExpense = replay.events.compactMap {
+            PetInventoryCosting.recordedOutboundTotal(quantityChange: $0.quantityChange, totalPrice: $0.totalPrice, unitPrice: $0.unitPrice)
+        }.reduce(0, +)
+        expectClose(outboundExpense, 20, "recorded expense remains unchanged after date assignment")
+    }
+
+    private static func balanceDateAssignmentsRestoreOutboundAndKeepOldSourceHistory() throws {
+        let receipt = transaction("mapped-in", .inbound, 11, "2026-01-01", 1, total: 110)
+        let oldOutbound = transaction("unassigned-out", .outbound, -2, "2026-01-02", 2)
+        let mapA = balanceAllocation("map-a", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 9, expiry: "2026-02-01", quantity: 3, date: "2026-01-03", createdAt: 3)
+        let mapB = balanceAllocation("map-b", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 6, expiry: "2026-03-01", quantity: 6, date: "2026-01-03", createdAt: 3)
+        var assignedOutbound = transaction("mapped-out", .outbound, -1, "2026-01-04", 4)
+        assignedOutbound.batchAllocations = [PetInventoryBatchAllocation(sourceBatchID: "map-a", quantity: 1)]
+        var source = backup(
+            transactions: [receipt, oldOutbound, assignedOutbound],
+            activities: [activity(receipt), activity(oldOutbound), activity(assignedOutbound)],
+            quantity: 8,
+            price: 10
+        )
+        source.petInventoryBalanceAllocations = [mapA, mapB]
+        var groups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: source.petInventoryBalanceAllocations
+        ))
+        expectClose(groups.first { $0.expirationDate == "2026-02-01" }?.remainingQuantity, 2, "mapped outbound consumes the selected expiry date")
+
+        let deletion = try PetInventoryHistoryMutation.delete(transactionID: "mapped-out", from: source, now: 9)
+        groups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: deletion.backup.petInventoryTransactions,
+            balanceAllocations: deletion.backup.petInventoryBalanceAllocations
+        ))
+        expectClose(groups.first { $0.expirationDate == "2026-02-01" }?.remainingQuantity, 3, "deleting the outbound restores stock to its mapped expiry date")
+        expectClose(deletion.backup.petItems.first?.quantity, 9, "deleting mapped outbound restores its quantity")
+
+        let correctedDate = balanceAllocation("corrected-a", source: "map-a", sourceAvailableBefore: 2, expiry: "2026-04-01", quantity: 1, date: "2026-01-05", createdAt: 5)
+        let correctedGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: source.petInventoryBalanceAllocations + [correctedDate]
+        ))
+        expectClose(correctedGroups.first { $0.expirationDate == "2026-02-01" }?.remainingQuantity, 1, "correcting a batch date moves only the remaining quantity")
+        expectClose(correctedGroups.first { $0.expirationDate == "2026-04-01" }?.remainingQuantity, 1, "corrected remaining quantity appears under its new date")
+        expect(source.petInventoryTransactions.first { $0.id == "mapped-out" }?.batchAllocations?.first?.sourceBatchID == "map-a", "past outbound remains associated with its original mapping source")
+    }
+
+    private static func balanceDateAssignmentsRejectOveruseAndUnsafeSourceDeletion() throws {
+        let smallReceipt = transaction("small-legacy", .inbound, 2, "2026-01-01", 1)
+        let overAllocation = balanceAllocation("too-much", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 2, expiry: "2026-02-01", quantity: 3, date: "2026-01-02", createdAt: 2)
+        var rejected = false
+        do {
+            _ = try PetInventoryBatchLedger.balances(
+                productID: "product",
+                transactions: [smallReceipt],
+                balanceAllocations: [overAllocation]
+            )
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            rejected = true
+        }
+        expect(rejected, "date assignment cannot move more than the current source balance")
+
+        let receipt = transaction("source-to-map", .inbound, 4, "2026-01-01", 1)
+        var trackedReceipt = receipt
+        trackedReceipt.tracksExpirationBatch = true
+        let trackedMap = balanceAllocation("tracked-map", source: trackedReceipt.id, sourceAvailableBefore: 4, expiry: "2026-02-01", quantity: 2, date: "2026-01-02", createdAt: 2)
+        var source = backup(transactions: [trackedReceipt], activities: [activity(trackedReceipt)], quantity: 4)
+        source.petInventoryBalanceAllocations = [trackedMap]
+        do {
+            _ = try PetInventoryHistoryMutation.delete(transactionID: trackedReceipt.id, from: source, now: 3)
+            fatalError("a receipt that directly backs a balance date assignment cannot be deleted")
+        } catch let error as PetInventoryHistoryMutation.Failure {
+            guard case .batchAllocationSourceInUse = error else {
+                fatalError("unexpected failure while protecting a mapped receipt source")
+            }
+        }
+        expect(source.petInventoryTransactions == [trackedReceipt] && source.petInventoryBalanceAllocations == [trackedMap], "rejected source deletion leaves the backup unchanged")
+
+        let legacy = transaction("legacy-map-source", .inbound, 4, "2026-01-01", 1)
+        let otherLegacy = transaction("other-legacy-map-source", .inbound, 4, "2026-01-01", 1.5)
+        let mapping = balanceAllocation("legacy-map", source: PetInventoryBatchLedger.unassignedBatchID(for: "product"), sourceAvailableBefore: 8, expiry: "2026-02-01", quantity: 2, date: "2026-01-02", createdAt: 2)
+        var legacySource = backup(
+            transactions: [legacy, otherLegacy],
+            activities: [activity(legacy), activity(otherLegacy)],
+            quantity: 8
+        )
+        legacySource.petInventoryBalanceAllocations = [mapping]
+        do {
+            _ = try PetInventoryHistoryMutation.delete(transactionID: legacy.id, from: legacySource, now: 3)
+            fatalError("deleting an untracked legacy receipt must not invalidate its undated-pool mapping")
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            // Expected: replay cannot consume a date assignment whose unassigned source no longer exists.
+        }
+        expect(legacySource.petInventoryTransactions == [legacy, otherLegacy] && legacySource.petInventoryBalanceAllocations == [mapping], "failed legacy source deletion keeps original transactions and mappings")
     }
 
     private static func untrackedLegacyReceiptCannotBeAssignedAnExpiryDate() throws {
@@ -924,9 +1065,10 @@ struct PetInventoryCostingAcceptance {
         }
         expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHomepageAveragePrice.text") && homeRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)"), "homepage rows use the live weighted price and earliest remaining batch expiry")
         expect(brandPosition < namePosition && namePosition < expirationPosition && ratingPosition < pricePosition && pricePosition < specificationPosition, "homepage rows use three aligned information lines")
-        expect(brandPriceLine.contains("item.brand") && !brandPriceLine.contains("averagePriceText") && brandPriceLine.contains("size: 12, weight: .medium") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand stays on its own first information line")
+        expect(brandPriceLine.contains("item.brand") && !brandPriceLine.contains("averagePriceText") && brandPriceLine.contains("size: 14, weight: .medium") && !brandPriceLine.contains("minimumScaleFactor") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand returns to 14 point text without scaling ordinary names down")
         expect(homeRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && homeRow.contains("Image(systemName: \"star.fill\")") && homeRow.contains(".fixedSize(horizontal: true, vertical: false)"), "homepage rating icon and score remain together on one horizontal line")
-        expect(homeRow.contains("Text(\"未评分\")") && homeRow.contains(".frame(width: 106, alignment: .trailing)"), "unrated products retain a single-line rating field in the original trailing column")
+        expect(homeRow.contains("Text(\"未评分\")") && homeRow.contains(".frame(width: 100, alignment: .trailing)"), "unrated products retain a single-line rating field while the right column gives more room to product names")
+        expect(homeRow.contains("font(.system(size: 12))") && homeRow.contains("Text(expirationText)"), "homepage expiry date uses the 12 point supporting style")
         expect(homeRow.contains(".frame(minHeight: 56") && homeRow.contains(".padding(.vertical, 8)") && homeRow.contains(".padding(.horizontal, 14)"), "homepage rows keep the existing card insets while allowing three information lines")
         expect(nameFlavorLine.contains("Text(item.name)") && nameFlavorLine.contains("size: 13, weight: .semibold") && nameFlavorLine.contains("Text(flavor)") && nameFlavorLine.contains("font(.system(size: 13))") && nameFlavorLine.contains("HomeTheme.muted") && nameFlavorLine.contains(".minimumScaleFactor(0.78)"), "homepage name and flavor use separate compact text styles")
         expect(!homeRow.contains("item.displayNameAndVariant") && nameFlavorLine.contains(".lineLimit(1)"), "homepage name and flavor stay separate and compress on the same compact row")
@@ -965,10 +1107,14 @@ struct PetInventoryCostingAcceptance {
         expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
         expect(itemsSource.contains("func expirySortsBefore") && itemsSource.contains("case (.some(_), .none): return true") && itemsSource.contains("return left.id < right.id"), "earlier dated stock sorts first, no-date stock last, and ties remain stable")
         expect(itemsSource.contains("petInventoryBatchBreakdown(for: item.id)") && itemsSource.contains("group.remainingQuantity.formatted()"), "product detail summarizes positive remaining quantities by expiry group")
-        expect(initialEditor.contains("Toggle(\"记录初始库存到期日期\"") && initialEditor.contains("initialStock > 0"), "new product opening stock captures a date only when stock exists")
-        expect(initialEditor.contains("quickHasExpiration") == false, "initial stock date state remains in the creation form")
-        expect(itemsSource.contains("Toggle(\"记录到期日期\", isOn: $quickHasExpiration)") && itemsSource.contains("quickExpirationDate"), "quick inbound captures its own expiry date")
-        expect(inventorySource.contains("Toggle(\"记录到期日期\", isOn: $hasExpiration)") && inventorySource.contains("expirationDate: mode == .inbound"), "full inbound records the selected expiry on its source batch")
+        expect(initialEditor.contains("PetExpirationDateRow(selectedDate: $initialExpirationDate)") && initialEditor.contains("initialStock > 0") && initialEditor.contains("initialExpirationDate.map(LitterPredictionService.format)"), "new products have a persistent optional expiry row and only positive opening stock creates a batch")
+        expect(!inventorySource.contains("initialHasExpiration") && !itemsSource.contains("quickHasExpiration"), "expiry entry uses a selected date instead of an enable switch")
+        expect(itemsSource.contains("PetExpirationDateRow(selectedDate: $quickExpirationDate)") && itemsSource.contains("quickExpirationDate.map(LitterPredictionService.format)"), "quick inbound uses the persistent expiry row")
+        expect(inventorySource.contains("PetExpirationDateRow(selectedDate: $expirationDate)") && inventorySource.contains("expirationDate: mode == .inbound"), "full inbound records the selected expiry on its source batch")
+        expect(inventorySource.contains(".datePickerStyle(.graphical)") && inventorySource.contains("Button(\"清除日期\"") && inventorySource.contains("didChooseDate"), "expiry picker opens a graphical calendar, supports clearing and does not silently save today's date")
+        expect(initialEditor.contains("editorButtonRow(title: \"库存保质期\"") && initialEditor.contains("sheet = .balanceManager(productID: itemID)"), "editing a stocked item opens the shared current-balance date manager")
+        expect(itemsSource.contains("Button(\"管理保质期\"") && itemsSource.contains("sheet = .balanceManager") && inventorySource.contains("PetInventoryBalanceManagerView"), "product detail exposes the same current-balance date manager")
+        expect(storeSource.contains("func reassignPetInventoryBalance(") && storeSource.contains("petInventoryBalanceAllocations.append") && storeSource.contains("balanceAllocations: data.petInventoryBalanceAllocations"), "balance date assignments persist independently from inventory transactions and are included in batch replay")
         expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
         expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
         expect(litterSource.contains("PetInventoryBatchAllocationSheet") && storeSource.contains("batchAllocationsByProduct[allocation.productID]"), "cat litter consumption records its batch allocations through the shared ledger")
@@ -1067,6 +1213,27 @@ struct PetInventoryCostingAcceptance {
             linkedOperationID: linkedOperationID, totalPrice: total,
             unitPrice: total.map { $0 / abs(quantityChange) }, purchaseChannel: "channel \(id)",
             expirationDate: nil, note: nil, createdAt: createdAt, updatedAt: createdAt
+        )
+    }
+
+    private static func balanceAllocation(
+        _ id: String,
+        source sourceBatchID: String,
+        sourceAvailableBefore: Double,
+        expiry expirationDate: String?,
+        quantity: Double,
+        date effectiveDate: String,
+        createdAt: Double
+    ) -> PetInventoryBalanceAllocation {
+        PetInventoryBalanceAllocation(
+            id: id,
+            productID: "product",
+            sourceBatchID: sourceBatchID,
+            sourceAvailableBefore: sourceAvailableBefore,
+            expirationDate: expirationDate,
+            quantity: quantity,
+            effectiveDate: effectiveDate,
+            createdAt: createdAt
         )
     }
 

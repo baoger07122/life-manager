@@ -14,6 +14,7 @@ petEvents[]
 litterBoxState{}
 litterOperations[]
 petInventoryTransactions[]
+petInventoryBalanceAllocations[]
 petProductReviews[]
 petPalatabilityReviews[]
 activities[]
@@ -41,6 +42,7 @@ settings{}
 - `petInventoryTransactions[].expirationDate`：入库流水的批次到期日；只作用于该笔入库，不代表产品的全部库存。
 - `petInventoryTransactions[].tracksExpirationBatch`：可选批次迁移标记。旧流水首次迁移时，只有之后没有未分配出库或向下修正的入库才作为可确认批次；不确定的旧余额保留在“未设日期”组。
 - `petInventoryTransactions[].batchAllocations[]`：可选出库分配，按 `sourceBatchID` 关联原入库流水，并记录从该入库批次扣减的数量。多条入库即使到期日相同仍保留独立来源；同一日期的消费按入库先后扣减。
+- `petInventoryBalanceAllocations[]`：可选的现存余额日期重分类记录；包含商品、来源批次、生效前的来源余量下限、目标日期、数量、生效日期和创建时间。未设日期库存使用稳定的合成来源标识；已确认批次或先前重分类批次也可作为来源。它只重新归类生效时仍剩余的数量，不新增或修改入库流水、活动数量、库存成本或加权均价。后续出库可引用重分类记录 ID；删除该出库后，按原批次日期重放并恢复余额。历史修改若使来源余量低于该次调整前记录的下限，整次操作失败，以避免把新日期套到无关历史库存上。
 - 批次余额由已追踪入库数量减去明确分配到该批次的出库数量得到；未设日期余额为当前流水总库存减去可确认批次余额。旧出库没有可靠批次来源时不补造日期归属，历史数量和金额仍由原流水保留。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
 - `petProductReviews[].dimensionScores`：本次评价各维度的 1～5 整数分数字典；综合分不重复存储，由维度算术平均得到。旧记录缺少时使用原 `repurchaseLevel` 作为兼容评分。
@@ -54,4 +56,4 @@ settings{}
 
 `petEvents[].petIDs` 与 `petNameSnapshots` 继续保留以兼容旧备份；当前原生新建或编辑宠物事项统一写入空数组，不再按宠物筛选事项。
 
-旧备份缺少上述字段时使用空集合或 `nil`，不得因此拒绝导入。宠物用品历史字段缺失时使用安全默认值；导出时保留原有顶层集合和新增集合。
+旧备份缺少上述字段（包括 `petInventoryBalanceAllocations[]`）时使用空集合或 `nil`，不得因此拒绝导入。宠物用品历史字段缺失时使用安全默认值；导出时保留原有顶层集合和新增集合。

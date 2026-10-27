@@ -185,6 +185,23 @@ struct PetInventoryBatchAllocation: Codable, Hashable, Identifiable {
     var id: String { sourceBatchID }
 }
 
+struct PetInventoryBalanceAllocation: Codable, Identifiable, Hashable {
+    var id: String
+    var productID: String
+    var sourceBatchID: String
+    var sourceAvailableBefore: Double
+    var expirationDate: String?
+    var quantity: Double
+    var effectiveDate: String
+    var createdAt: Double
+}
+
+struct PetInventoryBalanceDateTransfer: Identifiable, Hashable {
+    var id: String = UUID().uuidString
+    var expirationDate: String?
+    var quantity: Double
+}
+
 struct PetInventoryTransaction: Codable, Identifiable, Hashable {
     var id: String
     var productID: String
@@ -485,20 +502,21 @@ struct HomeBackup: Codable, Hashable {
     var litterBoxState: LitterBoxState?
     var litterOperations: [LitterOperation]
     var petInventoryTransactions: [PetInventoryTransaction]
+    var petInventoryBalanceAllocations: [PetInventoryBalanceAllocation]
     var petProductReviews: [PetProductReview]
     var petPalatabilityReviews: [PetPalatabilityReview]
     var activities: [ActivityItem]
     var settings: HomeSettings
 
     static let empty = HomeBackup(
-        foods: [], recipes: [], plans: [], prepChecks: [], petItems: [], pets: [], petEventCategories: [], petEvents: [], litterBoxState: nil, litterOperations: [], petInventoryTransactions: [], petProductReviews: [], petPalatabilityReviews: [], activities: [], settings: .standard
+        foods: [], recipes: [], plans: [], prepChecks: [], petItems: [], pets: [], petEventCategories: [], petEvents: [], litterBoxState: nil, litterOperations: [], petInventoryTransactions: [], petInventoryBalanceAllocations: [], petProductReviews: [], petPalatabilityReviews: [], activities: [], settings: .standard
     )
 
     enum CodingKeys: String, CodingKey {
-        case foods, recipes, plans, prepChecks, petItems, pets, petEventCategories, petEvents, litterBoxState, litterOperations, petInventoryTransactions, petProductReviews, petPalatabilityReviews, activities, settings
+        case foods, recipes, plans, prepChecks, petItems, pets, petEventCategories, petEvents, litterBoxState, litterOperations, petInventoryTransactions, petInventoryBalanceAllocations, petProductReviews, petPalatabilityReviews, activities, settings
     }
 
-    init(foods: [FoodItem], recipes: [RecipeItem], plans: [MealPlan], prepChecks: [PrepCheck], petItems: [PetItem], pets: [PetProfile] = [], petEventCategories: [PetEventCategory] = [], petEvents: [PetEvent] = [], litterBoxState: LitterBoxState? = nil, litterOperations: [LitterOperation] = [], petInventoryTransactions: [PetInventoryTransaction] = [], petProductReviews: [PetProductReview] = [], petPalatabilityReviews: [PetPalatabilityReview] = [], activities: [ActivityItem], settings: HomeSettings) {
+    init(foods: [FoodItem], recipes: [RecipeItem], plans: [MealPlan], prepChecks: [PrepCheck], petItems: [PetItem], pets: [PetProfile] = [], petEventCategories: [PetEventCategory] = [], petEvents: [PetEvent] = [], litterBoxState: LitterBoxState? = nil, litterOperations: [LitterOperation] = [], petInventoryTransactions: [PetInventoryTransaction] = [], petInventoryBalanceAllocations: [PetInventoryBalanceAllocation] = [], petProductReviews: [PetProductReview] = [], petPalatabilityReviews: [PetPalatabilityReview] = [], activities: [ActivityItem], settings: HomeSettings) {
         self.foods = foods
         self.recipes = recipes
         self.plans = plans
@@ -510,6 +528,7 @@ struct HomeBackup: Codable, Hashable {
         self.litterBoxState = litterBoxState
         self.litterOperations = litterOperations
         self.petInventoryTransactions = petInventoryTransactions
+        self.petInventoryBalanceAllocations = petInventoryBalanceAllocations
         self.petProductReviews = petProductReviews
         self.petPalatabilityReviews = petPalatabilityReviews
         self.activities = activities
@@ -529,6 +548,7 @@ struct HomeBackup: Codable, Hashable {
         litterBoxState = try values.decodeIfPresent(LitterBoxState.self, forKey: .litterBoxState)
         litterOperations = try values.decodeIfPresent([LitterOperation].self, forKey: .litterOperations) ?? []
         petInventoryTransactions = try values.decodeIfPresent([PetInventoryTransaction].self, forKey: .petInventoryTransactions) ?? []
+        petInventoryBalanceAllocations = try values.decodeIfPresent([PetInventoryBalanceAllocation].self, forKey: .petInventoryBalanceAllocations) ?? []
         petProductReviews = try values.decodeIfPresent([PetProductReview].self, forKey: .petProductReviews) ?? []
         petPalatabilityReviews = try values.decodeIfPresent([PetPalatabilityReview].self, forKey: .petPalatabilityReviews) ?? []
         activities = try values.decodeIfPresent([ActivityItem].self, forKey: .activities) ?? []

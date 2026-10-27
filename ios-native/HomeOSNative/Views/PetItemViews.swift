@@ -47,8 +47,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     @State private var quickQuantity = 1.0
     @State private var quickTotalPriceText = ""
     @State private var quickNote = ""
-    @State private var quickHasExpiration = false
-    @State private var quickExpirationDate = Date()
+    @State private var quickExpirationDate: Date?
     @State private var quickBatchAllocationRequest: PetInventoryBatchAllocationRequest?
     @State private var deleteCandidate: PetItem?
     @State private var route: PetItemsRoute?
@@ -431,10 +430,9 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 HStack(spacing: 11) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 12, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(HomeTheme.ink)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.75)
                         HStack(spacing: 4) {
                             Text(item.name)
                                 .font(.system(size: 13, weight: .semibold))
@@ -451,7 +449,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             }
                         }
                         Text(expirationText)
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
                             .minimumScaleFactor(0.78)
@@ -484,10 +482,10 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
                     }
-                    .frame(width: 106, alignment: .trailing)
+                    .frame(width: 100, alignment: .trailing)
                     .frame(minHeight: 56, alignment: .trailing)
                 }
-                .padding(.leading, 11)
+                .padding(.leading, 9)
                 .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                 .contentShape(Rectangle())
             }
@@ -671,12 +669,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                         .foregroundStyle(HomeTheme.muted)
                 }
                 .frame(minHeight: 36)
-                Toggle("记录到期日期", isOn: $quickHasExpiration)
-                    .font(.system(size: 13))
-                if quickHasExpiration {
-                    DatePicker("到期日期", selection: $quickExpirationDate, displayedComponents: .date)
-                        .font(.system(size: 13))
-                }
+                PetExpirationDateRow(selectedDate: $quickExpirationDate)
                 HStack(spacing: 8) {
                     Text("本次备注").font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
                     TextField("可选", text: $quickNote)
@@ -739,8 +732,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             occurrenceDate: LitterPredictionService.format(Date()),
             reason: quickMode == .inbound ? "快捷入库" : "快捷出库",
             totalPrice: quickMode == .inbound ? parsedQuickTotalPrice : nil,
-            expirationDate: quickMode == .inbound && quickHasExpiration
-                ? LitterPredictionService.format(quickExpirationDate)
+            expirationDate: quickMode == .inbound
+                ? quickExpirationDate.map(LitterPredictionService.format)
                 : nil,
             note: quickMode == .inbound && !note.isEmpty ? note : nil,
             batchGroupQuantities: batchGroupQuantities
@@ -783,8 +776,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         quickQuantity = item.map { quickStep(for: $0) } ?? 1
         quickTotalPriceText = ""
         quickNote = ""
-        quickHasExpiration = false
-        quickExpirationDate = Date()
+        quickExpirationDate = nil
     }
 
     private func specificationAndStock(_ item: PetItem) -> String {
@@ -1764,6 +1756,7 @@ struct PetItemDetailView: View {
             case .palatability(let reviewID): PetPalatabilityEditorView(productID: itemID, reviewID: reviewID)
             case .image: PetItemImageEditorSheet(itemID: itemID, initialImage: item?.image)
             case .transaction(let transactionID): PetInventoryTransactionEditorView(transactionID: transactionID)
+            case .balanceManager: PetInventoryBalanceManagerView(productID: itemID)
             }
         }
         .alert(item?.resolvedWillRepurchase == false ? "恢复回购这个物品？" : "设为不回购？", isPresented: $showArchive) {
@@ -1863,6 +1856,19 @@ struct PetItemDetailView: View {
                             .font(HomeTypography.supporting)
                             .lineLimit(1)
                         }
+                    }
+                }
+                if store.petInventory(for: item.id) > 0 {
+                    if expiryGroups.isEmpty { Divider().overlay(HomeTheme.line) }
+                    HStack {
+                        Spacer()
+                        Button("管理保质期") {
+                            NativeHaptics.tap()
+                            sheet = .balanceManager
+                        }
+                        .font(HomeTypography.supporting.weight(.medium))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(minHeight: HomeMetrics.minimumTapTarget)
                     }
                 }
             }
@@ -2319,6 +2325,7 @@ private enum PetItemDetailSheet: Identifiable {
     case palatability(reviewID: String?)
     case image
     case transaction(transactionID: String)
+    case balanceManager
 
     var id: String {
         switch self {
@@ -2329,6 +2336,7 @@ private enum PetItemDetailSheet: Identifiable {
         case .palatability(let reviewID): "palatability-\(reviewID ?? "new")"
         case .image: "image"
         case .transaction(let transactionID): "transaction-\(transactionID)"
+        case .balanceManager: "balance-manager"
         }
     }
 }

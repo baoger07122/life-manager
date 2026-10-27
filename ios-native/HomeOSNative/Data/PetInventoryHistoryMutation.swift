@@ -99,12 +99,14 @@ enum PetInventoryHistoryMutation {
         }
         let removed = source.petInventoryTransactions[transactionIndex]
         guard !isLitterLinked(removed) else { throw Failure.litterOperationMustBeChangedAsAGroup }
-        if removed.type == .inbound,
+        if removed.type == .inbound && (
            source.petInventoryTransactions.contains(where: {
                $0.batchAllocations?.contains(where: {
                    $0.sourceBatchID == removed.id && $0.quantity > 0
                }) == true
-           }) {
+           }) || source.petInventoryBalanceAllocations.contains(where: {
+               $0.productID == removed.productID && $0.sourceBatchID == removed.id
+           })) {
             throw Failure.batchAllocationSourceInUse
         }
 
@@ -152,6 +154,11 @@ enum PetInventoryHistoryMutation {
                     backup.petItems[itemIndex].updatedAt = now
                 }
             }
+            _ = try PetInventoryBatchLedger.balances(
+                productID: productID,
+                transactions: backup.petInventoryTransactions,
+                balanceAllocations: backup.petInventoryBalanceAllocations
+            )
             return
         }
 
@@ -183,7 +190,8 @@ enum PetInventoryHistoryMutation {
             }
             _ = try PetInventoryBatchLedger.balances(
                 productID: productID,
-                transactions: backup.petInventoryTransactions
+                transactions: backup.petInventoryTransactions,
+                balanceAllocations: backup.petInventoryBalanceAllocations
             )
             if synchronizeMatchingActivities { synchronizeActivities(for: productID, in: &backup) }
         } catch let error as PetInventoryCosting.InvalidHistory {

@@ -30,6 +30,24 @@ enum PetInventoryBatchLedger {
     static let unassignedGroupID = "__no_expiration__"
     private static let tolerance = 0.000_001
 
+    private enum EventPayload {
+        case transaction(PetInventoryTransaction)
+        case balanceAllocation(PetInventoryBalanceAllocation)
+    }
+
+    private struct TimelineEvent {
+        var occurrenceDate: String
+        var createdAt: Double
+        var order: Int
+        var payload: EventPayload
+    }
+
+    private struct BatchMetadata {
+        var expirationDate: String?
+        var occurrenceDate: String
+        var createdAt: Double
+    }
+
     struct InvalidLedger: Error, Equatable {
         var message: String
     }
@@ -37,32 +55,93 @@ enum PetInventoryBatchLedger {
     static func balances(
         productID: String,
         transactions: [PetInventoryTransaction],
+        balanceAllocations: [PetInventoryBalanceAllocation] = [],
         excludingTransactionID: String? = nil
     ) throws -> [PetInventoryBatchBalance] {
         let records = transactions.filter {
             $0.productID == productID && $0.id != excludingTransactionID
         }
+        let mappings = balanceAllocations.filter { $0.productID == productID }
         let total = records.reduce(0) { $0 + $1.quantityChange }
         guard total.isFinite, total >= -tolerance else {
             throw InvalidLedger(message: "库存批次与当前总库存不一致，请先检查库存流水。")
         }
 
-        let receipts = records.filter { $0.type == .inbound && $0.tracksExpirationBatch == true }
-            .sorted(by: receiptOrder)
-        let receiptIDs = Set(receipts.map(\.id))
-        var remainingByBatch: [String: Double] = [:]
-        var unassignedRemaining = 0.0
-        let orderedRecords = records.enumerated().sorted { left, right in
-            if left.element.occurrenceDate != right.element.occurrenceDate {
-                return left.element.occurrenceDate < right.element.occurrenceDate
-            }
-            if left.element.createdAt != right.element.createdAt {
-                return left.element.createdAt < right.element.createdAt
-            }
-            return left.offset < right.offset
+        let transactionIDs = Set(records.map(\.id))
+        guard transactionIDs.count == records.count,
+              mappings.allSatisfy({ !transactionIDs.contains($0.id) }),
+              Set(mappings.map(\.id)).count == mappings.count else {
+            throw InvalidLedger(message: "库存批次来源标识重复，未修改库存。")
         }
 
-        for (_, record) in orderedRecords {
+        for mapping in mappings {
+            guard mapping.quantity.isFinite, mapping.quantity > 0,
+                  mapping.sourceAvailableBefore.isFinite,
+                  mapping.sourceAvailableBefore >= mapping.quantity,
+                  validExpirationDate(mapping.effectiveDate) != nil,
+                  mapping.createdAt.isFinite,
+                  mapping.expirationDate == nil || validExpirationDate(mapping.expirationDate) != nil else {
+                throw InvalidLedger(message: "库存日期分配记录无效，未修改库存。")
+            }
+        }
+
+        var remainingByBatch: [String: Double] = [:]
+        var batchMetadataByID: [String: BatchMetadata] = [:]
+        var batchIDsInCreationOrder: [String] = []
+        var unassignedRemaining = 0.0
+        let timeline = records.enumerated().map { offset, record in
+            TimelineEvent(
+                occurrenceDate: record.occurrenceDate,
+                createdAt: record.createdAt,
+                order: offset,
+                payload: .transaction(record)
+            )
+        } + mappings.enumerated().map { offset, mapping in
+            TimelineEvent(
+                occurrenceDate: mapping.effectiveDate,
+                createdAt: mapping.createdAt,
+                order: records.count + offset,
+                payload: .balanceAllocation(mapping)
+            )
+        }
+        let orderedEvents = timeline.sorted { left, right in
+            if left.occurrenceDate != right.occurrenceDate { return left.occurrenceDate < right.occurrenceDate }
+            if left.createdAt != right.createdAt { return left.createdAt < right.createdAt }
+            return left.order < right.order
+        }
+
+        for event in orderedEvents {
+            if case .balanceAllocation(let mapping) = event.payload {
+                let sourceID = mapping.sourceBatchID
+                if sourceID == unassignedBatchID(for: productID) {
+                    guard unassignedRemaining + tolerance >= mapping.sourceAvailableBefore else {
+                        throw InvalidLedger(message: "日期分配超过当前未设日期库存，请检查库存流水和日期分配。")
+                    }
+                    unassignedRemaining = max(0, unassignedRemaining - mapping.quantity)
+                } else {
+                    guard let available = remainingByBatch[sourceID], batchMetadataByID[sourceID] != nil else {
+                        throw InvalidLedger(message: "日期分配引用了尚不存在或已用完的库存批次。")
+                    }
+                    guard available + tolerance >= mapping.sourceAvailableBefore else {
+                        throw InvalidLedger(message: "日期分配超过来源批次的当前余量。")
+                    }
+                    remainingByBatch[sourceID] = max(0, available - mapping.quantity)
+                }
+
+                guard remainingByBatch[mapping.id] == nil else {
+                    throw InvalidLedger(message: "库存批次来源标识重复，未修改库存。")
+                }
+                remainingByBatch[mapping.id] = mapping.quantity
+                batchMetadataByID[mapping.id] = BatchMetadata(
+                    expirationDate: mapping.expirationDate,
+                    occurrenceDate: mapping.effectiveDate,
+                    createdAt: mapping.createdAt
+                )
+                batchIDsInCreationOrder.append(mapping.id)
+                continue
+            }
+
+            guard case .transaction(let record) = event.payload else { continue }
             guard record.quantityChange.isFinite else {
                 throw InvalidLedger(message: "库存流水数量无效，未修改库存。")
             }
@@ -72,7 +151,16 @@ enum PetInventoryBatchLedger {
                     throw InvalidLedger(message: "入库流水数量无效，未修改库存。")
                 }
                 if record.tracksExpirationBatch == true {
+                    guard remainingByBatch[record.id] == nil else {
+                        throw InvalidLedger(message: "库存批次来源标识重复，未修改库存。")
+                    }
                     remainingByBatch[record.id, default: 0] += record.quantityChange
+                    batchMetadataByID[record.id] = BatchMetadata(
+                        expirationDate: record.expirationDate,
+                        occurrenceDate: record.occurrenceDate,
+                        createdAt: record.createdAt
+                    )
+                    batchIDsInCreationOrder.append(record.id)
                 } else {
                     unassignedRemaining += record.quantityChange
                 }
@@ -124,7 +212,7 @@ enum PetInventoryBatchLedger {
                     }
                     unassignedRemaining = max(0, unassignedRemaining - amount)
                 } else {
-                    guard receiptIDs.contains(allocation.sourceBatchID),
+                    guard batchMetadataByID[allocation.sourceBatchID] != nil,
                           let available = remainingByBatch[allocation.sourceBatchID] else {
                         throw InvalidLedger(message: "出库引用了尚未入库或不存在的批次。请检查流水日期和来源。")
                     }
@@ -138,17 +226,17 @@ enum PetInventoryBatchLedger {
 
         var result: [PetInventoryBatchBalance] = []
         var trackedRemaining = 0.0
-        for receipt in receipts {
-            let remaining = remainingByBatch[receipt.id, default: 0]
+        for batchID in batchIDsInCreationOrder {
+            let remaining = remainingByBatch[batchID, default: 0]
             let normalized = abs(remaining) < tolerance ? 0 : remaining
             if normalized > 0 {
                 trackedRemaining += normalized
                 result.append(PetInventoryBatchBalance(
-                    id: receipt.id,
-                    expirationDate: validExpirationDate(receipt.expirationDate),
+                    id: batchID,
+                    expirationDate: validExpirationDate(batchMetadataByID[batchID]?.expirationDate),
                     remainingQuantity: normalized,
-                    occurrenceDate: receipt.occurrenceDate,
-                    createdAt: receipt.createdAt
+                    occurrenceDate: batchMetadataByID[batchID]?.occurrenceDate ?? "0000-00-00",
+                    createdAt: batchMetadataByID[batchID]?.createdAt ?? 0
                 ))
             }
         }

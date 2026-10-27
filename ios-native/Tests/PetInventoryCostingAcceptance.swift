@@ -4,6 +4,12 @@ import Foundation
 struct PetInventoryCostingAcceptance {
     static func main() throws {
         try weightedAverageUsesInboundQuantity()
+        try expiryBatchLedgerKeepsLegacyBalanceUndated()
+        try expiryBatchLedgerAllocatesWithinSameDateFIFO()
+        try expiryBatchLedgerRejectsOverAllocation()
+        try expiryBatchLedgerRejectsFutureReceiptAllocation()
+        try expiryBatchFieldsRemainBackwardCompatible()
+        try untrackedLegacyReceiptCannotBeAssignedAnExpiryDate()
         try futurePurchaseDoesNotRepriceEarlierOutbound()
         try unpricedInboundKeepsCostUnknownUntilEmpty()
         try deletingInboundPriceRepricesLaterOutbounds()
@@ -26,6 +32,7 @@ struct PetInventoryCostingAcceptance {
         try petProductReviewDimensionOrdering()
         try petEventNavigationContracts()
         try heroAveragePricePresentation()
+        try petExpiryPresentationContracts()
         try petItemDetailPresentationContracts()
         try petHomepagePriceAndInventoryValuationContracts()
         try inventoryValuation()
@@ -39,6 +46,124 @@ struct PetInventoryCostingAcceptance {
         ])
         expectClose(PetInventoryCosting.weightedAverageInboundUnitPrice(replay.events), 19, "quantity-weighted inbound average")
         expectClose(replay.currentQuantity, 10, "ending stock after two receipts")
+    }
+
+    private static func expiryBatchLedgerKeepsLegacyBalanceUndated() throws {
+        var oldReceipt = transaction("old-receipt", .inbound, 5, "2026-01-01", 1)
+        oldReceipt.expirationDate = "2026-02-01"
+        oldReceipt.tracksExpirationBatch = false
+        let oldOutbound = transaction("old-out", .outbound, -2, "2026-01-02", 2)
+        var knownUnusedReceipt = transaction("new-receipt", .inbound, 4, "2026-01-03", 3)
+        knownUnusedReceipt.expirationDate = "2026-03-01"
+        knownUnusedReceipt.tracksExpirationBatch = true
+
+        let groups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: [oldReceipt, oldOutbound, knownUnusedReceipt]
+        ))
+        expect(groups.map(\.expirationDate) == ["2026-03-01", nil], "undated legacy balances stay separate from dated unused receipts")
+        expectClose(groups.first?.remainingQuantity, 4, "dated receipt remains fully available")
+        expectClose(groups.last?.remainingQuantity, 3, "legacy net balance remains in the no-date group")
+    }
+
+    private static func expiryBatchLedgerAllocatesWithinSameDateFIFO() throws {
+        var first = transaction("z-same-date-first", .inbound, 2, "2026-01-01", 1)
+        first.expirationDate = "2026-02-01"
+        first.tracksExpirationBatch = true
+        var second = transaction("a-same-date-second", .inbound, 3, "2026-01-02", 2)
+        second.expirationDate = "2026-02-01"
+        second.tracksExpirationBatch = true
+        let groups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: [first, second]
+        ))
+        let plan = try PetInventoryBatchLedger.allocations(
+            groupQuantities: ["2026-02-01": 3],
+            groups: groups,
+            requiredTotal: 3
+        )
+        expect(plan.map(\.sourceBatchID) == ["z-same-date-first", "a-same-date-second"], "same-date receipts retain FIFO source order even when IDs sort differently")
+        expectClose(plan.first?.quantity, 2, "FIFO allocation consumes the oldest receipt first")
+        expectClose(plan.last?.quantity, 1, "FIFO allocation continues into the next same-date receipt")
+
+        var outbound = transaction("same-date-out", .outbound, -3, "2026-01-03", 3)
+        outbound.batchAllocations = plan
+        let remaining = try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: [first, second, outbound]
+        )
+        expectClose(remaining.first(where: { $0.id == "same-date-second" })?.remainingQuantity, 2, "outbound keeps the exact remaining batch balance")
+    }
+
+    private static func expiryBatchLedgerRejectsOverAllocation() throws {
+        var receipt = transaction("small-receipt", .inbound, 2, "2026-01-01", 1)
+        receipt.expirationDate = "2026-02-01"
+        receipt.tracksExpirationBatch = true
+        let groups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: [receipt]
+        ))
+        do {
+            _ = try PetInventoryBatchLedger.allocations(
+                groupQuantities: ["2026-02-01": 3],
+                groups: groups,
+                requiredTotal: 3
+            )
+            fatalError("batch allocation must not exceed the available batch quantity")
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            // Expected: allocation validation is atomic and leaves source records unchanged.
+        }
+    }
+
+    private static func expiryBatchLedgerRejectsFutureReceiptAllocation() throws {
+        var futureReceipt = transaction("future-receipt", .inbound, 2, "2026-02-01", 1)
+        futureReceipt.expirationDate = "2026-03-01"
+        futureReceipt.tracksExpirationBatch = true
+        var earlierOutbound = transaction("earlier-out", .outbound, -1, "2026-01-01", 2)
+        earlierOutbound.batchAllocations = [PetInventoryBatchAllocation(sourceBatchID: futureReceipt.id, quantity: 1)]
+        do {
+            _ = try PetInventoryBatchLedger.balances(
+                productID: "product",
+                transactions: [futureReceipt, earlierOutbound]
+            )
+            fatalError("an outbound must not use a receipt that occurs later in history")
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            // Expected: allocation sources must exist earlier in the transaction timeline.
+        }
+    }
+
+    private static func expiryBatchFieldsRemainBackwardCompatible() throws {
+        let oldBackup = """
+        {"petInventoryTransactions":[{"id":"legacy","productID":"product","type":"outbound","quantityChange":-1,"quantityBefore":2,"quantityAfter":1,"unit":"袋","occurrenceDate":"2026-01-01","reason":"旧出库","source":"manual","createdAt":1,"updatedAt":1}]}
+        """
+        let decoded = try JSONDecoder().decode(HomeBackup.self, from: Data(oldBackup.utf8))
+        let record = decoded.petInventoryTransactions.first!
+        expect(record.tracksExpirationBatch == nil && record.batchAllocations == nil, "older backups decode with no invented batch tracking or allocation")
+    }
+
+    private static func untrackedLegacyReceiptCannotBeAssignedAnExpiryDate() throws {
+        var receipt = transaction("legacy-receipt", .inbound, 2, "2026-01-01", 1)
+        receipt.expirationDate = "2026-02-01"
+        receipt.tracksExpirationBatch = false
+        let source = backup(transactions: [receipt], activities: [activity(receipt)], quantity: 2, price: nil)
+        do {
+            _ = try PetInventoryHistoryMutation.update(
+                transactionID: receipt.id,
+                quantity: 2,
+                occurrenceDate: receipt.occurrenceDate,
+                totalPrice: nil,
+                note: nil,
+                expirationDate: "2026-03-01",
+                updateExpirationDate: true,
+                now: 2,
+                in: source
+            )
+            fatalError("untracked legacy stock must not be assigned a misleading expiry date")
+        } catch let error as PetInventoryHistoryMutation.Failure {
+            guard case .batchExpirationNotTrackable = error else {
+                fatalError("unexpected failure while protecting untracked legacy expiry")
+            }
+        }
     }
 
     private static func futurePurchaseDoesNotRepriceEarlierOutbound() throws {
@@ -654,8 +779,8 @@ struct PetInventoryCostingAcceptance {
         expect(PetItemHeroAveragePrice.text(average: 0, unit: "罐") == nil, "hero never displays a zero placeholder price")
         expect(PetItemHeroAveragePrice.text(average: .infinity, unit: "罐") == nil, "hero omits a non-finite average")
         expect(PetItemHeroAveragePrice.text(average: 4.67, unit: "罐") == "¥4.67/罐", "hero formats a valid weighted average with its unit and no label")
-        expect(PetItemHomepageAveragePrice.text(average: 4.67, unit: "盒") == "¥4.7/盒", "homepage rounds only its displayed unit price to one decimal")
-        expect(PetItemHomepageAveragePrice.text(average: 4.64, unit: "盒") == "¥4.6/盒", "homepage rounds down to the nearest displayed tenth when appropriate")
+        expect(PetItemHomepageAveragePrice.text(average: 4.67, unit: "盒") == "¥4.7", "homepage rounds the displayed weighted price to one decimal without a unit")
+        expect(PetItemHomepageAveragePrice.text(average: 4.64, unit: "盒") == "¥4.6", "homepage rounds down to the nearest displayed tenth when appropriate")
         expect(PetItemHomepageAveragePrice.text(average: nil, unit: "盒") == nil, "homepage hides products without valid inbound prices")
         expect(PetItemHomepageAveragePrice.text(average: .nan, unit: "盒") == nil, "homepage hides non-finite inbound prices")
     }
@@ -772,7 +897,7 @@ struct PetInventoryCostingAcceptance {
         ), let nameFlavorLine = sourceSlice(
             homeRow,
             from: "Text(item.name)",
-            to: "VStack(alignment: .trailing, spacing: 6) {"
+            to: "Text(expirationText)"
         ), let averagePriceMethod = sourceSlice(
             storeSource,
             from: "    func petWeightedAverageInboundUnitPrice(for productID: String) -> Double? {",
@@ -790,18 +915,19 @@ struct PetInventoryCostingAcceptance {
         }
 
         guard let brandPosition = homeRow.range(of: "item.brand")?.lowerBound,
-              let pricePosition = homeRow.range(of: "Text(averagePriceText)")?.lowerBound,
               let namePosition = homeRow.range(of: "Text(item.name)")?.lowerBound,
+              let expirationPosition = homeRow.range(of: "Text(expirationText)")?.lowerBound,
+              let pricePosition = homeRow.range(of: "Text(averagePriceText ?? \"—\")")?.lowerBound,
               let specificationPosition = homeRow.range(of: "Text(specificationAndStock(item))")?.lowerBound,
               let ratingPosition = homeRow.range(of: "rating.overall")?.lowerBound else {
             fatalError("homepage price, item name, specification or rating source is missing")
         }
-        expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHomepageAveragePrice.text"), "homepage rows use each product's weighted inbound unit price")
-        expect(brandPosition < pricePosition && pricePosition < namePosition && ratingPosition < specificationPosition, "homepage brand and price appear on row one, with rating before spec and stock on row two")
-        expect(brandPriceLine.contains("item.brand") && brandPriceLine.contains("Text(averagePriceText)") && brandPriceLine.contains("HomeTheme.muted") && brandPriceLine.contains("size: 14, weight: .medium") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand is moderately emphasized and its weighted price stays muted")
+        expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHomepageAveragePrice.text") && homeRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)"), "homepage rows use the live weighted price and earliest remaining batch expiry")
+        expect(brandPosition < namePosition && namePosition < expirationPosition && ratingPosition < pricePosition && pricePosition < specificationPosition, "homepage rows use three aligned information lines")
+        expect(brandPriceLine.contains("item.brand") && !brandPriceLine.contains("averagePriceText") && brandPriceLine.contains("size: 12, weight: .medium") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand stays on its own first information line")
         expect(homeRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && homeRow.contains("Image(systemName: \"star.fill\")") && homeRow.contains(".fixedSize(horizontal: true, vertical: false)"), "homepage rating icon and score remain together on one horizontal line")
         expect(homeRow.contains("Text(\"未评分\")") && homeRow.contains(".frame(width: 106, alignment: .trailing)"), "unrated products retain a single-line rating field in the original trailing column")
-        expect(homeRow.contains(".frame(minHeight: 48") && homeRow.contains(".padding(.vertical, 8)") && homeRow.contains(".padding(.horizontal, 14)"), "homepage item rows keep their original height and insets")
+        expect(homeRow.contains(".frame(minHeight: 56") && homeRow.contains(".padding(.vertical, 8)") && homeRow.contains(".padding(.horizontal, 14)"), "homepage rows keep the existing card insets while allowing three information lines")
         expect(nameFlavorLine.contains("Text(item.name)") && nameFlavorLine.contains("size: 13, weight: .semibold") && nameFlavorLine.contains("Text(flavor)") && nameFlavorLine.contains("font(.system(size: 13))") && nameFlavorLine.contains("HomeTheme.muted") && nameFlavorLine.contains(".minimumScaleFactor(0.78)"), "homepage name and flavor use separate compact text styles")
         expect(!homeRow.contains("item.displayNameAndVariant") && nameFlavorLine.contains(".lineLimit(1)"), "homepage name and flavor stay separate and compress on the same compact row")
         expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
@@ -824,6 +950,30 @@ struct PetInventoryCostingAcceptance {
         expect(valuationSource.contains("\"库存估值\"") && valuationSource.contains("\"已计价小计\"") && valuationSource.contains("未计价商品"), "partial valuation is distinguished in its accessible summary without a visible note row")
         expect(snapshot.contains("store.petInventory(for: item.id)") && snapshot.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && snapshot.contains("PetInventoryValuation.summarize"), "statistics estimate current stock against live weighted inbound prices")
         expect(petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petFood\")") && petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petSupply\")"), "food and supply count buttons use their root-specific statistics destinations")
+    }
+
+    private static func petExpiryPresentationContracts() throws {
+        let itemsSource = try String(contentsOfFile: "HomeOSNative/Views/PetItemViews.swift", encoding: .utf8)
+        let inventorySource = try String(contentsOfFile: "HomeOSNative/Views/PetInventoryViews.swift", encoding: .utf8)
+        let litterSource = try String(contentsOfFile: "HomeOSNative/Views/LitterViews.swift", encoding: .utf8)
+        let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
+        guard let pending = sourceSlice(itemsSource, from: "struct PetPendingRepurchaseView: View", to: "struct PetNoRepurchaseLibraryView: View"),
+              let transactionEditor = sourceSlice(inventorySource, from: "struct PetInventoryTransactionEditorView: View", to: "struct PetProductReviewEditorView: View"),
+              let initialEditor = sourceSlice(inventorySource, from: "struct PetItemEditorView: View", to: "private enum PetItemEditorField") else {
+            fatalError("expiry presentation source sections are missing")
+        }
+        expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
+        expect(itemsSource.contains("func expirySortsBefore") && itemsSource.contains("case (.some(_), .none): return true") && itemsSource.contains("return left.id < right.id"), "earlier dated stock sorts first, no-date stock last, and ties remain stable")
+        expect(itemsSource.contains("petInventoryBatchBreakdown(for: item.id)") && itemsSource.contains("group.remainingQuantity.formatted()"), "product detail summarizes positive remaining quantities by expiry group")
+        expect(initialEditor.contains("Toggle(\"记录初始库存到期日期\"") && initialEditor.contains("initialStock > 0"), "new product opening stock captures a date only when stock exists")
+        expect(initialEditor.contains("quickHasExpiration") == false, "initial stock date state remains in the creation form")
+        expect(itemsSource.contains("Toggle(\"记录到期日期\", isOn: $quickHasExpiration)") && itemsSource.contains("quickExpirationDate"), "quick inbound captures its own expiry date")
+        expect(inventorySource.contains("Toggle(\"记录到期日期\", isOn: $hasExpiration)") && inventorySource.contains("expirationDate: mode == .inbound"), "full inbound records the selected expiry on its source batch")
+        expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
+        expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
+        expect(litterSource.contains("PetInventoryBatchAllocationSheet") && storeSource.contains("batchAllocationsByProduct[allocation.productID]"), "cat litter consumption records its batch allocations through the shared ledger")
+        expect(pending.contains("ForEach(primaryCategories)") && pending.contains("ForEach(secondaryCategories)") && pending.contains("Text(expirationText)") && pending.contains("PetItemHomepageAveragePrice.text"), "pending repurchase remains split by live categories and uses the same three-line product layout")
+        expect(storeSource.contains("tracksExpirationBatch = !hasLaterUnattributedReduction") && storeSource.contains("tracksExpirationBatch == nil"), "legacy batch migration is one-time and leaves uncertain old balances unassigned")
     }
 
     private static func inventoryValuation() throws {

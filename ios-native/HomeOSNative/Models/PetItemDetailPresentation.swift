@@ -118,13 +118,13 @@ enum PetItemHeroAveragePrice {
 }
 
 enum PetItemHomepageAveragePrice {
-    static func text(average: Double?, unit: String) -> String? {
+    static func text(average: Double?, unit _: String) -> String? {
         guard let average, average.isFinite, average > 0 else { return nil }
         let price = average.formatted(
             .number
                 .locale(Locale(identifier: "en_US_POSIX"))
                 .precision(.fractionLength(1))
         )
-        return "¥\(price)/\(unit)"
+        return "¥\(price)"
     }
 }

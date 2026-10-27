@@ -178,6 +178,13 @@ enum PetInventorySource: String, Codable, Hashable {
     case litterReplace
 }
 
+struct PetInventoryBatchAllocation: Codable, Hashable, Identifiable {
+    var sourceBatchID: String
+    var quantity: Double
+
+    var id: String { sourceBatchID }
+}
+
 struct PetInventoryTransaction: Codable, Identifiable, Hashable {
     var id: String
     var productID: String
@@ -194,6 +201,8 @@ struct PetInventoryTransaction: Codable, Identifiable, Hashable {
     var unitPrice: Double?
     var purchaseChannel: String?
     var expirationDate: String?
+    var tracksExpirationBatch: Bool? = nil
+    var batchAllocations: [PetInventoryBatchAllocation]? = nil
     var note: String?
     var createdAt: Double
     var updatedAt: Double

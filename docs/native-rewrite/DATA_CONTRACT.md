@@ -38,6 +38,10 @@ settings{}
 - `petItems[].packageType`：可选包装形式，当前预设仅为袋或罐；与 `spec` 单件规格及 `unit` 库存单位分别保存。
 - `petItems[].variant`：宠物食品保存口味，宠物用品保存型号或款式；不得再写入 `spec` 的副本。品牌、名称、口味、包装形式和规格完全相同时视为疑似重复产品。
 - `petInventoryTransactions[]`：宠物物品入库、出库、调整和猫砂联动流水；当前库存由 `quantityChange` 求和。
+- `petInventoryTransactions[].expirationDate`：入库流水的批次到期日；只作用于该笔入库，不代表产品的全部库存。
+- `petInventoryTransactions[].tracksExpirationBatch`：可选批次迁移标记。旧流水首次迁移时，只有之后没有未分配出库或向下修正的入库才作为可确认批次；不确定的旧余额保留在“未设日期”组。
+- `petInventoryTransactions[].batchAllocations[]`：可选出库分配，按 `sourceBatchID` 关联原入库流水，并记录从该入库批次扣减的数量。多条入库即使到期日相同仍保留独立来源；同一日期的消费按入库先后扣减。
+- 批次余额由已追踪入库数量减去明确分配到该批次的出库数量得到；未设日期余额为当前流水总库存减去可确认批次余额。旧出库没有可靠批次来源时不补造日期归属，历史数量和金额仍由原流水保留。
 - `petProductReviews[]`：用户对所有宠物物品的多次回购评价。
 - `petProductReviews[].dimensionScores`：本次评价各维度的 1～5 整数分数字典；综合分不重复存储，由维度算术平均得到。旧记录缺少时使用原 `repurchaseLevel` 作为兼容评分。
 - 编辑物品评价时按 `petProductReviews[].id` 更新原记录，保留 `createdAt`，只更新日期、评分、文字与 `updatedAt`。

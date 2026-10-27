@@ -48,6 +48,8 @@ struct LitterOperationView: View {
     let type: LitterOperationType
     @State private var quantityTexts: [String: String] = [:]
     @State private var date = Date()
+    @State private var batchAllocationRequests: [PetInventoryBatchAllocationRequest] = []
+    @State private var showBatchAllocationSheet = false
 
     var body: some View {
         NavigationStack {
@@ -109,19 +111,18 @@ struct LitterOperationView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("确认") {
-                        if store.performLitterOperation(
-                            type: type,
-                            quantities: selectedQuantities,
-                            occurrenceDate: LitterPredictionService.format(date)
-                        ) {
-                            dismiss()
-                        }
+                        submitOperation()
                     }
                     .disabled(selectedLines.isEmpty)
                 }
             }
         }
         .presentationDetents([.medium, .large])
+        .sheet(isPresented: $showBatchAllocationSheet) {
+            PetInventoryBatchAllocationSheet(requests: batchAllocationRequests) { quantities in
+                performOperation(batchGroupQuantities: quantities)
+            }
+        }
     }
 
     private var groupedProducts: [LitterProductGroup] {
@@ -153,6 +154,37 @@ struct LitterOperationView: View {
             get: { quantityTexts[item.id] ?? "" },
             set: { quantityTexts[item.id] = $0 }
         )
+    }
+
+    private func submitOperation() {
+        batchAllocationRequests = store.litterProducts.compactMap { item in
+            let quantity = parsedQuantity(for: item)
+            let groups = store.petInventoryBatchGroups(for: item.id)
+            guard quantity > 0, groups.count > 1 else { return nil }
+            return PetInventoryBatchAllocationRequest(
+                productID: item.id,
+                productName: item.displayTitle,
+                quantity: quantity,
+                unit: item.unit,
+                groups: groups
+            )
+        }
+        if batchAllocationRequests.isEmpty {
+            performOperation(batchGroupQuantities: [:])
+        } else {
+            showBatchAllocationSheet = true
+        }
+    }
+
+    private func performOperation(batchGroupQuantities: [String: [String: Double]]) {
+        if store.performLitterOperation(
+            type: type,
+            quantities: selectedQuantities,
+            occurrenceDate: LitterPredictionService.format(date),
+            batchGroupQuantities: batchGroupQuantities
+        ) {
+            dismiss()
+        }
     }
 }
 

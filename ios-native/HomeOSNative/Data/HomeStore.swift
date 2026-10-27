@@ -474,6 +474,28 @@ final class HomeStore: ObservableObject {
             .reduce(0) { $0 + $1.quantityChange })
     }
 
+    func petInventoryBatchGroups(
+        for productID: String,
+        in backup: HomeBackup? = nil,
+        excludingTransactionID: String? = nil
+    ) -> [PetInventoryExpiryGroup] {
+        let source = backup ?? data
+        guard let balances = try? PetInventoryBatchLedger.balances(
+            productID: productID,
+            transactions: source.petInventoryTransactions,
+            excludingTransactionID: excludingTransactionID
+        ) else { return [] }
+        return PetInventoryBatchLedger.groups(from: balances)
+    }
+
+    func petInventoryEarliestExpirationDate(for productID: String) -> String? {
+        petInventoryBatchGroups(for: productID).compactMap(\.expirationDate).first
+    }
+
+    func petInventoryBatchBreakdown(for productID: String) -> [PetInventoryExpiryGroup] {
+        petInventoryBatchGroups(for: productID)
+    }
+
     func petTransactions(for productID: String) -> [PetInventoryTransaction] {
         data.petInventoryTransactions.enumerated()
             .filter { $0.element.productID == productID }
@@ -740,7 +762,8 @@ final class HomeStore: ObservableObject {
                     unit: item.unit, occurrenceDate: LitterPredictionService.format(Date()), reason: "初始库存",
                     source: .manual, linkedOperationID: nil, totalPrice: openingTotalPrice,
                     unitPrice: openingTotalPrice.map { $0 / openingQuantity },
-                    purchaseChannel: nil, expirationDate: item.expirationDate, note: nil,
+                    purchaseChannel: nil, expirationDate: item.expirationDate,
+                    tracksExpirationBatch: true, note: nil,
                     createdAt: now, updatedAt: now
                 ))
             }
@@ -797,17 +820,39 @@ final class HomeStore: ObservableObject {
         totalPrice: Double? = nil,
         purchaseChannel: String? = nil,
         expirationDate: String? = nil,
-        note: String? = nil
+        note: String? = nil,
+        batchGroupQuantities: [String: Double]? = nil
     ) -> Bool {
         guard quantity.isFinite, quantity > 0 else { return fail("数量必须大于 0") }
+        guard type == .inbound || type == .outbound else { return fail("库存流水类型无效") }
         if let totalPrice, (!totalPrice.isFinite || totalPrice < 0) { return fail("金额无效") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
+        if let expirationDate, PetInventoryBatchLedger.validExpirationDate(expirationDate) == nil {
+            return fail("到期日期无效")
+        }
         var next = data
         guard let index = next.petItems.firstIndex(where: { $0.id == productID && !$0.isArchived }) else { return fail("找不到该宠物物品") }
         let before = petInventory(for: productID, in: next)
         let change = type == .outbound ? -quantity : quantity
         let after = before + change
         guard after >= 0 else { return fail("出库数量不能超过当前库存") }
+        let allocations: [PetInventoryBatchAllocation]?
+        if type == .outbound {
+            do {
+                allocations = try resolveBatchAllocations(
+                    productID: productID,
+                    quantity: quantity,
+                    groupQuantities: batchGroupQuantities,
+                    in: next
+                )
+            } catch let error as PetInventoryBatchLedger.InvalidLedger {
+                return fail(error.message)
+            } catch {
+                return fail("无法分配本次出库批次。")
+            }
+        } else {
+            allocations = nil
+        }
         let now = Date().timeIntervalSince1970
         let transactionID = UUID().uuidString
         let resolvedUnitPrice = type == .inbound ? totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil } : nil
@@ -818,7 +863,10 @@ final class HomeStore: ObservableObject {
             occurrenceDate: occurrenceDate, reason: reason.trimmingCharacters(in: .whitespacesAndNewlines),
             source: .manual, linkedOperationID: nil, totalPrice: resolvedTotalPrice,
             unitPrice: resolvedUnitPrice, purchaseChannel: purchaseChannel?.nilIfBlank,
-            expirationDate: expirationDate, note: note?.nilIfBlank, createdAt: now, updatedAt: now
+            expirationDate: type == .inbound ? expirationDate : nil,
+            tracksExpirationBatch: type == .inbound ? true : nil,
+            batchAllocations: allocations,
+            note: note?.nilIfBlank, createdAt: now, updatedAt: now
         ))
         if let error = recalculatePetInventoryHistory(productID: productID, in: &next, now: now) {
             return fail(error)
@@ -852,19 +900,44 @@ final class HomeStore: ObservableObject {
         quantity: Double,
         occurrenceDate: String,
         totalPrice: Double?,
-        note: String?
+        note: String?,
+        expirationDate: String? = nil,
+        updateExpirationDate: Bool = false,
+        batchGroupQuantities: [String: Double]? = nil
     ) -> Bool {
         guard quantity.isFinite, quantity > 0 else { return fail("数量必须大于 0") }
         if let totalPrice, (!totalPrice.isFinite || totalPrice < 0) { return fail("金额无效") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
+        if updateExpirationDate, let expirationDate,
+           PetInventoryBatchLedger.validExpirationDate(expirationDate) == nil {
+            return fail("到期日期无效")
+        }
         let now = Date().timeIntervalSince1970
         do {
+            guard let original = data.petInventoryTransactions.first(where: { $0.id == id }) else {
+                return fail("找不到这条进出库记录")
+            }
+            let allocations: [PetInventoryBatchAllocation]?
+            if original.type == .outbound {
+                allocations = try resolveBatchAllocations(
+                    productID: original.productID,
+                    quantity: quantity,
+                    groupQuantities: batchGroupQuantities,
+                    in: data,
+                    excludingTransactionID: id
+                )
+            } else {
+                allocations = nil
+            }
             let next = try PetInventoryHistoryMutation.update(
                 transactionID: id,
                 quantity: quantity,
                 occurrenceDate: occurrenceDate,
                 totalPrice: totalPrice,
                 note: note,
+                expirationDate: expirationDate,
+                updateExpirationDate: updateExpirationDate,
+                batchAllocations: allocations,
                 now: now,
                 in: data
             )
@@ -873,6 +946,8 @@ final class HomeStore: ObservableObject {
             return fail(invalidPetInventoryHistoryMessage(error, productID: data.petInventoryTransactions.first(where: { $0.id == id })?.productID))
         } catch let error as PetInventoryHistoryMutation.Failure {
             return fail(petInventoryMutationErrorMessage(error))
+        } catch let error as PetInventoryBatchLedger.InvalidLedger {
+            return fail(error.message)
         } catch {
             return fail("无法保存这条库存记录，请重试。")
         }
@@ -890,6 +965,8 @@ final class HomeStore: ObservableObject {
             return fail(invalidPetInventoryHistoryMessage(error, productID: productID, deleting: true))
         } catch let error as PetInventoryHistoryMutation.Failure {
             return fail(petInventoryMutationErrorMessage(error, deleting: true))
+        } catch let error as PetInventoryBatchLedger.InvalidLedger {
+            return fail(error.message)
         } catch {
             return fail("无法删除这条库存记录，原数据已保留。")
         }
@@ -933,7 +1010,13 @@ final class HomeStore: ObservableObject {
         return true
     }
 
-    func adjustPetInventory(productID: String, target: Double, occurrenceDate: String, reason: String?) -> Bool {
+    func adjustPetInventory(
+        productID: String,
+        target: Double,
+        occurrenceDate: String,
+        reason: String?,
+        batchGroupQuantities: [String: Double]? = nil
+    ) -> Bool {
         guard target >= 0 else { return fail("库存不能小于 0") }
         guard LitterPredictionService.parse(occurrenceDate) != nil else { return fail("日期无效") }
         var next = data
@@ -941,13 +1024,31 @@ final class HomeStore: ObservableObject {
         let before = petInventory(for: productID, in: next)
         let change = target - before
         guard change != 0 else { return fail("调整后的库存没有变化") }
+        let allocations: [PetInventoryBatchAllocation]?
+        if change < 0 {
+            do {
+                allocations = try resolveBatchAllocations(
+                    productID: productID,
+                    quantity: abs(change),
+                    groupQuantities: batchGroupQuantities,
+                    in: next
+                )
+            } catch let error as PetInventoryBatchLedger.InvalidLedger {
+                return fail(error.message)
+            } catch {
+                return fail("无法分配本次库存修正。")
+            }
+        } else {
+            allocations = nil
+        }
         let now = Date().timeIntervalSince1970
         next.petInventoryTransactions.append(PetInventoryTransaction(
             id: UUID().uuidString, productID: productID, type: .adjustment, quantityChange: change,
             quantityBefore: before, quantityAfter: target, unit: next.petItems[index].unit,
             occurrenceDate: occurrenceDate, reason: reason?.nilIfBlank ?? "手动修正",
             source: .manual, linkedOperationID: nil, totalPrice: nil, unitPrice: nil,
-            purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now, updatedAt: now
+            purchaseChannel: nil, expirationDate: nil, batchAllocations: allocations,
+            note: nil, createdAt: now, updatedAt: now
         ))
         guard let transaction = next.petInventoryTransactions.last else { return fail("库存修正记录创建失败") }
         if let error = recalculatePetInventoryHistory(productID: productID, in: &next, now: now) {
@@ -1073,7 +1174,8 @@ final class HomeStore: ObservableObject {
     func performLitterOperation(
         type: LitterOperationType,
         quantities: [String: Double],
-        occurrenceDate: String
+        occurrenceDate: String,
+        batchGroupQuantities: [String: [String: Double]]? = nil
     ) -> Bool {
         guard type == .refill || type == .replace else { return fail("猫砂操作类型无效") }
         guard let currentState = data.litterBoxState else { return fail("请先初始化猫砂余量") }
@@ -1081,6 +1183,7 @@ final class HomeStore: ObservableObject {
 
         var next = data
         var allocations: [LitterAllocation] = []
+        var batchAllocationsByProduct: [String: [PetInventoryBatchAllocation]] = [:]
         for (productID, requestedQuantity) in quantities where requestedQuantity > 0 {
             guard let index = next.petItems.firstIndex(where: { $0.id == productID }) else {
                 return fail("找不到选择的猫砂产品")
@@ -1089,6 +1192,18 @@ final class HomeStore: ObservableObject {
             let available = petInventory(for: item.id, in: next)
             guard requestedQuantity <= available else {
                 return fail("\(item.name) 的加入量超过当前库存")
+            }
+            do {
+                batchAllocationsByProduct[productID] = try resolveBatchAllocations(
+                    productID: productID,
+                    quantity: requestedQuantity,
+                    groupQuantities: batchGroupQuantities?[productID],
+                    in: next
+                )
+            } catch let error as PetInventoryBatchLedger.InvalidLedger {
+                return fail("\(item.name)：\(error.message)")
+            } catch {
+                return fail("\(item.name)：无法分配本次猫砂出库批次。")
             }
             guard let conversion = baseConversion(for: item) else {
                 return fail("\(item.name) 的单位无法换算为 kg，请先完善换算信息")
@@ -1166,6 +1281,7 @@ final class HomeStore: ObservableObject {
                 unitPrice: nil,
                 purchaseChannel: nil,
                 expirationDate: nil,
+                batchAllocations: batchAllocationsByProduct[allocation.productID],
                 note: nil,
                 createdAt: now,
                 updatedAt: now
@@ -1212,6 +1328,29 @@ final class HomeStore: ObservableObject {
         }
     }
 
+    private func resolveBatchAllocations(
+        productID: String,
+        quantity: Double,
+        groupQuantities: [String: Double]?,
+        in backup: HomeBackup,
+        excludingTransactionID: String? = nil
+    ) throws -> [PetInventoryBatchAllocation] {
+        let balances = try PetInventoryBatchLedger.balances(
+            productID: productID,
+            transactions: backup.petInventoryTransactions,
+            excludingTransactionID: excludingTransactionID
+        )
+        let groups = PetInventoryBatchLedger.groups(from: balances)
+        if let groupQuantities {
+            return try PetInventoryBatchLedger.allocations(
+                groupQuantities: groupQuantities,
+                groups: groups,
+                requiredTotal: quantity
+            )
+        }
+        return try PetInventoryBatchLedger.automaticAllocations(quantity: quantity, groups: groups)
+    }
+
     private static func petInventoryCostEvent(_ transaction: PetInventoryTransaction) -> PetInventoryCosting.Event {
         let kind: PetInventoryCosting.Kind
         switch transaction.type {
@@ -1250,6 +1389,8 @@ final class HomeStore: ObservableObject {
             return nil
         } catch let error as PetInventoryCosting.InvalidHistory {
             return invalidPetInventoryHistoryMessage(error, productID: productID)
+        } catch let error as PetInventoryBatchLedger.InvalidLedger {
+            return error.message
         } catch {
             return "无法重算这件物品的库存价格，请检查流水后重试。"
         }
@@ -1285,6 +1426,10 @@ final class HomeStore: ObservableObject {
             return "库存修正记录为只读，请通过新的修正操作调整库存。"
         case .ambiguousActivityMatch:
             return "无法唯一识别这条记录对应的旧版动态。为避免误删其他动态，记录未删除。"
+        case .batchAllocationSourceInUse:
+            return "这批入库已被出库记录引用。请先调整或删除相关出库，再删除这条入库。"
+        case .batchExpirationNotTrackable:
+            return "这条旧入库包含未分配批次的历史出库，剩余库存仍按“未设日期”保留，无法单独修改到期日期。"
         case .invalidQuantity:
             return "数量必须大于 0。"
         case .invalidPrice:
@@ -1320,7 +1465,16 @@ final class HomeStore: ObservableObject {
                 running += purchase.quantity
             }
             let difference = max(item.quantity, 0) - running
-            if difference != 0 {
+            if difference > 0, (item.purchaseHistory ?? []).isEmpty {
+                next.petInventoryTransactions.append(PetInventoryTransaction(
+                    id: "legacy-balance-\(item.id)", productID: item.id, type: .inbound,
+                    quantityChange: difference, quantityBefore: 0, quantityAfter: difference,
+                    unit: item.unit, occurrenceDate: LitterPredictionService.format(Date()), reason: "旧版期初库存迁移",
+                    source: .migration, linkedOperationID: nil, totalPrice: nil, unitPrice: nil,
+                    purchaseChannel: nil, expirationDate: item.expirationDate,
+                    note: "用于保持迁移前库存不变", createdAt: now, updatedAt: now
+                ))
+            } else if difference != 0 {
                 next.petInventoryTransactions.append(PetInventoryTransaction(
                     id: "legacy-balance-\(item.id)", productID: item.id, type: .adjustment,
                     quantityChange: difference, quantityBefore: running, quantityAfter: max(item.quantity, 0),
@@ -1347,6 +1501,30 @@ final class HomeStore: ObservableObject {
                 now: now,
                 allowInvalidHistory: true
             )
+        }
+
+        for productID in Set(next.petInventoryTransactions.map(\.productID)) {
+            let indices = next.petInventoryTransactions.indices.filter {
+                next.petInventoryTransactions[$0].productID == productID
+            }
+            let ordered = indices.sorted { left, right in
+                let lhs = next.petInventoryTransactions[left]
+                let rhs = next.petInventoryTransactions[right]
+                if lhs.occurrenceDate != rhs.occurrenceDate { return lhs.occurrenceDate < rhs.occurrenceDate }
+                if lhs.createdAt != rhs.createdAt { return lhs.createdAt < rhs.createdAt }
+                return left < right
+            }
+            for (offset, index) in ordered.enumerated() {
+                guard next.petInventoryTransactions[index].type == .inbound,
+                      next.petInventoryTransactions[index].tracksExpirationBatch == nil else { continue }
+                let hasLaterUnattributedReduction = ordered.dropFirst(offset + 1).contains { laterIndex in
+                    let later = next.petInventoryTransactions[laterIndex]
+                    guard later.batchAllocations == nil else { return false }
+                    return later.type == .outbound
+                        || (later.type == .adjustment && later.quantityChange < 0)
+                }
+                next.petInventoryTransactions[index].tracksExpirationBatch = !hasLaterUnattributedReduction
+            }
         }
 
         if next.petPalatabilityReviews.isEmpty {

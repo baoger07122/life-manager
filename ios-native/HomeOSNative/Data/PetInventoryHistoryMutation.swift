@@ -6,6 +6,8 @@ enum PetInventoryHistoryMutation {
         case litterOperationMustBeChangedAsAGroup
         case adjustmentIsReadOnly
         case ambiguousActivityMatch
+        case batchAllocationSourceInUse
+        case batchExpirationNotTrackable
         case invalidQuantity
         case invalidPrice
     }
@@ -21,6 +23,9 @@ enum PetInventoryHistoryMutation {
         occurrenceDate: String,
         totalPrice: Double?,
         note: String?,
+        expirationDate: String? = nil,
+        updateExpirationDate: Bool = false,
+        batchAllocations: [PetInventoryBatchAllocation]? = nil,
         now: Double,
         in source: HomeBackup
     ) throws -> HomeBackup {
@@ -31,6 +36,9 @@ enum PetInventoryHistoryMutation {
         let original = next.petInventoryTransactions[transactionIndex]
         guard original.type != .adjustment else { throw Failure.adjustmentIsReadOnly }
         guard !isLitterLinked(original) else { throw Failure.litterOperationMustBeChangedAsAGroup }
+        if updateExpirationDate, original.type == .inbound, original.tracksExpirationBatch != true {
+            throw Failure.batchExpirationNotTrackable
+        }
         let activityMatch = matchingActivities(for: original, in: source.activities)
         if case .ambiguous = activityMatch { throw Failure.ambiguousActivityMatch }
         guard quantity.isFinite, quantity > 0 else { throw Failure.invalidQuantity }
@@ -45,6 +53,11 @@ enum PetInventoryHistoryMutation {
         if original.type == .inbound {
             next.petInventoryTransactions[transactionIndex].totalPrice = totalPrice
             next.petInventoryTransactions[transactionIndex].unitPrice = totalPrice.flatMap { $0 > 0 ? $0 / quantity : nil }
+            if updateExpirationDate {
+                next.petInventoryTransactions[transactionIndex].expirationDate = expirationDate
+            }
+        } else {
+            next.petInventoryTransactions[transactionIndex].batchAllocations = batchAllocations
         }
         if let note {
             let cleaned = note.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -86,6 +99,14 @@ enum PetInventoryHistoryMutation {
         }
         let removed = source.petInventoryTransactions[transactionIndex]
         guard !isLitterLinked(removed) else { throw Failure.litterOperationMustBeChangedAsAGroup }
+        if removed.type == .inbound,
+           source.petInventoryTransactions.contains(where: {
+               $0.batchAllocations?.contains(where: {
+                   $0.sourceBatchID == removed.id && $0.quantity > 0
+               }) == true
+           }) {
+            throw Failure.batchAllocationSourceInUse
+        }
 
         let activityMatch = matchingActivities(for: removed, in: source.activities)
         if case .ambiguous = activityMatch { throw Failure.ambiguousActivityMatch }
@@ -160,6 +181,10 @@ enum PetInventoryHistoryMutation {
                     backup.petItems[itemIndex].updatedAt = now
                 }
             }
+            _ = try PetInventoryBatchLedger.balances(
+                productID: productID,
+                transactions: backup.petInventoryTransactions
+            )
             if synchronizeMatchingActivities { synchronizeActivities(for: productID, in: &backup) }
         } catch let error as PetInventoryCosting.InvalidHistory {
             guard allowInvalidHistory else { throw error }

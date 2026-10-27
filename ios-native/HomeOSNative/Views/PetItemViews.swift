@@ -47,6 +47,9 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     @State private var quickQuantity = 1.0
     @State private var quickTotalPriceText = ""
     @State private var quickNote = ""
+    @State private var quickHasExpiration = false
+    @State private var quickExpirationDate = Date()
+    @State private var quickBatchAllocationRequest: PetInventoryBatchAllocationRequest?
     @State private var deleteCandidate: PetItem?
     @State private var route: PetItemsRoute?
 
@@ -68,6 +71,9 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 && $0.resolvedSecondaryCategory == secondaryName
                 && (selectedBrand == "all" || $0.brand == selectedBrand)
         }
+        let expiryDates = sortMode == .expiryNearest
+            ? Dictionary(uniqueKeysWithValues: filtered.map { ($0.id, store.petInventoryEarliestExpirationDate(for: $0.id)) })
+            : [:]
         return filtered.sorted { left, right in
             switch sortMode {
             case .smart:
@@ -98,6 +104,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 return isNewer(left, than: right)
             case .brandAndModel:
                 return brandAndModelSortsBefore(left, right)
+            case .expiryNearest:
+                return expirySortsBefore(left, right, dates: expiryDates)
             }
         }
     }
@@ -113,6 +121,22 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         let leftDate = left.createdAt ?? left.updatedAt ?? 0
         let rightDate = right.createdAt ?? right.updatedAt ?? 0
         return leftDate == rightDate ? left.name < right.name : leftDate > rightDate
+    }
+
+    private func expirySortsBefore(_ left: PetItem, _ right: PetItem, dates: [String: String?]) -> Bool {
+        let leftDate = dates[left.id] ?? nil
+        let rightDate = dates[right.id] ?? nil
+        switch (leftDate, rightDate) {
+        case let (.some(leftDate), .some(rightDate)) where leftDate != rightDate:
+            return leftDate < rightDate
+        case (.some(_), .none): return true
+        case (.none, .some(_)): return false
+        default:
+            let leftCreated = left.createdAt ?? 0
+            let rightCreated = right.createdAt ?? 0
+            if leftCreated != rightCreated { return leftCreated < rightCreated }
+            return left.id < right.id
+        }
     }
 
     private func brandAndModelSortsBefore(_ left: PetItem, _ right: PetItem) -> Bool {
@@ -242,6 +266,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             }
         } message: { item in
             Text("“\(item.displayTitle)”及其库存、价格和评价记录会被永久删除，无法恢复。")
+        }
+        .sheet(item: $quickBatchAllocationRequest) { request in
+            PetInventoryBatchAllocationSheet(requests: [request]) { quantities in
+                completeQuickAction(for: request.productID, batchGroupQuantities: quantities[request.productID])
+            }
         }
         .navigationDestination(item: $route) { route in
             switch route {
@@ -383,6 +412,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             average: store.petWeightedAverageInboundUnitPrice(for: item.id),
             unit: item.unit
         )
+        let expirationText = store.petInventoryEarliestExpirationDate(for: item.id)
+            .map(petExpirationDisplayDate) ?? "未设日期"
         return HStack(spacing: 0) {
             Button {
                 NativeHaptics.tap()
@@ -398,24 +429,12 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                 toggleQuickManager(for: item)
             } label: {
                 HStack(spacing: 11) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 4) {
-                            Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundStyle(HomeTheme.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                            if let averagePriceText {
-                                Text("·")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(HomeTheme.muted)
-                                Text(averagePriceText)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(HomeTheme.muted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.75)
-                            }
-                        }
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(HomeTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                         HStack(spacing: 4) {
                             Text(item.name)
                                 .font(.system(size: 13, weight: .semibold))
@@ -431,9 +450,14 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                                     .minimumScaleFactor(0.72)
                             }
                         }
+                        Text(expirationText)
+                            .font(.system(size: 11))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .trailing, spacing: 6) {
+                    VStack(alignment: .trailing, spacing: 5) {
                         if let rating = store.petProductRating(productID: item.id) {
                             HStack(alignment: .firstTextBaseline, spacing: 3) {
                                 Image(systemName: "star.fill")
@@ -450,16 +474,21 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                         }
+                        Text(averagePriceText ?? "—")
+                            .font(.system(size: 12))
+                            .foregroundStyle(averagePriceText == nil ? HomeTheme.muted : HomeTheme.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                         Text(specificationAndStock(item))
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
                     }
                     .frame(width: 106, alignment: .trailing)
-                    .frame(minHeight: 48, alignment: .trailing)
+                    .frame(minHeight: 56, alignment: .trailing)
                 }
                 .padding(.leading, 11)
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -642,6 +671,12 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                         .foregroundStyle(HomeTheme.muted)
                 }
                 .frame(minHeight: 36)
+                Toggle("记录到期日期", isOn: $quickHasExpiration)
+                    .font(.system(size: 13))
+                if quickHasExpiration {
+                    DatePicker("到期日期", selection: $quickExpirationDate, displayedComponents: .date)
+                        .font(.system(size: 13))
+                }
                 HStack(spacing: 8) {
                     Text("本次备注").font(.system(size: 13)).foregroundStyle(HomeTheme.muted)
                     TextField("可选", text: $quickNote)
@@ -675,6 +710,27 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func confirmQuickAction(_ item: PetItem) {
+        if quickMode == .outbound {
+            let groups = store.petInventoryBatchGroups(for: item.id)
+            if quickQuantity <= store.petInventory(for: item.id), groups.count > 1 {
+                quickBatchAllocationRequest = PetInventoryBatchAllocationRequest(
+                    productID: item.id,
+                    productName: item.displayTitle,
+                    quantity: quickQuantity,
+                    unit: item.unit,
+                    groups: groups
+                )
+                return
+            }
+        }
+        completeQuickAction(for: item.id)
+    }
+
+    private func completeQuickAction(
+        for productID: String,
+        batchGroupQuantities: [String: Double]? = nil
+    ) {
+        guard let item = store.data.petItems.first(where: { $0.id == productID }) else { return }
         let note = quickNote.trimmingCharacters(in: .whitespacesAndNewlines)
         let success = store.recordPetInventory(
             productID: item.id,
@@ -683,7 +739,11 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             occurrenceDate: LitterPredictionService.format(Date()),
             reason: quickMode == .inbound ? "快捷入库" : "快捷出库",
             totalPrice: quickMode == .inbound ? parsedQuickTotalPrice : nil,
-            note: quickMode == .inbound && !note.isEmpty ? note : nil
+            expirationDate: quickMode == .inbound && quickHasExpiration
+                ? LitterPredictionService.format(quickExpirationDate)
+                : nil,
+            note: quickMode == .inbound && !note.isEmpty ? note : nil,
+            batchGroupQuantities: batchGroupQuantities
         )
         if success {
             expandedItemID = nil
@@ -723,6 +783,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         quickQuantity = item.map { quickStep(for: $0) } ?? 1
         quickTotalPriceText = ""
         quickNote = ""
+        quickHasExpiration = false
+        quickExpirationDate = Date()
     }
 
     private func specificationAndStock(_ item: PetItem) -> String {
@@ -762,7 +824,7 @@ private enum PetItemsRoute: Hashable {
 }
 
 private enum PetItemListSortMode: String, CaseIterable, Identifiable {
-    case smart, createdNewest, ratingHigh, stockHigh, brandAndModel
+    case smart, createdNewest, ratingHigh, stockHigh, brandAndModel, expiryNearest
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -771,6 +833,7 @@ private enum PetItemListSortMode: String, CaseIterable, Identifiable {
         case .ratingHigh: "评分从高到低"
         case .stockHigh: "库存从高到低"
         case .brandAndModel: "品牌 / 同款"
+        case .expiryNearest: "保质期由近到远"
         }
     }
 }
@@ -1285,6 +1348,12 @@ struct PetPendingRepurchaseView: View {
     }
 
     private func pendingItemRow(_ item: PetItem) -> some View {
+        let averagePriceText = PetItemHomepageAveragePrice.text(
+            average: store.petWeightedAverageInboundUnitPrice(for: item.id),
+            unit: item.unit
+        )
+        let expirationText = store.petInventoryEarliestExpirationDate(for: item.id)
+            .map(petExpirationDisplayDate) ?? "未设日期"
         Button {
             NativeHaptics.tap()
             detailItemID = item.id
@@ -1292,36 +1361,61 @@ struct PetPendingRepurchaseView: View {
             HStack(spacing: 0) {
                 PetProductThumbnail(item: item)
                 HStack(spacing: 11) {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                        Text(item.displayNameAndVariant)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(HomeTheme.ink)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.84)
+                        HStack(spacing: 4) {
+                            Text(item.name)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(HomeTheme.ink)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.78)
+                                .layoutPriority(1)
+                            if let flavor = item.displayVariant {
+                                Text(flavor)
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(HomeTheme.muted)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.72)
+                            }
+                        }
+                        Text(expirationText)
+                            .font(.system(size: 11))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .trailing, spacing: 6) {
+                    VStack(alignment: .trailing, spacing: 5) {
+                        if let rating = store.petProductRating(productID: item.id) {
+                            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                                Image(systemName: "star.fill")
+                                Text(rating.overall.formatted(.number.precision(.fractionLength(1))))
+                            }
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(HomeTheme.orange)
+                                .lineLimit(1)
+                        } else {
+                            Text("未评分")
+                                .font(.system(size: 11))
+                                .foregroundStyle(HomeTheme.muted)
+                                .lineLimit(1)
+                        }
+                        Text(averagePriceText ?? "—")
+                            .font(.system(size: 12))
+                            .foregroundStyle(averagePriceText == nil ? HomeTheme.muted : HomeTheme.ink)
+                            .lineLimit(1)
                         Text(specificationAndStock(item))
                             .font(.system(size: 12))
                             .foregroundStyle(HomeTheme.muted)
                             .lineLimit(1)
-                        if let rating = store.petProductRating(productID: item.id) {
-                            Label(rating.overall.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(HomeTheme.orange)
-                        } else {
-                            Text("未评分").font(.system(size: 12)).foregroundStyle(HomeTheme.muted)
-                        }
                     }
                     .frame(width: 106, alignment: .trailing)
-                    .frame(minHeight: 48, alignment: .trailing)
+                    .frame(minHeight: 56, alignment: .trailing)
                 }
                 .padding(.leading, 11)
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -1735,22 +1829,41 @@ struct PetItemDetailView: View {
     }
 
     private func inventoryCard(_ item: PetItem) -> some View {
-        HomeCard(padding: 12) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("当前库存").font(HomeTypography.cardTitle)
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text(store.petInventory(for: item.id).formatted())
-                            .font(HomeTypography.metric)
-                            .foregroundStyle(HomeTheme.blue)
-                        Text(item.unit).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+        let expiryGroups = store.petInventoryBatchBreakdown(for: item.id)
+        return HomeCard(padding: 12) {
+            VStack(spacing: 9) {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("当前库存").font(HomeTypography.cardTitle)
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text(store.petInventory(for: item.id).formatted())
+                                .font(HomeTypography.metric)
+                                .foregroundStyle(HomeTheme.blue)
+                            Text(item.unit).font(HomeTypography.body).foregroundStyle(HomeTheme.muted)
+                        }
+                    }
+                    Spacer()
+                    HStack(spacing: 8) {
+                        inventoryAction("入库", icon: "square.and.arrow.down", color: HomeTheme.blue) { sheet = .inbound }
+                        inventoryAction("出库", icon: "square.and.arrow.up", color: HomeTheme.blue) { sheet = .outbound }
+                        inventoryAction("修正", icon: "pencil", color: HomeTheme.blue) { sheet = .adjustment }
                     }
                 }
-                Spacer()
-                HStack(spacing: 8) {
-                    inventoryAction("入库", icon: "square.and.arrow.down", color: HomeTheme.blue) { sheet = .inbound }
-                    inventoryAction("出库", icon: "square.and.arrow.up", color: HomeTheme.blue) { sheet = .outbound }
-                    inventoryAction("修正", icon: "pencil", color: HomeTheme.blue) { sheet = .adjustment }
+                if !expiryGroups.isEmpty {
+                    Divider().overlay(HomeTheme.line)
+                    VStack(spacing: 4) {
+                        ForEach(expiryGroups) { group in
+                            HStack {
+                                Text(group.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")
+                                    .foregroundStyle(HomeTheme.muted)
+                                Spacer()
+                                Text("\(group.remainingQuantity.formatted())\(item.unit)")
+                                    .foregroundStyle(HomeTheme.ink)
+                            }
+                            .font(HomeTypography.supporting)
+                            .lineLimit(1)
+                        }
+                    }
                 }
             }
         }
@@ -2187,6 +2300,15 @@ struct PetItemDetailView: View {
     private func isPetFood(_ item: PetItem) -> Bool {
         item.resolvedPrimaryCategory == store.petRootCategory(capabilityKey: "petFood")?.name
     }
+}
+
+func petExpirationDisplayDate(_ storedDate: String) -> String {
+    guard let date = LitterPredictionService.parse(storedDate) else { return storedDate }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "zh_CN")
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.dateFormat = "yyyy.MM.dd"
+    return formatter.string(from: date)
 }
 
 private enum PetItemDetailSheet: Identifiable {

@@ -23,6 +23,8 @@ struct PetItemEditorView: View {
     @State private var unit = "件"
     @State private var initialStockText = ""
     @State private var purchaseTotalText = ""
+    @State private var initialHasExpiration = false
+    @State private var initialExpirationDate = Date()
     @State private var notes = ""
     @State private var litterKind = ""
     @State private var conversion = 0.0
@@ -118,6 +120,11 @@ struct PetItemEditorView: View {
                                     .foregroundStyle(HomeTheme.muted)
                             }
                             .frame(minHeight: HomeMetrics.controlHeight)
+                            Toggle("记录初始库存到期日期", isOn: $initialHasExpiration)
+                                .disabled(initialStock <= 0)
+                            if initialHasExpiration && initialStock > 0 {
+                                DatePicker("到期日期", selection: $initialExpirationDate, displayedComponents: .date)
+                            }
                         }
                     }
                 }
@@ -457,6 +464,11 @@ struct PetItemEditorView: View {
         item.packageType = cleanPackageType.isEmpty ? nil : cleanPackageType
         item.foodRole = nil; item.litterKind = savedSecondary == "猫砂" ? (litterKind.isEmpty ? nil : litterKind) : nil
         item.unitConversionToBase = conversion > 0 ? conversion : nil; item.image = imageReference; item.isArchived = false
+        if itemID == nil {
+            item.expirationDate = initialStock > 0 && initialHasExpiration
+                ? LitterPredictionService.format(initialExpirationDate)
+                : nil
+        }
         if itemID == nil, let calculatedUnitPrice { item.price = calculatedUnitPrice }
         item.createdAt = item.createdAt ?? now; item.updatedAt = now
         UserDefaults.standard.set(primaryID, forKey: "HomeOS.lastPetPrimaryCategoryID")
@@ -684,6 +696,7 @@ struct PetInventoryEditorView: View {
     @State private var note = ""
     @State private var hasExpiration = false
     @State private var expirationDate = Date()
+    @State private var batchAllocationRequest: PetInventoryBatchAllocationRequest?
     @State private var localError: String?
 
     private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
@@ -748,6 +761,11 @@ struct PetInventoryEditorView: View {
             }
         }
         .presentationDetents(quick ? [.medium] : [.medium, .large])
+        .sheet(item: $batchAllocationRequest) { request in
+            PetInventoryBatchAllocationSheet(requests: [request]) { quantities in
+                save(batchGroupQuantities: quantities[productID])
+            }
+        }
         .task {
             if mode == .adjustment {
                 targetText = currentInventory.formatted(.number.precision(.fractionLength(0...4)))
@@ -764,16 +782,196 @@ struct PetInventoryEditorView: View {
     }
 
     private func save() {
+        if mode == .outbound {
+            let groups = store.petInventoryBatchGroups(for: productID)
+            if quantity <= currentInventory, groups.count > 1, let item {
+                batchAllocationRequest = PetInventoryBatchAllocationRequest(
+                    productID: productID,
+                    productName: item.displayTitle,
+                    quantity: quantity,
+                    unit: item.unit,
+                    groups: groups
+                )
+                return
+            }
+        } else if mode == .adjustment,
+                  let targetValue, targetValue < currentInventory,
+                  let item {
+            let groups = store.petInventoryBatchGroups(for: productID)
+            let reduction = currentInventory - targetValue
+            if groups.count > 1 {
+                batchAllocationRequest = PetInventoryBatchAllocationRequest(
+                    productID: productID,
+                    productName: item.displayTitle,
+                    quantity: reduction,
+                    unit: item.unit,
+                    groups: groups
+                )
+                return
+            }
+        }
+        save(batchGroupQuantities: nil)
+    }
+
+    private func save(batchGroupQuantities: [String: Double]?) {
         let dateString = LitterPredictionService.format(date)
         let success: Bool
         if mode == .adjustment {
             guard let targetValue else { localError = "请输入有效的修正后库存"; NativeHaptics.error(); return }
-            success = store.adjustPetInventory(productID: productID, target: targetValue, occurrenceDate: dateString, reason: reason)
+            success = store.adjustPetInventory(
+                productID: productID,
+                target: targetValue,
+                occurrenceDate: dateString,
+                reason: reason,
+                batchGroupQuantities: batchGroupQuantities
+            )
         } else {
-            success = store.recordPetInventory(productID: productID, type: mode == .inbound ? .inbound : .outbound, quantity: quantity, occurrenceDate: dateString, reason: reason.isEmpty ? (mode == .inbound ? "购买入库" : "日常使用") : reason, totalPrice: totalPrice, purchaseChannel: channel, expirationDate: hasExpiration ? LitterPredictionService.format(expirationDate) : nil, note: note)
+            success = store.recordPetInventory(
+                productID: productID,
+                type: mode == .inbound ? .inbound : .outbound,
+                quantity: quantity,
+                occurrenceDate: dateString,
+                reason: reason.isEmpty ? (mode == .inbound ? "购买入库" : "日常使用") : reason,
+                totalPrice: totalPrice,
+                purchaseChannel: channel,
+                expirationDate: mode == .inbound && hasExpiration ? LitterPredictionService.format(expirationDate) : nil,
+                note: note,
+                batchGroupQuantities: batchGroupQuantities
+            )
         }
         if success { dismiss() }
         else { localError = store.lastError ?? "库存修正没有保存，请重试。" }
+    }
+}
+
+struct PetInventoryBatchAllocationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let requests: [PetInventoryBatchAllocationRequest]
+    let onConfirm: ([String: [String: Double]]) -> Void
+    @State private var quantityTexts: [String: String] = [:]
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(requests) { request in
+                        HomeCard(padding: 12) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(request.productName)
+                                        .font(HomeTypography.cardTitle)
+                                        .foregroundStyle(HomeTheme.ink)
+                                    Text("分配本次出库 \(request.quantity.formatted())\(request.unit)")
+                                        .font(HomeTypography.supporting)
+                                        .foregroundStyle(HomeTheme.muted)
+                                }
+                                ForEach(request.groups) { group in
+                                    HStack(spacing: 10) {
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(group.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")
+                                                .font(HomeTypography.body.weight(.medium))
+                                                .foregroundStyle(HomeTheme.ink)
+                                            Text("剩余 \(group.remainingQuantity.formatted())\(request.unit)")
+                                                .font(HomeTypography.supporting)
+                                                .foregroundStyle(HomeTheme.muted)
+                                        }
+                                        Spacer(minLength: 8)
+                                        TextField("0", text: binding(for: request, group: group))
+                                            .keyboardType(.decimalPad)
+                                            .multilineTextAlignment(.trailing)
+                                            .font(HomeTypography.body)
+                                            .frame(width: 90)
+                                            .accessibilityLabel("\(group.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")分配数量")
+                                        Text(request.unit)
+                                            .font(HomeTypography.supporting)
+                                            .foregroundStyle(HomeTheme.muted)
+                                    }
+                                    .frame(minHeight: 44)
+                                }
+                                HStack {
+                                    Text("已分配")
+                                    Spacer()
+                                    Text("\(assigned(for: request).formatted()) / \(request.quantity.formatted())\(request.unit)")
+                                        .monospacedDigit()
+                                }
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(isValid(request) ? HomeTheme.success : HomeTheme.orange)
+                            }
+                        }
+                    }
+                    Text("同一到期日期的多次入库会按入库先后扣减。")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(HomeMetrics.pageInset)
+            }
+            .background(HomeTheme.background)
+            .navigationTitle("分配出库批次")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("确认出库") {
+                        var result: [String: [String: Double]] = [:]
+                        for request in requests {
+                            result[request.productID] = Dictionary(uniqueKeysWithValues: request.groups.map { group in
+                                (group.id, parsedQuantity(for: request, group: group))
+                            })
+                        }
+                        onConfirm(result)
+                        dismiss()
+                    }
+                    .disabled(requests.isEmpty || !requests.allSatisfy({ isValid($0) }))
+                }
+            }
+        }
+        .presentationDetents(requests.count > 1 ? [.medium, .large] : [.medium])
+        .onAppear(perform: initializeQuantities)
+    }
+
+    private func binding(for request: PetInventoryBatchAllocationRequest, group: PetInventoryExpiryGroup) -> Binding<String> {
+        let key = quantityKey(request.productID, group.id)
+        return Binding(
+            get: { quantityTexts[key] ?? "0" },
+            set: { quantityTexts[key] = $0 }
+        )
+    }
+
+    private func quantityKey(_ productID: String, _ groupID: String) -> String {
+        "\(productID)::\(groupID)"
+    }
+
+    private func parsedQuantity(for request: PetInventoryBatchAllocationRequest, group: PetInventoryExpiryGroup) -> Double {
+        let text = (quantityTexts[quantityKey(request.productID, group.id)] ?? "0").replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(text), value.isFinite, value >= 0 else { return .nan }
+        return value
+    }
+
+    private func assigned(for request: PetInventoryBatchAllocationRequest) -> Double {
+        request.groups.reduce(0) { total, group in
+            let value = parsedQuantity(for: request, group: group)
+            return total + (value.isFinite ? value : 0)
+        }
+    }
+
+    private func isValid(_ request: PetInventoryBatchAllocationRequest) -> Bool {
+        let values = request.groups.map { parsedQuantity(for: request, group: $0) }
+        guard values.allSatisfy({ $0.isFinite }),
+              zip(values, request.groups).allSatisfy({ value, group in value <= group.remainingQuantity + 0.000_001 }) else { return false }
+        return abs(values.reduce(0, +) - request.quantity) < 0.000_001
+    }
+
+    private func initializeQuantities() {
+        for request in requests {
+            let defaults = PetInventoryBatchLedger.defaultGroupQuantities(quantity: request.quantity, groups: request.groups)
+            for group in request.groups {
+                quantityTexts[quantityKey(request.productID, group.id)] = (defaults[group.id] ?? 0)
+                    .formatted(.number.grouping(.never).precision(.fractionLength(0...4)))
+            }
+        }
     }
 }
 
@@ -881,10 +1079,13 @@ struct PetInventoryTransactionEditorView: View {
     @State private var quantityText = ""
     @State private var totalPriceText = ""
     @State private var date = Date()
+    @State private var hasExpiration = false
+    @State private var expirationDate = Date()
     @State private var note = ""
     @State private var loaded = false
     @State private var isEditing = false
     @State private var confirmDelete = false
+    @State private var batchAllocationRequest: PetInventoryBatchAllocationRequest?
     @State private var localError: String?
 
     private var transaction: PetInventoryTransaction? {
@@ -947,6 +1148,43 @@ struct PetInventoryTransactionEditorView: View {
                             }
                         }
 
+                        if transaction.type == .inbound {
+                            HomeCard {
+                                if isEditing {
+                                    if transaction.tracksExpirationBatch == true {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            Toggle("记录到期日期", isOn: $hasExpiration)
+                                            if hasExpiration {
+                                                DatePicker("到期日期", selection: $expirationDate, displayedComponents: .date)
+                                                    .datePickerStyle(.compact)
+                                            }
+                                        }
+                                        .font(HomeTypography.body)
+                                    } else {
+                                        Text("这条旧入库包含未分配批次的历史出库，剩余库存仍按“未设日期”保留，无法单独修改到期日期。")
+                                            .font(HomeTypography.supporting)
+                                            .foregroundStyle(HomeTheme.muted)
+                                    }
+                                } else {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        HStack {
+                                            Text("到期日期").font(HomeTypography.body).foregroundStyle(HomeTheme.ink)
+                                            Spacer()
+                                            Text(transaction.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")
+                                                .font(HomeTypography.body)
+                                                .foregroundStyle(transaction.expirationDate == nil ? HomeTheme.muted : HomeTheme.ink)
+                                        }
+                                        if transaction.tracksExpirationBatch != true, transaction.expirationDate != nil {
+                                            Text("该旧批次的剩余库存无法可靠对应到期日期，已按“未设日期”计入库存。")
+                                                .font(HomeTypography.supporting)
+                                                .foregroundStyle(HomeTheme.muted)
+                                        }
+                                    }
+                                    .frame(minHeight: HomeMetrics.controlHeight, alignment: .center)
+                                }
+                            }
+                        }
+
                         if isLitterReadOnly {
                             Text("猫砂联动流水只读，请通过补充或换洗操作管理。")
                                 .font(HomeTypography.supporting)
@@ -989,6 +1227,11 @@ struct PetInventoryTransactionEditorView: View {
             }
         }
         .task { load() }
+        .sheet(item: $batchAllocationRequest) { request in
+            PetInventoryBatchAllocationSheet(requests: [request]) { quantities in
+                save(batchGroupQuantities: quantities[request.productID])
+            }
+        }
         .confirmationDialog("删除这条记录？", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("删除这条记录", role: .destructive, action: deleteRecord)
             Button("取消", role: .cancel) {}
@@ -1156,6 +1399,8 @@ struct PetInventoryTransactionEditorView: View {
             ? (transaction.recordedInboundTotalPrice.map { $0.formatted(.number.precision(.fractionLength(2))) } ?? "")
             : ""
         date = LitterPredictionService.parse(transaction.occurrenceDate) ?? Date()
+        hasExpiration = PetInventoryBatchLedger.validExpirationDate(transaction.expirationDate) != nil
+        expirationDate = transaction.expirationDate.flatMap { LitterPredictionService.parse($0) } ?? Date()
         note = transaction.note ?? ""
     }
 
@@ -1172,6 +1417,29 @@ struct PetInventoryTransactionEditorView: View {
     }
 
     private func save() {
+        guard let transaction, let item, let quantity, quantity > 0 else {
+            localError = "请输入大于 0 的数量"
+            NativeHaptics.error()
+            return
+        }
+        if transaction.type == .outbound {
+            let groups = store.petInventoryBatchGroups(for: transaction.productID, excludingTransactionID: transaction.id)
+            let availableWithoutThisRecord = groups.reduce(0) { $0 + $1.remainingQuantity }
+            if groups.count > 1, quantity <= availableWithoutThisRecord {
+                batchAllocationRequest = PetInventoryBatchAllocationRequest(
+                    productID: transaction.productID,
+                    productName: item.displayTitle,
+                    quantity: quantity,
+                    unit: transaction.unit,
+                    groups: groups
+                )
+                return
+            }
+        }
+        save(batchGroupQuantities: nil)
+    }
+
+    private func save(batchGroupQuantities: [String: Double]?) {
         guard let quantity, quantity > 0 else {
             localError = "请输入大于 0 的数量"
             NativeHaptics.error()
@@ -1187,7 +1455,10 @@ struct PetInventoryTransactionEditorView: View {
             quantity: quantity,
             occurrenceDate: LitterPredictionService.format(date),
             totalPrice: canEditTotalPrice ? totalPrice : nil,
-            note: note
+            note: note,
+            expirationDate: hasExpiration ? LitterPredictionService.format(expirationDate) : nil,
+            updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true,
+            batchGroupQuantities: batchGroupQuantities
         )
         if success {
             isEditing = false

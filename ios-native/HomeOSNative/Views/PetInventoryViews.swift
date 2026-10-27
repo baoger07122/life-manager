@@ -1183,7 +1183,8 @@ private struct PetInventoryBalanceGroupEditor: View {
 
     private struct TransferDraft: Identifiable {
         var id = UUID().uuidString
-        var expirationDate: Date? = Date()
+        var expirationDate: Date? = nil
+        var isUndatedTarget = false
         var quantityText = ""
 
         var quantity: Double? {
@@ -1199,7 +1200,7 @@ private struct PetInventoryBalanceGroupEditor: View {
 
     private var canSave: Bool {
         !drafts.isEmpty
-            && drafts.allSatisfy { $0.quantity != nil }
+            && drafts.allSatisfy { $0.quantity != nil && ($0.isUndatedTarget || $0.expirationDate != nil) }
             && assignedTotal <= group.remainingQuantity + 0.000_001
     }
 
@@ -1223,7 +1224,13 @@ private struct PetInventoryBalanceGroupEditor: View {
                         HomeCard(padding: 12) {
                             VStack(spacing: 6) {
                                 HStack(spacing: 8) {
-                                    PetExpirationDateRow(selectedDate: $draft.expirationDate, emptyValue: "未设日期")
+                                    PetExpirationDateRow(
+                                        selectedDate: $draft.expirationDate,
+                                        emptyValue: draft.isUndatedTarget ? "未设日期" : "请选择日期"
+                                    )
+                                    .onChange(of: draft.expirationDate) { _, value in
+                                        draft.isUndatedTarget = value == nil
+                                    }
                                     Button(role: .destructive) {
                                         drafts.removeAll { $0.id == draft.id }
                                         NativeHaptics.tap()
@@ -1261,7 +1268,7 @@ private struct PetInventoryBalanceGroupEditor: View {
                         }
                         .buttonStyle(.bordered)
                         Button {
-                            drafts.append(TransferDraft(expirationDate: nil))
+                            drafts.append(TransferDraft(isUndatedTarget: true))
                             NativeHaptics.tap()
                         } label: {
                             Label("分到未设日期", systemImage: "calendar.badge.minus")
@@ -1312,7 +1319,7 @@ private struct PetInventoryBalanceGroupEditor: View {
         let transfers = drafts.compactMap { draft -> PetInventoryBalanceDateTransfer? in
             guard let quantity = draft.quantity else { return nil }
             return PetInventoryBalanceDateTransfer(
-                expirationDate: draft.expirationDate.map(LitterPredictionService.format),
+                expirationDate: draft.isUndatedTarget ? nil : draft.expirationDate.map(LitterPredictionService.format),
                 quantity: quantity
             )
         }

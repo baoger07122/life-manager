@@ -3,7 +3,7 @@
 完全原生 SwiftUI 重写工程，不包含 `WKWebView`。
 
 - 测试 Bundle ID：`com.bao.homeos.native`，可与当前 Capacitor 版并存安装。
-- 最新已发布原生版本：`10.22.2 (47)`；[打开 GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v10.22.2)，或[下载未签名 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v10.22.2/HomeOSNative-10.22.2-unsigned.ipa)。
+- 最新已发布原生版本：`10.28.1 (48)`；[打开 GitHub Pre-release](https://github.com/baoger07122/life-manager/releases/tag/ios-native-v10.28.1)，或[下载未签名 IPA](https://github.com/baoger07122/life-manager/releases/download/ios-native-v10.28.1/HomeOSNative-10.28.1-unsigned.ipa)。文件大小 `5,031,789` 字节，SHA-256 `2c4044c8e2ac3ec28b185bfa8bf1c90042fa8dfbc9b9c78c7d408ba53cd1fb37`。
 - 对应 Web 功能基线：`v8.25.1`。
 - 本地数据文件：Application Support 下的 `home-os-v1.json`。
 - 备份格式与 Web `home-os-v1` JSON 保持兼容。

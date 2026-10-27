@@ -92,7 +92,7 @@ struct PetInventoryCostingAcceptance {
             productID: "product",
             transactions: [first, second, outbound]
         )
-        expectClose(remaining.first(where: { $0.id == "same-date-second" })?.remainingQuantity, 2, "outbound keeps the exact remaining batch balance")
+        expectClose(remaining.first(where: { $0.id == "a-same-date-second" })?.remainingQuantity, 2, "outbound keeps the exact remaining batch balance")
     }
 
     private static func expiryBatchLedgerRejectsOverAllocation() throws {

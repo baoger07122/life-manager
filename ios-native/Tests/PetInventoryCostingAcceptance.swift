@@ -673,13 +673,13 @@ struct PetInventoryCostingAcceptance {
         expect(pending.contains("selectedSecondary?.name") && pending.contains("category.name"), "empty state and selector labels follow the current managed category names")
         expect(pending.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: false)"), "marking a pending item as not for repurchase removes it from the filtered list")
         expect(pending.contains(".navigationDestination(item: $detailItemID)") && pending.contains("PetItemDetailView(itemID: itemID)"), "pending items retain their detail navigation")
-        expect(pending.contains("PetProductThumbnail(item: item)") && pending.contains("panelDivider") && pending.contains("panelBottomCap") && pending.contains(".listStyle(.plain)"), "pending list reuses the home thumbnail and unified divided card layout")
+        expect(pending.contains("PetProductThumbnail(item: item)") && pending.contains("PetProductListRowContent(item: item)") && pending.contains("panelDivider") && pending.contains("panelBottomCap") && pending.contains(".listStyle(.plain)"), "pending list reuses the home thumbnail, shared product row and divided card layout")
         expect(!pending.contains("quickManagerRow") && !pending.contains("openEditor") && !pending.contains("新增"), "pending list has no stock quick actions or add-item control")
         expect(noRepurchase.contains("store.categories(for: .pet)") && noRepurchase.contains("store.categories(for: .pet, parentID: $0.id)"), "no-repurchase library reuses the live two-level pet categories")
         expect(noRepurchase.contains("ForEach(primaryCategories)") && noRepurchase.contains("ForEach(secondaryCategories)") && noRepurchase.contains("HomeUnderlineTab"), "no-repurchase library displays both category levels with the same home selectors")
         expect(noRepurchase.contains("$0.resolvedPrimaryCategory == selectedPrimary.name") && noRepurchase.contains("$0.resolvedSecondaryCategory == selectedSecondary.name"), "no-repurchase products are isolated by both selected category levels")
         expect(noRepurchase.contains("secondaryID = preferredSecondary?.id ?? \"\"") && noRepurchase.contains("onChange(of: secondaryCategories.map(\\.id))"), "no-repurchase category selection stays valid as managed categories change")
-        expect(noRepurchase.contains("panelDivider") && noRepurchase.contains("panelBottomCap") && noRepurchase.contains(".listStyle(.plain)"), "no-repurchase products use the same rounded divided-card list layout")
+        expect(noRepurchase.contains("PetProductListRowContent(item: item)") && noRepurchase.contains("panelDivider") && noRepurchase.contains("panelBottomCap") && noRepurchase.contains(".listStyle(.plain)"), "no-repurchase products use the shared row and the same rounded divided-card list layout")
         expect(noRepurchase.contains("store.setPetItemRepurchase(id: item.id, willRepurchase: true)") && noRepurchase.contains("permanentlyDeletePetItem(id: item.id)"), "category filtering retains restore and permanent-delete actions")
         expect(categoryRename.contains("primaryCategory = cleanName") && categoryRename.contains("secondaryCategory = cleanName"), "renaming a managed category updates the product category names")
     }
@@ -1031,14 +1031,10 @@ struct PetInventoryCostingAcceptance {
             listSource,
             from: "    private func itemRow(_ item: PetItem) -> some View {",
             to: "    private func quickManagerRow(_ item: PetItem) -> some View {"
-        ), let brandPriceLine = sourceSlice(
-            homeRow,
-            from: "Text(item.brand",
-            to: "Text(item.name)"
-        ), let nameFlavorLine = sourceSlice(
-            homeRow,
-            from: "Text(item.name)",
-            to: "Text(expirationText)"
+        ), let sharedRow = sourceSlice(
+            listSource,
+            from: "private struct PetProductListRowContent: View {",
+            to: "private struct PetProductThumbnail: View {"
         ), let averagePriceMethod = sourceSlice(
             storeSource,
             from: "    func petWeightedAverageInboundUnitPrice(for productID: String) -> Double? {",
@@ -1055,23 +1051,24 @@ struct PetInventoryCostingAcceptance {
             fatalError("pet homepage pricing or inventory valuation source is missing")
         }
 
-        guard let brandPosition = homeRow.range(of: "item.brand")?.lowerBound,
-              let namePosition = homeRow.range(of: "Text(item.name)")?.lowerBound,
-              let expirationPosition = homeRow.range(of: "Text(expirationText)")?.lowerBound,
-              let pricePosition = homeRow.range(of: "Text(averagePriceText ?? \"—\")")?.lowerBound,
-              let specificationPosition = homeRow.range(of: "Text(specificationAndStock(item))")?.lowerBound,
-              let ratingPosition = homeRow.range(of: "rating.overall")?.lowerBound else {
+        guard let brandPosition = sharedRow.range(of: "Text(brandName)")?.lowerBound,
+              let separatorPosition = sharedRow.range(of: "Text(\"·\")")?.lowerBound,
+              let pricePosition = sharedRow.range(of: "Text(averagePriceText ?? \"—\")")?.lowerBound,
+              let namePosition = sharedRow.range(of: "Text(item.name)")?.lowerBound,
+              let expirationPosition = sharedRow.range(of: "if let expirationText {")?.lowerBound,
+              let ratingPosition = sharedRow.range(of: "if let rating = store.petProductRating")?.lowerBound,
+              let specificationPosition = sharedRow.range(of: "Text(specificationAndStock)")?.lowerBound else {
             fatalError("homepage price, item name, specification or rating source is missing")
         }
-        expect(homeRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && homeRow.contains("PetItemHomepageAveragePrice.text") && homeRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)"), "homepage rows use the live weighted price and earliest remaining batch expiry")
-        expect(brandPosition < namePosition && namePosition < expirationPosition && ratingPosition < pricePosition && pricePosition < specificationPosition, "homepage rows use three aligned information lines")
-        expect(brandPriceLine.contains("item.brand") && !brandPriceLine.contains("averagePriceText") && brandPriceLine.contains("size: 14, weight: .medium") && !brandPriceLine.contains("minimumScaleFactor") && brandPriceLine.contains("HomeTheme.ink"), "homepage brand returns to 14 point text without scaling ordinary names down")
-        expect(homeRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && homeRow.contains("Image(systemName: \"star.fill\")") && homeRow.contains(".fixedSize(horizontal: true, vertical: false)"), "homepage rating icon and score remain together on one horizontal line")
-        expect(homeRow.contains("Text(\"未评分\")") && homeRow.contains(".frame(width: 100, alignment: .trailing)"), "unrated products retain a single-line rating field while the right column gives more room to product names")
-        expect(homeRow.contains("font(.system(size: 12))") && homeRow.contains("Text(expirationText)"), "homepage expiry date uses the 12 point supporting style")
-        expect(homeRow.contains(".frame(minHeight: 56") && homeRow.contains(".padding(.vertical, 8)") && homeRow.contains(".padding(.horizontal, 14)"), "homepage rows keep the existing card insets while allowing three information lines")
-        expect(nameFlavorLine.contains("Text(item.name)") && nameFlavorLine.contains("size: 13, weight: .semibold") && nameFlavorLine.contains("Text(flavor)") && nameFlavorLine.contains("font(.system(size: 13))") && nameFlavorLine.contains("HomeTheme.muted") && nameFlavorLine.contains(".minimumScaleFactor(0.78)"), "homepage name and flavor use separate compact text styles")
-        expect(!homeRow.contains("item.displayNameAndVariant") && nameFlavorLine.contains(".lineLimit(1)"), "homepage name and flavor stay separate and compress on the same compact row")
+        let sharedRowUseCount = listSource.components(separatedBy: "PetProductListRowContent(item: item)").count - 1
+        expect(sharedRowUseCount == 3 && homeRow.contains("PetProductListRowContent(item: item)"), "main, pending-repurchase and no-repurchase product rows share one presentation component")
+        expect(sharedRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && sharedRow.contains("PetItemHomepageAveragePrice.text") && sharedRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)"), "shared rows use the live weighted price and earliest remaining batch expiry")
+        expect(brandPosition < separatorPosition && separatorPosition < pricePosition && pricePosition < namePosition && namePosition < expirationPosition, "shared rows place price beside brand, followed by product name and optional expiry")
+        expect(sharedRow.contains("size: 14, weight: .medium") && sharedRow.contains("Text(averagePriceText ?? \"—\")") && sharedRow.contains("font(.system(size: 12))") && sharedRow.contains("HomeTheme.muted"), "brand and unitless one-decimal price use the requested 14 and 12 point styles")
+        expect(sharedRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && sharedRow.contains("Image(systemName: \"star.fill\")") && sharedRow.contains("Text(\"未评分\")") && ratingPosition < specificationPosition && sharedRow.contains(".frame(width: 100, alignment: .trailing)"), "rating and specification share the right column on the first two information lines")
+        expect(sharedRow.contains("if let expirationText {") && sharedRow.contains(".map(petExpirationDisplayDate)") && !sharedRow.contains("?? \"未设日期\"") && sharedRow.contains(".frame(maxWidth: .infinity, minHeight: 48"), "only dated remaining stock gets a third line, with no placeholder height")
+        expect(sharedRow.contains("Text(item.name)") && sharedRow.contains("size: 13, weight: .semibold") && sharedRow.contains("Text(flavor)") && sharedRow.contains("font(.system(size: 13))") && sharedRow.contains(".lineLimit(1)") && !sharedRow.contains("minimumScaleFactor"), "name and flavor keep separate 13 point styles without shrinking ordinary content")
+        expect(listSource.contains(".frame(width: 48, height: 48)") && listSource.contains(".clipShape(RoundedRectangle(cornerRadius: 12"), "shared product rows retain the 48 point rounded thumbnail")
         expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
         let metricCalls = overview.components(separatedBy: "overviewMetric(").count - 1
         guard let metric = sourceSlice(
@@ -1119,7 +1116,7 @@ struct PetInventoryCostingAcceptance {
         expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
         expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
         expect(litterSource.contains("PetInventoryBatchAllocationSheet") && storeSource.contains("batchAllocationsByProduct[allocation.productID]"), "cat litter consumption records its batch allocations through the shared ledger")
-        expect(pending.contains("ForEach(primaryCategories)") && pending.contains("ForEach(secondaryCategories)") && pending.contains("Text(expirationText)") && pending.contains("PetItemHomepageAveragePrice.text"), "pending repurchase remains split by live categories and uses the same three-line product layout")
+        expect(pending.contains("ForEach(primaryCategories)") && pending.contains("ForEach(secondaryCategories)") && pending.contains("PetProductListRowContent(item: item)") && itemsSource.contains("if let expirationText {") && itemsSource.contains("PetItemHomepageAveragePrice.text"), "pending repurchase remains split by live categories and uses the shared optional-expiry product layout")
         expect(storeSource.contains("tracksExpirationBatch = !hasLaterUnattributedReduction") && storeSource.contains("tracksExpirationBatch == nil"), "legacy batch migration is one-time and leaves uncertain old balances unassigned")
     }
 

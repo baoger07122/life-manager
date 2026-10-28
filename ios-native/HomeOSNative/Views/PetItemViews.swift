@@ -407,12 +407,6 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
     }
 
     private func itemRow(_ item: PetItem) -> some View {
-        let averagePriceText = PetItemHomepageAveragePrice.text(
-            average: store.petWeightedAverageInboundUnitPrice(for: item.id),
-            unit: item.unit
-        )
-        let expirationText = store.petInventoryEarliestExpirationDate(for: item.id)
-            .map(petExpirationDisplayDate) ?? "未设日期"
         return HStack(spacing: 0) {
             Button {
                 NativeHaptics.tap()
@@ -427,71 +421,13 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             Button {
                 toggleQuickManager(for: item)
             } label: {
-                HStack(spacing: 11) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(HomeTheme.ink)
-                            .lineLimit(1)
-                        HStack(spacing: 4) {
-                            Text(item.name)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(HomeTheme.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.78)
-                                .layoutPriority(1)
-                            if let flavor = item.displayVariant {
-                                Text(flavor)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(HomeTheme.muted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.72)
-                            }
-                        }
-                        Text(expirationText)
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .trailing, spacing: 5) {
-                        if let rating = store.petProductRating(productID: item.id) {
-                            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                                Image(systemName: "star.fill")
-                                Text(rating.overall.formatted(.number.precision(.fractionLength(1))))
-                            }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(HomeTheme.orange)
-                            .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                        } else {
-                            Text("未评分")
-                                .font(.system(size: 11))
-                                .foregroundStyle(HomeTheme.muted)
-                                .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-                        Text(averagePriceText ?? "—")
-                            .font(.system(size: 12))
-                            .foregroundStyle(averagePriceText == nil ? HomeTheme.muted : HomeTheme.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                        Text(specificationAndStock(item))
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                    }
-                    .frame(width: 100, alignment: .trailing)
-                    .frame(minHeight: 56, alignment: .trailing)
-                }
-                .padding(.leading, 9)
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-                .contentShape(Rectangle())
+                PetProductListRowContent(item: item)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("展开\(item.name)快捷操作")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
     }
@@ -787,6 +723,106 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
         return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
     }
 
+}
+
+private struct PetProductListRowContent: View {
+    @EnvironmentObject private var store: HomeStore
+    let item: PetItem
+
+    private var brandName: String {
+        item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand
+    }
+
+    private var averagePriceText: String? {
+        PetItemHomepageAveragePrice.text(
+            average: store.petWeightedAverageInboundUnitPrice(for: item.id),
+            unit: item.unit
+        )
+    }
+
+    private var expirationText: String? {
+        store.petInventoryEarliestExpirationDate(for: item.id).map(petExpirationDisplayDate)
+    }
+
+    private var specificationAndStock: String {
+        let quantity = store.petInventory(for: item.id).formatted()
+        let package = (item.packageType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let stockText = "\(quantity)\(package.isEmpty ? item.unit : package)"
+        let spec = item.spec.trimmingCharacters(in: .whitespacesAndNewlines)
+        return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 11) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(brandName)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(HomeTheme.ink)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                    Text("·")
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
+                        .fixedSize(horizontal: true, vertical: false)
+                    Text(averagePriceText ?? "—")
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(item.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(HomeTheme.ink)
+                        .lineLimit(1)
+                        .layoutPriority(1)
+                    if let flavor = item.displayVariant {
+                        Text(flavor)
+                            .font(.system(size: 13))
+                            .foregroundStyle(HomeTheme.muted)
+                            .lineLimit(1)
+                    }
+                }
+
+                if let expirationText {
+                    Text(expirationText)
+                        .font(.system(size: 12))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .trailing, spacing: 5) {
+                if let rating = store.petProductRating(productID: item.id) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Image(systemName: "star.fill")
+                        Text(rating.overall.formatted(.number.precision(.fractionLength(1))))
+                    }
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(HomeTheme.orange)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                } else {
+                    Text("未评分")
+                        .font(.system(size: 11))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+
+                Text(specificationAndStock)
+                    .font(.system(size: 12))
+                    .foregroundStyle(HomeTheme.muted)
+                    .lineLimit(1)
+            }
+            .frame(width: 100, alignment: .trailing)
+        }
+        .padding(.leading, 9)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+    }
 }
 
 private struct PetProductThumbnail: View {
@@ -1340,74 +1376,13 @@ struct PetPendingRepurchaseView: View {
     }
 
     private func pendingItemRow(_ item: PetItem) -> some View {
-        let averagePriceText = PetItemHomepageAveragePrice.text(
-            average: store.petWeightedAverageInboundUnitPrice(for: item.id),
-            unit: item.unit
-        )
-        let expirationText = store.petInventoryEarliestExpirationDate(for: item.id)
-            .map(petExpirationDisplayDate) ?? "未设日期"
         return Button {
             NativeHaptics.tap()
             detailItemID = item.id
         } label: {
             HStack(spacing: 0) {
                 PetProductThumbnail(item: item)
-                HStack(spacing: 11) {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(HomeTheme.ink)
-                            .lineLimit(1)
-                        HStack(spacing: 4) {
-                            Text(item.name)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(HomeTheme.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.78)
-                                .layoutPriority(1)
-                            if let flavor = item.displayVariant {
-                                Text(flavor)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(HomeTheme.muted)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.72)
-                            }
-                        }
-                        Text(expirationText)
-                            .font(.system(size: 11))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .trailing, spacing: 5) {
-                        if let rating = store.petProductRating(productID: item.id) {
-                            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                                Image(systemName: "star.fill")
-                                Text(rating.overall.formatted(.number.precision(.fractionLength(1))))
-                            }
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(HomeTheme.orange)
-                                .lineLimit(1)
-                        } else {
-                            Text("未评分")
-                                .font(.system(size: 11))
-                                .foregroundStyle(HomeTheme.muted)
-                                .lineLimit(1)
-                        }
-                        Text(averagePriceText ?? "—")
-                            .font(.system(size: 12))
-                            .foregroundStyle(averagePriceText == nil ? HomeTheme.muted : HomeTheme.ink)
-                            .lineLimit(1)
-                        Text(specificationAndStock(item))
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                    }
-                    .frame(width: 106, alignment: .trailing)
-                    .frame(minHeight: 56, alignment: .trailing)
-                }
-                .padding(.leading, 11)
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                PetProductListRowContent(item: item)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
@@ -1651,33 +1626,7 @@ struct PetNoRepurchaseLibraryView: View {
         } label: {
             HStack(spacing: 0) {
                 PetProductThumbnail(item: item)
-                HStack(spacing: 11) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.brand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "无品牌" : item.brand)
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                        Text(item.displayNameAndVariant)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(HomeTheme.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.84)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text(specificationAndStock(item))
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                            .lineLimit(1)
-                        Text("不回购")
-                            .font(.system(size: 12))
-                            .foregroundStyle(HomeTheme.muted)
-                    }
-                    .frame(width: 106, alignment: .trailing)
-                    .frame(minHeight: 48, alignment: .trailing)
-                }
-                .padding(.leading, 11)
-                .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+                PetProductListRowContent(item: item)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)

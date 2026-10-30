@@ -12,7 +12,7 @@ enum PreviewFixtures {
     static var expiryBalanceUITest: HomeBackup {
         var backup = homeOS
         let productID = "preview-pet-food-2"
-        let sourceBatchID = PetInventoryBatchLedger.unassignedBatchID(for: productID)
+        let sourceBatchID = "preview-stock-\(productID)"
         let now = Date().timeIntervalSince1970
         let effectiveDate = LitterPredictionService.format(Date())
         backup.petInventoryBalanceAllocations = [

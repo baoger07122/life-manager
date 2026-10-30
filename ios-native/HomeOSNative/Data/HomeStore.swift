@@ -497,82 +497,80 @@ final class HomeStore: ObservableObject {
         petInventoryBatchGroups(for: productID)
     }
 
-    func reassignPetInventoryBalance(
+    @discardableResult
+    func updatePetInventoryBalanceDates(
         productID: String,
-        sourceGroupID: String,
-        transfers: [PetInventoryBalanceDateTransfer]
+        edits: [PetInventoryBalanceEdit]
     ) -> Bool {
-        guard !transfers.isEmpty else { return fail("请至少添加一个日期分配。") }
         guard data.petItems.contains(where: { $0.id == productID && !$0.isArchived }) else {
             return fail("找不到该宠物物品。")
         }
-        guard transfers.allSatisfy({
-            $0.quantity.isFinite && $0.quantity > 0
-                && ($0.expirationDate == nil || PetInventoryBatchLedger.validExpirationDate($0.expirationDate) != nil)
-        }) else {
-            return fail("日期和分配数量无效。")
-        }
-
+        var next = data
+        let previousCount = next.petInventoryBalanceAllocations.count
         do {
-            let currentBalances = try PetInventoryBatchLedger.balances(
-                productID: productID,
-                transactions: data.petInventoryTransactions,
-                balanceAllocations: data.petInventoryBalanceAllocations
-            )
-            let groups = PetInventoryBatchLedger.groups(from: currentBalances)
-            guard let sourceGroup = groups.first(where: { $0.id == sourceGroupID }) else {
-                return fail("这个日期组已变化，请重新打开后再试。")
-            }
-            let requestedTotal = transfers.reduce(0) { $0 + $1.quantity }
-            guard requestedTotal.isFinite, requestedTotal <= sourceGroup.remainingQuantity + 0.000_001 else {
-                return fail("分配总量不能超过当前组的剩余库存。")
-            }
-
-            var next = data
-            let now = Date().timeIntervalSince1970
-            let effectiveDate = LitterPredictionService.format(Date())
-            var availableBySource = Dictionary(uniqueKeysWithValues: sourceGroup.batches.map {
-                ($0.id, $0.remainingQuantity)
-            })
-            for transfer in transfers where transfer.expirationDate != sourceGroup.expirationDate {
-                var remaining = transfer.quantity
-                for batch in sourceGroup.batches where remaining > 0.000_001 {
-                    let available = availableBySource[batch.id, default: 0]
-                    let amount = min(remaining, available)
-                    guard amount > 0.000_001 else { continue }
-                    next.petInventoryBalanceAllocations.append(PetInventoryBalanceAllocation(
-                        id: UUID().uuidString,
-                        productID: productID,
-                        sourceBatchID: batch.id,
-                        sourceAvailableBefore: available,
-                        expirationDate: transfer.expirationDate,
-                        quantity: amount,
-                        effectiveDate: effectiveDate,
-                        createdAt: now
-                    ))
-                    availableBySource[batch.id] = max(0, available - amount)
-                    remaining -= amount
-                }
-                guard remaining <= 0.000_001 else {
-                    return fail("分配总量不能重复使用同一份库存。")
-                }
-            }
-            guard next.petInventoryBalanceAllocations.count > data.petInventoryBalanceAllocations.count else {
-                return fail("目标日期与当前组相同，无需调整。")
-            }
-            _ = try PetInventoryBatchLedger.balances(
-                productID: productID,
-                transactions: next.petInventoryTransactions,
-                balanceAllocations: next.petInventoryBalanceAllocations
-            )
-            guard commit(next) else { return false }
-            NativeHaptics.success()
-            return true
+            try appendPetInventoryBalanceEdits(productID: productID, edits: edits, in: &next)
         } catch let error as PetInventoryBatchLedger.InvalidLedger {
             return fail(error.message)
         } catch {
-            return fail("日期分配未保存，请重试。")
+            return fail("保质期没有保存，请重试。")
         }
+        guard next.petInventoryBalanceAllocations.count > previousCount else {
+            NativeHaptics.success()
+            return true
+        }
+        guard commit(next) else { return false }
+        NativeHaptics.success()
+        return true
+    }
+
+    private func appendPetInventoryBalanceEdits(
+        productID: String,
+        edits: [PetInventoryBalanceEdit],
+        in backup: inout HomeBackup
+    ) throws {
+        let balances = try PetInventoryBatchLedger.balances(
+            productID: productID,
+            transactions: backup.petInventoryTransactions,
+            balanceAllocations: backup.petInventoryBalanceAllocations
+        )
+        let groups = PetInventoryBatchLedger.groups(from: balances)
+        let currentQuantity = petInventory(for: productID, in: backup)
+        let groupedQuantity = groups.reduce(0) { $0 + $1.remainingQuantity }
+        guard abs(groupedQuantity - currentQuantity) <= 0.000_001 else {
+            throw PetInventoryBatchLedger.InvalidLedger(message: "库存日期数量与当前库存不一致，请先检查库存流水。")
+        }
+        let today = LitterPredictionService.format(Date())
+        let transactionDates = backup.petInventoryTransactions
+            .filter { $0.productID == productID }
+            .map(\.occurrenceDate)
+        let allocationDates = backup.petInventoryBalanceAllocations
+            .filter { $0.productID == productID }
+            .map(\.effectiveDate)
+        let effectiveDate = (transactionDates + allocationDates + [today]).max() ?? today
+        let latestCreatedAt = backup.petInventoryTransactions
+            .filter { $0.productID == productID && $0.occurrenceDate == effectiveDate }
+            .map(\.createdAt)
+            .max()
+        let latestAllocationCreatedAt = backup.petInventoryBalanceAllocations
+            .filter { $0.productID == productID && $0.effectiveDate == effectiveDate }
+            .map(\.createdAt)
+            .max()
+        let now = Date().timeIntervalSince1970
+        let latestEvent = [latestCreatedAt, latestAllocationCreatedAt].compactMap { $0 }.max()
+        let createdAt = max(now, latestEvent.map { $0.nextUp } ?? now)
+        let additions = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: productID,
+            currentGroups: groups,
+            edits: edits,
+            effectiveDate: effectiveDate,
+            createdAt: createdAt
+        )
+        backup.petInventoryBalanceAllocations.append(contentsOf: additions)
+        _ = try PetInventoryBatchLedger.balances(
+            productID: productID,
+            transactions: backup.petInventoryTransactions,
+            balanceAllocations: backup.petInventoryBalanceAllocations
+        )
     }
 
     func petTransactions(for productID: String) -> [PetInventoryTransaction] {
@@ -814,8 +812,34 @@ final class HomeStore: ObservableObject {
     }
 
     func upsertPetItem(_ item: PetItem, openingTotalPrice: Double? = nil) {
+        _ = persistPetItem(item, openingTotalPrice: openingTotalPrice, balanceDateEdits: nil)
+    }
+
+    @discardableResult
+    func savePetItem(
+        _ item: PetItem,
+        openingTotalPrice: Double? = nil,
+        balanceDateEdits: [PetInventoryBalanceEdit]
+    ) -> Bool {
+        persistPetItem(item, openingTotalPrice: openingTotalPrice, balanceDateEdits: balanceDateEdits)
+    }
+
+    private func persistPetItem(
+        _ item: PetItem,
+        openingTotalPrice: Double?,
+        balanceDateEdits: [PetInventoryBalanceEdit]?
+    ) -> Bool {
         var next = data
         let isNew = !next.petItems.contains { $0.id == item.id }
+        if !isNew, let balanceDateEdits {
+            do {
+                try appendPetInventoryBalanceEdits(productID: item.id, edits: balanceDateEdits, in: &next)
+            } catch let error as PetInventoryBatchLedger.InvalidLedger {
+                return fail(error.message)
+            } catch {
+                return fail("商品资料没有保存，请重试。")
+            }
+        }
         var openingTransactionID: String?
         var openingTransactionCreatedAt: Double?
         if let index = next.petItems.firstIndex(where: { $0.id == item.id }) {
@@ -860,7 +884,8 @@ final class HomeStore: ObservableObject {
             totalPrice: isNew && item.quantity > 0 ? openingTotalPrice : nil,
             occurredAt: openingTransactionCreatedAt ?? Date().timeIntervalSince1970
         )
-        commit(next)
+        guard commit(next) else { return false }
+        return true
     }
 
     func deletePetItem(id: String) {

@@ -9,6 +9,7 @@ struct PetInventoryCostingAcceptance {
         try expiryBatchLedgerRejectsOverAllocation()
         try expiryBatchLedgerRejectsFutureReceiptAllocation()
         try balanceDateAssignmentsPreserveLegacyBalanceAndBackupCompatibility()
+        try directBalanceDateEditsPreserveCurrentStockAndExplicitGroups()
         try balanceDateAssignmentsRestoreOutboundAndKeepOldSourceHistory()
         try balanceDateAssignmentsRejectOveruseAndUnsafeSourceDeletion()
         try expiryBatchFieldsRemainBackwardCompatible()
@@ -190,6 +191,209 @@ struct PetInventoryCostingAcceptance {
             PetInventoryCosting.recordedOutboundTotal(quantityChange: $0.quantityChange, totalPrice: $0.totalPrice, unitPrice: $0.unitPrice)
         }.reduce(0, +)
         expectClose(outboundExpense, 20, "recorded expense remains unchanged after date assignment")
+    }
+
+    private static func directBalanceDateEditsPreserveCurrentStockAndExplicitGroups() throws {
+        let receipt = transaction("direct-edit-in", .inbound, 10, "2026-01-01", 1, total: 80)
+        let oldOutbound = transaction("direct-edit-out", .outbound, -2, "2026-01-02", 2)
+        let source = backup(
+            transactions: [receipt, oldOutbound],
+            activities: [activity(receipt), activity(oldOutbound)],
+            quantity: 8,
+            price: 8
+        )
+        let sourceGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions
+        ))
+        expect(sourceGroups.count == 1 && sourceGroups[0].expirationDate == nil, "legacy on-hand quantity starts as one undated balance row")
+
+        let blankRowPlan = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: sourceGroups,
+            edits: [
+                PetInventoryBalanceEdit(id: sourceGroups[0].id, sourceGroupID: sourceGroups[0].id, expirationDate: nil, quantity: 8),
+                PetInventoryBalanceEdit(id: "blank", sourceGroupID: nil, expirationDate: nil, quantity: 0)
+            ],
+            effectiveDate: "2026-10-30",
+            createdAt: 10
+        )
+        expect(blankRowPlan.isEmpty, "an untouched blank added row creates no balance mapping")
+
+        let mappings = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: sourceGroups,
+            edits: [
+                PetInventoryBalanceEdit(id: sourceGroups[0].id, sourceGroupID: sourceGroups[0].id, expirationDate: "2026-03-01", quantity: 5),
+                PetInventoryBalanceEdit(id: "second-date", sourceGroupID: nil, expirationDate: "2026-04-01", quantity: 2)
+            ],
+            effectiveDate: "2026-10-30",
+            createdAt: 10
+        )
+        let editedGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: mappings
+        ))
+        expect(editedGroups.map(\.expirationDate) == ["2026-03-01", "2026-04-01", nil], "direct date edits create two dated rows and keep the remainder undated")
+        expectClose(editedGroups.first { $0.expirationDate == "2026-03-01" }?.remainingQuantity, 5, "first directly edited date quantity")
+        expectClose(editedGroups.first { $0.expirationDate == "2026-04-01" }?.remainingQuantity, 2, "new date row receives only its explicitly entered quantity")
+        expectClose(editedGroups.first { $0.expirationDate == nil }?.remainingQuantity, 1, "unassigned stock remains undated")
+        expectClose(editedGroups.reduce(0) { $0 + $1.remainingQuantity }, 8, "editing date rows preserves total on-hand stock")
+        expect(source.petInventoryTransactions == [receipt, oldOutbound], "direct date edits do not create or modify inventory transactions")
+        expect(source.activities == [activity(receipt), activity(oldOutbound)], "direct date edits do not create inventory activity records")
+
+        let setSingleDate = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: sourceGroups,
+            edits: [PetInventoryBalanceEdit(
+                id: sourceGroups[0].id,
+                sourceGroupID: sourceGroups[0].id,
+                sourceGroupQuantity: sourceGroups[0].remainingQuantity,
+                expirationDate: "2026-05-01",
+                quantity: 8
+            )],
+            effectiveDate: "2026-10-30",
+            createdAt: 11
+        )
+        let setSingleDateGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: setSingleDate
+        ))
+        expect(setSingleDateGroups.count == 1 && setSingleDateGroups[0].expirationDate == "2026-05-01", "a single undated balance can be assigned one expiry date without re-entering its quantity")
+        let clearSingleDate = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: setSingleDateGroups,
+            edits: [PetInventoryBalanceEdit(
+                id: setSingleDateGroups[0].id,
+                sourceGroupID: setSingleDateGroups[0].id,
+                sourceGroupQuantity: setSingleDateGroups[0].remainingQuantity,
+                expirationDate: nil,
+                quantity: 8
+            )],
+            effectiveDate: "2026-10-30",
+            createdAt: 12
+        )
+        let clearedSingleDateGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: setSingleDate + clearSingleDate
+        ))
+        expect(clearedSingleDateGroups.count == 1 && clearedSingleDateGroups[0].expirationDate == nil, "clearing a date moves the complete existing balance back to the undated group")
+        expectClose(clearedSingleDateGroups[0].remainingQuantity, 8, "clearing a single date preserves its complete quantity")
+
+        var rejectedStaleQuantity = false
+        do {
+            _ = try PetInventoryBatchLedger.editedBalanceAllocations(
+                productID: "product",
+                currentGroups: sourceGroups,
+                edits: [PetInventoryBalanceEdit(
+                    id: sourceGroups[0].id,
+                    sourceGroupID: sourceGroups[0].id,
+                    sourceGroupQuantity: 7,
+                    expirationDate: "2026-03-01",
+                    quantity: 8
+                )],
+                effectiveDate: "2026-10-30",
+                createdAt: 10
+            )
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            rejectedStaleQuantity = true
+        }
+        expect(rejectedStaleQuantity, "stale date rows cannot overwrite a group changed by another inventory action")
+
+        var editedBackup = source
+        editedBackup.petInventoryBalanceAllocations = mappings
+        let decodedBackup = try JSONDecoder().decode(HomeBackup.self, from: JSONEncoder().encode(editedBackup))
+        let reopenedGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: decodedBackup.petInventoryTransactions,
+            balanceAllocations: decodedBackup.petInventoryBalanceAllocations
+        ))
+        expect(reopenedGroups == editedGroups, "direct date rows survive backup encode, restart decode and ledger replay")
+        expectClose(PetInventoryCosting.weightedAverageInboundUnitPrice([receipt, oldOutbound].map(costEvent)), 8, "date editing does not change the weighted inbound price")
+        let costBefore = try PetInventoryCosting.replay([receipt, oldOutbound].map(costEvent))
+        let costAfter = try PetInventoryCosting.replay(decodedBackup.petInventoryTransactions.map(costEvent))
+        expectClose(costAfter.currentQuantity, costBefore.currentQuantity, "date editing does not change inventory valuation quantity")
+        expectClose(costAfter.events.compactMap { PetInventoryCosting.recordedOutboundTotal(quantityChange: $0.quantityChange, totalPrice: $0.totalPrice, unitPrice: $0.unitPrice) }.reduce(0, +), costBefore.events.compactMap { PetInventoryCosting.recordedOutboundTotal(quantityChange: $0.quantityChange, totalPrice: $0.totalPrice, unitPrice: $0.unitPrice) }.reduce(0, +), "date editing does not change historical outbound expense")
+
+        var firstDatedReceipt = transaction("edit-date-a", .inbound, 5, "2026-01-01", 3)
+        firstDatedReceipt.expirationDate = "2026-02-01"
+        firstDatedReceipt.tracksExpirationBatch = true
+        var secondDatedReceipt = transaction("edit-date-b", .inbound, 3, "2026-01-02", 4)
+        secondDatedReceipt.expirationDate = "2026-03-01"
+        secondDatedReceipt.tracksExpirationBatch = true
+        let multiDateReceipts = [firstDatedReceipt, secondDatedReceipt]
+        let multiDateGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: multiDateReceipts
+        ))
+        let explicitTransfers = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: multiDateGroups,
+            edits: [
+                PetInventoryBalanceEdit(id: "edit-date-a", sourceGroupID: "2026-02-01", expirationDate: "2026-02-01", quantity: 3),
+                PetInventoryBalanceEdit(id: "edit-date-b", sourceGroupID: "2026-03-01", expirationDate: "2026-03-01", quantity: 3),
+                PetInventoryBalanceEdit(id: "edit-date-c", sourceGroupID: nil, expirationDate: "2026-04-01", quantity: 2)
+            ],
+            effectiveDate: "2026-10-30",
+            createdAt: 10
+        )
+        let explicitGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: multiDateReceipts,
+            balanceAllocations: explicitTransfers
+        ))
+        expectClose(explicitGroups.first { $0.expirationDate == "2026-02-01" }?.remainingQuantity, 3, "editing one date row leaves the other existing date intact")
+        expectClose(explicitGroups.first { $0.expirationDate == "2026-03-01" }?.remainingQuantity, 3, "an unchanged date row is not silently overwritten")
+        expectClose(explicitGroups.first { $0.expirationDate == "2026-04-01" }?.remainingQuantity, 2, "a newly added date row receives only its explicit quantity")
+
+        let sameDateEdits = try PetInventoryBatchLedger.editedBalanceAllocations(
+            productID: "product",
+            currentGroups: sourceGroups,
+            edits: [
+                PetInventoryBalanceEdit(id: sourceGroups[0].id, sourceGroupID: sourceGroups[0].id, expirationDate: "2026-05-01", quantity: 3),
+                PetInventoryBalanceEdit(id: "same-date-extra", sourceGroupID: nil, expirationDate: "2026-05-01", quantity: 5)
+            ],
+            effectiveDate: "2026-10-30",
+            createdAt: 10
+        )
+        let mergedGroups = PetInventoryBatchLedger.groups(from: try PetInventoryBatchLedger.balances(
+            productID: "product",
+            transactions: source.petInventoryTransactions,
+            balanceAllocations: sameDateEdits
+        ))
+        expect(mergedGroups.count == 1 && mergedGroups[0].expirationDate == "2026-05-01", "direct rows with the same date merge into one date group")
+        expectClose(mergedGroups.first?.remainingQuantity, 8, "same-date grouping retains the complete balance")
+
+        var rejectedOversize = false
+        do {
+            _ = try PetInventoryBatchLedger.editedBalanceAllocations(
+                productID: "product",
+                currentGroups: sourceGroups,
+                edits: [PetInventoryBalanceEdit(id: sourceGroups[0].id, sourceGroupID: sourceGroups[0].id, expirationDate: "2026-03-01", quantity: 9)],
+                effectiveDate: "2026-10-30",
+                createdAt: 10
+            )
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            rejectedOversize = true
+        }
+        expect(rejectedOversize, "direct quantity edits cannot exceed total current inventory")
+
+        var rejectedNegative = false
+        do {
+            _ = try PetInventoryBatchLedger.editedBalanceAllocations(
+                productID: "product",
+                currentGroups: sourceGroups,
+                edits: [PetInventoryBalanceEdit(id: sourceGroups[0].id, sourceGroupID: sourceGroups[0].id, expirationDate: nil, quantity: -1)],
+                effectiveDate: "2026-10-30",
+                createdAt: 10
+            )
+        } catch is PetInventoryBatchLedger.InvalidLedger {
+            rejectedNegative = true
+        }
+        expect(rejectedNegative, "direct quantity edits reject negative values")
     }
 
     private static func balanceDateAssignmentsRestoreOutboundAndKeepOldSourceHistory() throws {
@@ -1096,9 +1300,13 @@ struct PetInventoryCostingAcceptance {
         let inventorySource = try String(contentsOfFile: "HomeOSNative/Views/PetInventoryViews.swift", encoding: .utf8)
         let litterSource = try String(contentsOfFile: "HomeOSNative/Views/LitterViews.swift", encoding: .utf8)
         let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
+        let costingSource = try String(contentsOfFile: "HomeOSNative/Data/PetInventoryCosting.swift", encoding: .utf8)
         guard let pending = sourceSlice(itemsSource, from: "struct PetPendingRepurchaseView: View", to: "struct PetNoRepurchaseLibraryView: View"),
               let transactionEditor = sourceSlice(inventorySource, from: "struct PetInventoryTransactionEditorView: View", to: "struct PetProductReviewEditorView: View"),
-              let initialEditor = sourceSlice(inventorySource, from: "struct PetItemEditorView: View", to: "private enum PetItemEditorField") else {
+              let initialEditor = sourceSlice(inventorySource, from: "struct PetItemEditorView: View", to: "private enum PetItemEditorField"),
+              let balanceEditor = sourceSlice(inventorySource, from: "struct PetInventoryBalanceRowsEditor: View", to: "struct PetItemEditorView: View"),
+              let detail = sourceSlice(itemsSource, from: "struct PetItemDetailView: View", to: "func petExpirationDisplayDate"),
+              let productListRow = sourceSlice(itemsSource, from: "private struct PetProductListRowContent: View", to: "private enum PetItemsRoute") else {
             fatalError("expiry presentation source sections are missing")
         }
         expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
@@ -1108,11 +1316,14 @@ struct PetInventoryCostingAcceptance {
         expect(!inventorySource.contains("initialHasExpiration") && !itemsSource.contains("quickHasExpiration"), "expiry entry uses a selected date instead of an enable switch")
         expect(itemsSource.contains("PetExpirationDateRow(selectedDate: $quickExpirationDate)") && itemsSource.contains("quickExpirationDate.map(LitterPredictionService.format)"), "quick inbound uses the persistent expiry row")
         expect(inventorySource.contains("PetExpirationDateRow(selectedDate: $expirationDate)") && inventorySource.contains("expirationDate: mode == .inbound"), "full inbound records the selected expiry on its source batch")
-        expect(inventorySource.contains(".datePickerStyle(.graphical)") && inventorySource.contains("Button(\"清除日期\"") && inventorySource.contains("didChooseDate"), "expiry picker opens a graphical calendar, supports clearing and does not silently save today's date")
-        expect(inventorySource.contains("var expirationDate: Date? = nil") && inventorySource.contains("emptyValue: draft.isUndatedTarget ? \"未设日期\" : \"请选择日期\""), "date allocation rows start unselected and distinguish an explicit no-date target")
-        expect(initialEditor.contains("editorButtonRow(title: \"库存保质期\"") && initialEditor.contains("sheet = .balanceManager(productID: itemID)"), "editing a stocked item opens the shared current-balance date manager")
-        expect(itemsSource.contains("Button(\"管理保质期\"") && itemsSource.contains("sheet = .balanceManager") && inventorySource.contains("PetInventoryBalanceManagerView"), "product detail exposes the same current-balance date manager")
-        expect(storeSource.contains("func reassignPetInventoryBalance(") && storeSource.contains("petInventoryBalanceAllocations.append") && storeSource.contains("balanceAllocations: data.petInventoryBalanceAllocations"), "balance date assignments persist independently from inventory transactions and are included in batch replay")
+        expect(inventorySource.contains("DatePicker(\"保质期\", selection: selection, displayedComponents: .date)") && inventorySource.contains(".datePickerStyle(.compact)") && inventorySource.contains("Text(emptyValue)") && inventorySource.contains("selectedDate = nil") && inventorySource.contains("Calendar.current.startOfDay(for: Date())"), "expiry uses a native compact date picker, shows an unset placeholder, allows clearing, and does not persist today's fallback date")
+        expect(!inventorySource.contains("PetExpirationDatePickerSheet") && !inventorySource.contains(".datePickerStyle(.graphical)"), "expiry no longer uses a custom graphical picker sheet")
+        expect(balanceEditor.contains("summaryDates.count > 1") && balanceEditor.contains("\\(summaryDates.count)条") && balanceEditor.contains("TextField(\"0\", text: row.quantityText)") && balanceEditor.contains("＋增加日期") && balanceEditor.contains("enteredTotal <= currentInventory") && balanceEditor.contains("保持未设日期"), "balance rows collapse in place, expose editable quantities, constrain totals, and keep any remainder undated")
+        expect(initialEditor.contains("PetInventoryBalanceRowsEditor(") && initialEditor.contains("balanceRows = groups.map(PetInventoryBalanceEditDraft.init(group:))") && initialEditor.contains("store.savePetItem("), "item editing prefills each live date group and saves product fields with date edits")
+        expect(detail.contains("PetInventoryBalanceRowsEditor(") && detail.contains("Button(\"保存保质期\")") && detail.contains("store.updatePetInventoryBalanceDates") && detail.contains(".disabled(balanceHasLocalEdits)"), "product detail edits date and quantity rows inline and saves without opening a manager sheet")
+        expect(!itemsSource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("拆分日期") && !inventorySource.contains("调整库存日期"), "the nested balance manager and split-date flow are removed")
+        expect(storeSource.contains("func appendPetInventoryBalanceEdits(") && storeSource.contains("petInventoryBalanceAllocations.append(contentsOf: additions)") && costingSource.contains("static func editedBalanceAllocations(") && costingSource.contains("sourceAvailableBefore: available"), "date edits persist as replayable balance mappings and preserve transaction records")
+        expect(productListRow.contains("PetItemHomepageAveragePrice.text(") && productListRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)") && productListRow.contains("Text(specificationAndStock)") && productListRow.contains("minHeight: 48") && itemsSource.contains("frame(width: 48, height: 48)") && itemsSource.contains("cornerRadius: 12"), "the existing home row keeps its weighted price, rating/spec-stock, positive-balance expiry and 48-point thumbnail layout")
         expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
         expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
         expect(litterSource.contains("PetInventoryBatchAllocationSheet") && storeSource.contains("batchAllocationsByProduct[allocation.productID]"), "cat litter consumption records its batch allocations through the shared ledger")

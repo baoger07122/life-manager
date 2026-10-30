@@ -281,6 +281,126 @@ enum PetInventoryBatchLedger {
         }
     }
 
+    static func editedBalanceAllocations(
+        productID: String,
+        currentGroups: [PetInventoryExpiryGroup],
+        edits: [PetInventoryBalanceEdit],
+        effectiveDate: String,
+        createdAt: Double
+    ) throws -> [PetInventoryBalanceAllocation] {
+        let tolerance = 0.000_001
+        guard validExpirationDate(effectiveDate) != nil, createdAt.isFinite else {
+            throw InvalidLedger(message: "保质期修改日期无效。")
+        }
+        guard Set(currentGroups.map(\.id)).count == currentGroups.count,
+              Set(edits.map(\.id)).count == edits.count else {
+            throw InvalidLedger(message: "保质期行标识重复，请重新打开后再试。")
+        }
+        guard edits.allSatisfy({
+            $0.quantity.isFinite && $0.quantity >= 0
+                && ($0.sourceGroupQuantity.map { $0.isFinite && $0 >= 0 } ?? true)
+                && ($0.expirationDate == nil || validExpirationDate($0.expirationDate) != nil)
+        }) else {
+            throw InvalidLedger(message: "保质期日期或数量无效。")
+        }
+
+        let editsBySource = Dictionary(grouping: edits.compactMap { edit -> (String, PetInventoryBalanceEdit)? in
+            guard let sourceGroupID = edit.sourceGroupID else { return nil }
+            return (sourceGroupID, edit)
+        }, by: \.0)
+        let sourceIDs = Set(editsBySource.keys)
+        let currentIDs = Set(currentGroups.map(\.id))
+        guard sourceIDs == currentIDs,
+              editsBySource.values.allSatisfy({ $0.count == 1 }) else {
+            throw InvalidLedger(message: "库存日期分组已变化，请重新打开后再试。")
+        }
+
+        let currentTotal = currentGroups.reduce(0) { $0 + $1.remainingQuantity }
+        let desiredTotal = edits.reduce(0) { $0 + $1.quantity }
+        guard currentTotal.isFinite, desiredTotal.isFinite,
+              currentGroups.allSatisfy({ $0.remainingQuantity.isFinite && $0.remainingQuantity > 0 }),
+              desiredTotal <= currentTotal + tolerance else {
+            throw InvalidLedger(message: "日期分组数量不能超过当前库存。")
+        }
+
+        var transfers: [(source: PetInventoryExpiryGroup, destination: String?, quantity: Double)] = []
+        var surpluses: [(source: PetInventoryExpiryGroup, quantity: Double)] = []
+        var deficits: [(destination: String?, quantity: Double)] = []
+
+        for group in currentGroups {
+            guard let edit = editsBySource[group.id]?.first?.1 else {
+                throw InvalidLedger(message: "库存日期分组已变化，请重新打开后再试。")
+            }
+            if let sourceQuantity = edit.sourceGroupQuantity,
+               abs(sourceQuantity - group.remainingQuantity) > tolerance {
+                throw InvalidLedger(message: "库存日期数量已变化，请重新打开后再试。")
+            }
+            let retained = min(group.remainingQuantity, edit.quantity)
+            if retained > tolerance, group.expirationDate != edit.expirationDate {
+                transfers.append((group, edit.expirationDate, retained))
+            }
+            let surplus = group.remainingQuantity - retained
+            if surplus > tolerance {
+                surpluses.append((group, surplus))
+            }
+            let deficit = edit.quantity - retained
+            if deficit > tolerance {
+                deficits.append((edit.expirationDate, deficit))
+            }
+        }
+
+        for edit in edits where edit.sourceGroupID == nil && edit.quantity > tolerance {
+            deficits.append((edit.expirationDate, edit.quantity))
+        }
+
+        for deficit in deficits {
+            var remaining = deficit.quantity
+            for index in surpluses.indices where remaining > tolerance {
+                let amount = min(remaining, surpluses[index].quantity)
+                guard amount > 0 else { continue }
+                transfers.append((surpluses[index].source, deficit.destination, amount))
+                surpluses[index].quantity -= amount
+                remaining -= amount
+            }
+            guard remaining <= tolerance else {
+                throw InvalidLedger(message: "日期分组总量超过当前库存。")
+            }
+        }
+
+        for surplus in surpluses where surplus.quantity > tolerance {
+            transfers.append((surplus.source, nil, surplus.quantity))
+        }
+
+        var availableByBatch = Dictionary(uniqueKeysWithValues: currentGroups.flatMap { group in
+            group.batches.map { ($0.id, $0.remainingQuantity) }
+        })
+        var allocations: [PetInventoryBalanceAllocation] = []
+        for transfer in transfers where transfer.source.expirationDate != transfer.destination {
+            var remaining = transfer.quantity
+            for batch in transfer.source.batches where remaining > tolerance {
+                let available = availableByBatch[batch.id, default: 0]
+                let quantity = min(remaining, available)
+                guard quantity > tolerance else { continue }
+                allocations.append(PetInventoryBalanceAllocation(
+                    id: UUID().uuidString,
+                    productID: productID,
+                    sourceBatchID: batch.id,
+                    sourceAvailableBefore: available,
+                    expirationDate: transfer.destination,
+                    quantity: quantity,
+                    effectiveDate: effectiveDate,
+                    createdAt: createdAt
+                ))
+                availableByBatch[batch.id] = max(0, available - quantity)
+                remaining -= quantity
+            }
+            guard remaining <= tolerance else {
+                throw InvalidLedger(message: "保质期分组已变化，请重新打开后再试。")
+            }
+        }
+        return allocations
+    }
+
     static func automaticAllocations(
         quantity: Double,
         groups: [PetInventoryExpiryGroup]

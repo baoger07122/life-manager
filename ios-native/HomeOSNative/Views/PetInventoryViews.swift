@@ -4,105 +4,325 @@ import UIKit
 
 struct PetExpirationDateRow: View {
     @Binding var selectedDate: Date?
-    var emptyValue = "选填"
-    @State private var showingDatePicker = false
-
-    private var valueText: String {
-        selectedDate.map { petExpirationDisplayDate(LitterPredictionService.format($0)) } ?? emptyValue
-    }
+    var emptyValue = "选择日期"
 
     var body: some View {
-        Button {
-            NativeHaptics.tap()
-            showingDatePicker = true
-        } label: {
-            HStack {
-                Text("保质期")
-                    .font(HomeTypography.body)
-                    .foregroundStyle(HomeTheme.ink)
-                Spacer()
-                Text(valueText)
-                    .font(HomeTypography.body)
-                    .foregroundStyle(selectedDate == nil ? HomeTheme.muted : HomeTheme.ink)
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(minHeight: HomeMetrics.controlHeight)
-            .contentShape(Rectangle())
+        HStack(spacing: 8) {
+            Text("保质期")
+                .font(HomeTypography.body)
+                .foregroundStyle(HomeTheme.ink)
+            Spacer(minLength: 8)
+            PetExpirationDatePickerControl(selectedDate: $selectedDate, emptyValue: emptyValue)
         }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $showingDatePicker) {
-            PetExpirationDatePickerSheet(selectedDate: $selectedDate)
-        }
+        .frame(minHeight: HomeMetrics.controlHeight)
     }
 }
 
-private struct PetExpirationDatePickerSheet: View {
-    @Environment(\.dismiss) private var dismiss
+struct PetExpirationDatePickerControl: View {
     @Binding var selectedDate: Date?
-    @State private var draftDate = Date()
-    @State private var didChooseDate = false
+    var emptyValue = "选择日期"
 
-    private var dateBinding: Binding<Date> {
+    private var selection: Binding<Date> {
         Binding(
-            get: { draftDate },
+            get: { selectedDate ?? Calendar.current.startOfDay(for: Date()) },
             set: {
-                draftDate = $0
-                didChooseDate = true
+                selectedDate = $0
                 NativeHaptics.selection()
             }
         )
     }
 
+    private var accessibilityValue: String {
+        selectedDate.map { petExpirationDisplayDate(LitterPredictionService.format($0)) } ?? emptyValue
+    }
+
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                Text(selectedDate == nil ? "点击日历选择日期" : "可在日历中更改日期")
-                    .font(HomeTypography.supporting)
-                    .foregroundStyle(HomeTheme.muted)
-                DatePicker("保质期", selection: dateBinding, displayedComponents: .date)
-                    .datePickerStyle(.graphical)
+        HStack(spacing: 2) {
+            ZStack(alignment: .trailing) {
+                DatePicker("保质期", selection: selection, displayedComponents: .date)
+                    .datePickerStyle(.compact)
                     .labelsHidden()
-                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel("保质期")
+                    .accessibilityValue(accessibilityValue)
                 if selectedDate == nil {
-                    Button("选今天") {
-                        draftDate = Date()
-                        didChooseDate = true
-                        NativeHaptics.selection()
+                    Text(emptyValue)
+                        .font(HomeTypography.body)
+                        .foregroundStyle(HomeTheme.muted)
+                        .padding(.leading, 4)
+                        .padding(.trailing, 18)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .background(HomeTheme.card)
+                        .allowsHitTesting(false)
+                }
+            }
+
+            if selectedDate != nil {
+                Button {
+                    selectedDate = nil
+                    NativeHaptics.tap()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(width: HomeMetrics.minimumTapTarget, height: HomeMetrics.minimumTapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("清除日期")
+            }
+        }
+        .frame(minHeight: HomeMetrics.controlHeight)
+    }
+}
+
+struct PetInventoryBalanceEditDraft: Identifiable, Hashable {
+    var id: String
+    var sourceGroupID: String?
+    var sourceGroupQuantity: Double?
+    var expirationDate: Date?
+    var quantityText: String
+
+    init(group: PetInventoryExpiryGroup) {
+        id = group.id
+        sourceGroupID = group.id
+        sourceGroupQuantity = group.remainingQuantity
+        expirationDate = group.expirationDate.flatMap(LitterPredictionService.parse)
+        quantityText = group.remainingQuantity.formatted(.number.grouping(.never).precision(.fractionLength(0...8)))
+    }
+
+    init(newRow: Void = ()) {
+        id = UUID().uuidString
+        sourceGroupID = nil
+        sourceGroupQuantity = nil
+        expirationDate = nil
+        quantityText = ""
+    }
+
+    var parsedQuantity: Double? {
+        let normalized = quantityText.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value.isFinite, value >= 0 else { return nil }
+        return value
+    }
+
+    var hasQuantityInput: Bool {
+        !quantityText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var balanceEdit: PetInventoryBalanceEdit? {
+        guard let parsedQuantity else { return nil }
+        return PetInventoryBalanceEdit(
+            id: id,
+            sourceGroupID: sourceGroupID,
+            sourceGroupQuantity: sourceGroupQuantity,
+            expirationDate: expirationDate.map(LitterPredictionService.format),
+            quantity: parsedQuantity
+        )
+    }
+}
+
+enum PetInventoryBalanceEditValidation {
+    static func message(
+        rows: [PetInventoryBalanceEditDraft],
+        currentGroups: [PetInventoryExpiryGroup],
+        currentInventory: Double
+    ) -> String? {
+        guard currentInventory.isFinite, currentInventory >= 0 else {
+            return "当前库存数量无效。"
+        }
+        if currentInventory > 0.000_001 && currentGroups.isEmpty {
+            return "当前库存日期无法读取，请先检查库存流水。"
+        }
+        let groupedQuantity = currentGroups.reduce(0) { $0 + $1.remainingQuantity }
+        if abs(groupedQuantity - currentInventory) > 0.000_001 {
+            return "库存日期数量与当前库存不一致，请先检查库存流水。"
+        }
+        let sourceIDs = rows.compactMap(\.sourceGroupID)
+        guard Set(sourceIDs).count == sourceIDs.count,
+              Set(sourceIDs) == Set(currentGroups.map(\.id)) else {
+            if currentInventory > 0 || !currentGroups.isEmpty {
+                return "库存日期分组已变化，请重新打开后再试。"
+            }
+            return nil
+        }
+        let currentQuantities = Dictionary(uniqueKeysWithValues: currentGroups.map { ($0.id, $0.remainingQuantity) })
+        guard rows.allSatisfy({ row in
+            guard let sourceID = row.sourceGroupID, let sourceQuantity = row.sourceGroupQuantity else {
+                return row.sourceGroupID == nil
+            }
+            guard let currentQuantity = currentQuantities[sourceID] else { return false }
+            return abs(sourceQuantity - currentQuantity) <= 0.000_001
+        }) else {
+            return "库存日期数量已变化，请重新打开后再试。"
+        }
+        for row in rows {
+            if row.sourceGroupID != nil && row.parsedQuantity == nil {
+                return "已有日期行请输入有效的非负数量。"
+            }
+            if row.sourceGroupID == nil && row.hasQuantityInput && row.parsedQuantity == nil {
+                return "新增日期行请输入有效的非负数量。"
+            }
+        }
+        let enteredTotal = rows.compactMap(\.parsedQuantity).reduce(0, +)
+        guard enteredTotal.isFinite, enteredTotal <= currentInventory + 0.000_001 else {
+            return "日期分组数量不能超过当前库存。"
+        }
+        return nil
+    }
+}
+
+struct PetInventoryBalanceRowsEditor: View {
+    @Binding var rows: [PetInventoryBalanceEditDraft]
+    @Binding var isExpanded: Bool
+    let currentGroups: [PetInventoryExpiryGroup]
+    let currentInventory: Double
+    let unit: String
+
+    private var validationMessage: String? {
+        PetInventoryBalanceEditValidation.message(
+            rows: rows,
+            currentGroups: currentGroups,
+            currentInventory: currentInventory
+        )
+    }
+
+    private var enteredTotal: Double {
+        rows.compactMap(\.parsedQuantity).reduce(0, +)
+    }
+
+    private var summaryDates: Set<String> {
+        var dates = Set(rows.compactMap { row -> String? in
+            guard (row.parsedQuantity ?? 0) > 0 else { return nil }
+            return row.expirationDate.map(LitterPredictionService.format) ?? PetInventoryBatchLedger.unassignedGroupID
+        })
+        if currentInventory - enteredTotal > 0.000_001 {
+            dates.insert(PetInventoryBatchLedger.unassignedGroupID)
+        }
+        return dates
+    }
+
+    private var datedSummary: String {
+        rows.compactMap { row -> String? in
+            guard (row.parsedQuantity ?? 0) > 0 else { return nil }
+            return row.expirationDate.map(LitterPredictionService.format)
+        }.min().map(petExpirationDisplayDate) ?? "选择日期"
+    }
+
+    private var showsCollapsedSummary: Bool {
+        summaryDates.count > 1 && !isExpanded
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if showsCollapsedSummary {
+                Button {
+                    isExpanded = true
+                    NativeHaptics.tap()
+                } label: {
+                    HStack(spacing: 8) {
+                        Text("保质期")
+                            .font(HomeTypography.body)
+                            .foregroundStyle(HomeTheme.ink)
+                        Spacer()
+                        Text(datedSummary)
+                            .font(HomeTypography.body)
+                            .foregroundStyle(HomeTheme.ink)
+                        Text("\(summaryDates.count)条")
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.muted)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(minHeight: HomeMetrics.controlHeight)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            } else if summaryDates.count > 1 {
+                HStack {
+                    Text("保质期")
+                        .font(HomeTypography.body)
+                        .foregroundStyle(HomeTheme.ink)
+                    Spacer()
+                    Button("收起") {
+                        isExpanded = false
+                        NativeHaptics.tap()
                     }
                     .font(HomeTypography.supporting.weight(.medium))
+                    .foregroundStyle(HomeTheme.muted)
+                    .frame(minHeight: HomeMetrics.minimumTapTarget)
                 }
-                Spacer(minLength: 0)
+            } else {
+                Text("保质期")
+                    .font(HomeTypography.body)
+                    .foregroundStyle(HomeTheme.ink)
+                    .frame(minHeight: HomeMetrics.controlHeight, alignment: .leading)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .navigationTitle("保质期")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
+
+            if currentInventory <= 0 {
+                if !currentGroups.isEmpty {
+                    Text("当前没有可编辑的库存日期。")
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.muted)
+                        .padding(.vertical, 8)
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成") {
-                        selectedDate = draftDate
-                        dismiss()
+            } else if rows.isEmpty {
+                Text("当前库存日期无法读取，请先检查库存流水。")
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.danger)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(Array(rows.indices), id: \.self) { index in
+                    balanceRow($rows[index])
+                    if index < rows.count - 1 {
+                        Divider().overlay(HomeTheme.line)
                     }
-                    .disabled(selectedDate == nil && !didChooseDate)
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    Button("清除日期", role: .destructive) {
-                        selectedDate = nil
-                        dismiss()
-                    }
+
+                Button {
+                    rows.append(PetInventoryBalanceEditDraft())
+                    isExpanded = true
+                    NativeHaptics.tap()
+                } label: {
+                    Text("＋增加日期")
+                        .font(HomeTypography.supporting.weight(.medium))
+                        .foregroundStyle(HomeTheme.blue)
+                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+            }
+
+            if let validationMessage {
+                Text(validationMessage)
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
+            } else if currentInventory - enteredTotal > 0.000_001 {
+                Text("剩余 \((currentInventory - enteredTotal).formatted())\(unit) 保持未设日期。")
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
             }
         }
-        .presentationDetents([.medium, .large])
-        .onAppear {
-            draftDate = selectedDate ?? Date()
-            didChooseDate = false
+    }
+
+    private func balanceRow(_ row: Binding<PetInventoryBalanceEditDraft>) -> some View {
+        HStack(spacing: 6) {
+            PetExpirationDatePickerControl(selectedDate: row.expirationDate)
+            Spacer(minLength: 2)
+            TextField("0", text: row.quantityText)
+                .font(HomeTypography.body)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 72)
+                .accessibilityLabel("保质期数量")
+            Text(unit)
+                .font(HomeTypography.supporting)
+                .foregroundStyle(HomeTheme.muted)
         }
+        .frame(minHeight: HomeMetrics.controlHeight)
     }
 }
 
@@ -136,6 +356,9 @@ struct PetItemEditorView: View {
     @State private var loaded = false
     @State private var sheet: PetItemEditorSheet?
     @State private var showDuplicateAlert = false
+    @State private var balanceRows: [PetInventoryBalanceEditDraft] = []
+    @State private var balanceExpanded = false
+    @State private var saveErrorMessage: String?
     @FocusState private var focusedField: PetItemEditorField?
 
     init(itemID: String? = nil, copyingItemID: String? = nil, initialPrimaryID: String? = nil, initialSecondaryID: String? = nil) {
@@ -168,6 +391,25 @@ struct PetItemEditorView: View {
     private var calculatedUnitPrice: Double? {
         guard let purchaseTotal, initialStock > 0 else { return nil }
         return purchaseTotal / initialStock
+    }
+    private var balanceGroups: [PetInventoryExpiryGroup] {
+        guard let itemID else { return [] }
+        return store.petInventoryBatchGroups(for: itemID)
+    }
+    private var currentBalanceInventory: Double {
+        guard let itemID else { return 0 }
+        return store.petInventory(for: itemID)
+    }
+    private var balanceValidationMessage: String? {
+        guard itemID != nil else { return nil }
+        return PetInventoryBalanceEditValidation.message(
+            rows: balanceRows,
+            currentGroups: balanceGroups,
+            currentInventory: currentBalanceInventory
+        )
+    }
+    private var balanceDateEdits: [PetInventoryBalanceEdit] {
+        balanceRows.compactMap(\.balanceEdit).filter { $0.sourceGroupID != nil || $0.quantity > 0.000_001 }
     }
 
     var body: some View {
@@ -209,12 +451,15 @@ struct PetItemEditorView: View {
                         packageTypeRow
                         divider
                         specificationRow
-                        if let itemID, store.petInventory(for: itemID) > 0 {
+                        if itemID != nil {
                             divider
-                            editorButtonRow(title: "库存保质期", value: "管理") {
-                                NativeHaptics.tap()
-                                sheet = .balanceManager(productID: itemID)
-                            }
+                            PetInventoryBalanceRowsEditor(
+                                rows: $balanceRows,
+                                isExpanded: $balanceExpanded,
+                                currentGroups: balanceGroups,
+                                currentInventory: currentBalanceInventory,
+                                unit: store.data.petItems.first(where: { $0.id == itemID })?.unit ?? resolvedUnit
+                            )
                         }
                         if itemID == nil {
                             divider
@@ -266,8 +511,19 @@ struct PetItemEditorView: View {
 
                 Button("保存", action: save)
                     .buttonStyle(HomePrimaryButtonStyle())
-                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSecondary == nil)
+                    .disabled(
+                        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            || selectedSecondary == nil
+                            || balanceValidationMessage != nil
+                    )
                     .padding(.horizontal, 42)
+                if let saveErrorMessage {
+                    Text(saveErrorMessage)
+                        .font(HomeTypography.supporting)
+                        .foregroundStyle(HomeTheme.danger)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 42)
+                }
             }
             .padding(.horizontal, HomeMetrics.pageInset)
             .padding(.vertical, 16)
@@ -301,8 +557,6 @@ struct PetItemEditorView: View {
                 PetCategorySelectionSheet(primaryID: $primaryID, secondaryID: $secondaryID)
             case .brand:
                 PetBrandSelectionSheet(brand: $brand)
-            case .balanceManager(let productID):
-                PetInventoryBalanceManagerView(productID: productID)
             }
         }
         .alert("可能是重复物品", isPresented: $showDuplicateAlert) {
@@ -541,6 +795,11 @@ struct PetItemEditorView: View {
         packageType = item.packageType ?? ""
         notes = item.notes ?? ""; litterKind = item.litterKind ?? ""
         conversion = item.unitConversionToBase ?? 0; imageReference = item.image
+        if itemID != nil {
+            let groups = store.petInventoryBatchGroups(for: item.id)
+            balanceRows = groups.map(PetInventoryBalanceEditDraft.init(group:))
+            balanceExpanded = groups.count <= 1
+        }
     }
 
     private func save() {
@@ -581,7 +840,15 @@ struct PetItemEditorView: View {
         item.createdAt = item.createdAt ?? now; item.updatedAt = now
         UserDefaults.standard.set(primaryID, forKey: "HomeOS.lastPetPrimaryCategoryID")
         UserDefaults.standard.set(secondaryID, forKey: "HomeOS.lastPetSecondaryCategoryID")
-        store.upsertPetItem(item, openingTotalPrice: itemID == nil ? purchaseTotal : nil)
+        guard store.savePetItem(
+            item,
+            openingTotalPrice: itemID == nil ? purchaseTotal : nil,
+            balanceDateEdits: itemID == nil ? [] : balanceDateEdits
+        ) else {
+            saveErrorMessage = store.lastError ?? "商品资料没有保存，请重试。"
+            NativeHaptics.error()
+            return
+        }
         NativeHaptics.success()
         dismiss()
     }
@@ -593,13 +860,11 @@ private enum PetItemEditorField: Hashable {
 
 private enum PetItemEditorSheet: Identifiable {
     case category, brand
-    case balanceManager(productID: String)
 
     var id: String {
         switch self {
         case .category: "category"
         case .brand: "brand"
-        case .balanceManager(let productID): "balance-manager-\(productID)"
         }
     }
 }
@@ -1085,248 +1350,6 @@ struct PetInventoryBatchAllocationSheet: View {
                 quantityTexts[quantityKey(request.productID, group.id)] = (defaults[group.id] ?? 0)
                     .formatted(.number.grouping(.never).precision(.fractionLength(0...4)))
             }
-        }
-    }
-}
-
-struct PetInventoryBalanceManagerView: View {
-    @EnvironmentObject private var store: HomeStore
-    @Environment(\.dismiss) private var dismiss
-    let productID: String
-    @State private var selectedGroup: PetInventoryExpiryGroup?
-
-    private var item: PetItem? { store.data.petItems.first { $0.id == productID } }
-    private var groups: [PetInventoryExpiryGroup] { store.petInventoryBatchGroups(for: productID) }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 12) {
-                    HomeCard(padding: 12) {
-                        VStack(alignment: .leading, spacing: 7) {
-                            Text("现存库存的保质期")
-                                .font(HomeTypography.cardTitle)
-                                .foregroundStyle(HomeTheme.ink)
-                            Text("把需要补录或纠正日期的数量分到目标日期组；未分配的余量继续保留在当前组。此操作不更改库存、价格或进出库记录。")
-                                .font(HomeTypography.supporting)
-                                .foregroundStyle(HomeTheme.muted)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if groups.isEmpty {
-                        HomeCard(padding: 12) {
-                            Text(store.petInventory(for: productID) > 0
-                                ? "目前无法读取库存批次，请先检查库存流水。"
-                                : "当前没有可管理的库存。")
-                                .font(HomeTypography.body)
-                                .foregroundStyle(HomeTheme.muted)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    } else {
-                        ForEach(groups) { group in
-                            HomeCard(padding: 12) {
-                                HStack(spacing: 12) {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        Text(group.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")
-                                            .font(HomeTypography.body.weight(.medium))
-                                            .foregroundStyle(HomeTheme.ink)
-                                        Text("剩余 \(group.remainingQuantity.formatted())\(item?.unit ?? "件")")
-                                            .font(HomeTypography.supporting)
-                                            .foregroundStyle(HomeTheme.muted)
-                                    }
-                                    Spacer()
-                                    Button("调整") {
-                                        NativeHaptics.tap()
-                                        selectedGroup = group
-                                    }
-                                    .font(HomeTypography.body.weight(.medium))
-                                    .foregroundStyle(HomeTheme.blue)
-                                    .frame(minWidth: HomeMetrics.minimumTapTarget, minHeight: HomeMetrics.minimumTapTarget)
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(HomeMetrics.pageInset)
-            }
-            .background(HomeTheme.background)
-            .navigationTitle("管理保质期")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("完成") { dismiss() }
-                }
-            }
-        }
-        .sheet(item: $selectedGroup) { group in
-            PetInventoryBalanceGroupEditor(group: group, unit: item?.unit ?? "件") { transfers in
-                store.reassignPetInventoryBalance(
-                    productID: productID,
-                    sourceGroupID: group.id,
-                    transfers: transfers
-                )
-            }
-        }
-    }
-}
-
-private struct PetInventoryBalanceGroupEditor: View {
-    @EnvironmentObject private var store: HomeStore
-    @Environment(\.dismiss) private var dismiss
-    let group: PetInventoryExpiryGroup
-    let unit: String
-    let onSave: ([PetInventoryBalanceDateTransfer]) -> Bool
-    @State private var drafts: [TransferDraft] = []
-    @State private var localError: String?
-
-    private struct TransferDraft: Identifiable {
-        var id = UUID().uuidString
-        var expirationDate: Date? = nil
-        var isUndatedTarget = false
-        var quantityText = ""
-
-        var quantity: Double? {
-            let normalized = quantityText.replacingOccurrences(of: ",", with: ".")
-            guard let value = Double(normalized), value.isFinite, value > 0 else { return nil }
-            return value
-        }
-    }
-
-    private var assignedTotal: Double {
-        drafts.reduce(0) { $0 + ($1.quantity ?? 0) }
-    }
-
-    private var canSave: Bool {
-        !drafts.isEmpty
-            && drafts.allSatisfy { $0.quantity != nil && ($0.isUndatedTarget || $0.expirationDate != nil) }
-            && assignedTotal <= group.remainingQuantity + 0.000_001
-    }
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 12) {
-                    HomeCard(padding: 12) {
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("当前组：\(group.expirationDate.map(petExpirationDisplayDate) ?? "未设日期")")
-                                .font(HomeTypography.body.weight(.medium))
-                            Text("剩余 \(group.remainingQuantity.formatted())\(unit)。输入要转到其他日期组的数量，其余库存会保留在当前组。")
-                                .font(HomeTypography.supporting)
-                                .foregroundStyle(HomeTheme.muted)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    ForEach($drafts) { $draft in
-                        HomeCard(padding: 12) {
-                            VStack(spacing: 6) {
-                                HStack(spacing: 8) {
-                                    PetExpirationDateRow(
-                                        selectedDate: $draft.expirationDate,
-                                        emptyValue: draft.isUndatedTarget ? "未设日期" : "请选择日期"
-                                    )
-                                    .onChange(of: draft.expirationDate) { _, value in
-                                        draft.isUndatedTarget = value == nil
-                                    }
-                                    Button(role: .destructive) {
-                                        drafts.removeAll { $0.id == draft.id }
-                                        NativeHaptics.tap()
-                                    } label: {
-                                        Image(systemName: "minus.circle")
-                                            .font(.system(size: 18))
-                                            .frame(width: HomeMetrics.minimumTapTarget, height: HomeMetrics.minimumTapTarget)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("删除此日期分配")
-                                }
-                                HStack(spacing: 8) {
-                                    Text("分配数量").font(HomeTypography.body)
-                                    Spacer()
-                                    TextField("0", text: $draft.quantityText)
-                                        .keyboardType(.decimalPad)
-                                        .multilineTextAlignment(.trailing)
-                                        .font(HomeTypography.body)
-                                        .frame(width: 110)
-                                    Text(unit).font(HomeTypography.supporting).foregroundStyle(HomeTheme.muted)
-                                }
-                                .frame(minHeight: HomeMetrics.controlHeight)
-                            }
-                        }
-                    }
-
-                    HStack(spacing: 10) {
-                        Button {
-                            drafts.append(TransferDraft())
-                            NativeHaptics.tap()
-                        } label: {
-                            Label("添加日期", systemImage: "plus")
-                                .font(HomeTypography.body.weight(.medium))
-                                .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget)
-                        }
-                        .buttonStyle(.bordered)
-                        Button {
-                            drafts.append(TransferDraft(isUndatedTarget: true))
-                            NativeHaptics.tap()
-                        } label: {
-                            Label("分到未设日期", systemImage: "calendar.badge.minus")
-                                .font(HomeTypography.supporting.weight(.medium))
-                                .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    HStack {
-                        Text("本次分配")
-                        Spacer()
-                        Text("\(assignedTotal.formatted()) / \(group.remainingQuantity.formatted())\(unit)")
-                            .monospacedDigit()
-                    }
-                    .font(HomeTypography.supporting)
-                    .foregroundStyle(assignedTotal <= group.remainingQuantity + 0.000_001 ? HomeTheme.muted : HomeTheme.danger)
-                    .padding(.horizontal, 4)
-                }
-                .padding(HomeMetrics.pageInset)
-            }
-            .background(HomeTheme.background)
-            .navigationTitle("调整库存日期")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("保存") { save() }
-                        .disabled(!canSave)
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .alert("日期分配失败", isPresented: Binding(
-            get: { localError != nil },
-            set: { if !$0 { localError = nil } }
-        )) {
-            Button("知道了") { localError = nil }
-        } message: {
-            Text(localError ?? "请检查分配日期和数量。")
-        }
-    }
-
-    private func save() {
-        guard canSave else { return }
-        let transfers = drafts.compactMap { draft -> PetInventoryBalanceDateTransfer? in
-            guard let quantity = draft.quantity else { return nil }
-            return PetInventoryBalanceDateTransfer(
-                expirationDate: draft.isUndatedTarget ? nil : draft.expirationDate.map(LitterPredictionService.format),
-                quantity: quantity
-            )
-        }
-        if onSave(transfers) {
-            dismiss()
-        } else {
-            localError = store.lastError ?? "日期分配未保存，请重试。"
         }
     }
 }

@@ -196,8 +196,10 @@ struct PetInventoryBalanceAllocation: Codable, Identifiable, Hashable {
     var createdAt: Double
 }
 
-struct PetInventoryBalanceDateTransfer: Identifiable, Hashable {
-    var id: String = UUID().uuidString
+struct PetInventoryBalanceEdit: Identifiable, Hashable {
+    var id: String
+    var sourceGroupID: String?
+    var sourceGroupQuantity: Double? = nil
     var expirationDate: String?
     var quantity: Double
 }

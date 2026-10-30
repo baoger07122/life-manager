@@ -1271,7 +1271,7 @@ struct PetInventoryCostingAcceptance {
               let separatorPosition = sharedRow.range(of: "Text(\"·\")")?.lowerBound,
               let pricePosition = sharedRow.range(of: "Text(averagePriceText ?? \"—\")")?.lowerBound,
               let namePosition = sharedRow.range(of: "Text(item.name)")?.lowerBound,
-              let expirationPosition = sharedRow.range(of: "if let expirationText {")?.lowerBound,
+              let expirationPosition = sharedRow.range(of: "                if let expirationText {\n                    Text(expirationText)")?.lowerBound,
               let ratingPosition = sharedRow.range(of: "if let rating = store.petProductRating")?.lowerBound,
               let specificationPosition = sharedRow.range(of: "Text(specificationAndStock)")?.lowerBound else {
             fatalError("homepage price, item name, specification or rating source is missing")

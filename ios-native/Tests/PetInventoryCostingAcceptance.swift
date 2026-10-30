@@ -1304,14 +1304,14 @@ struct PetInventoryCostingAcceptance {
         guard let pending = sourceSlice(itemsSource, from: "struct PetPendingRepurchaseView: View", to: "struct PetNoRepurchaseLibraryView: View"),
               let transactionEditor = sourceSlice(inventorySource, from: "struct PetInventoryTransactionEditorView: View", to: "struct PetProductReviewEditorView: View"),
               let initialEditor = sourceSlice(inventorySource, from: "struct PetItemEditorView: View", to: "private enum PetItemEditorField"),
-              let balanceEditor = sourceSlice(inventorySource, from: "struct PetInventoryBalanceRowsEditor: View", to: "struct PetItemEditorView: View"),
+              let balanceEditor = sourceSlice(inventorySource, from: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable", to: "struct PetItemEditorView: View"),
               let detail = sourceSlice(itemsSource, from: "struct PetItemDetailView: View", to: "func petExpirationDisplayDate"),
               let productListRow = sourceSlice(itemsSource, from: "private struct PetProductListRowContent: View", to: "private enum PetItemsRoute") else {
             fatalError("expiry presentation source sections are missing")
         }
         expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
         expect(itemsSource.contains("func expirySortsBefore") && itemsSource.contains("case (.some(_), .none): return true") && itemsSource.contains("return left.id < right.id"), "earlier dated stock sorts first, no-date stock last, and ties remain stable")
-        expect(itemsSource.contains("petInventoryBatchBreakdown(for: item.id)") && itemsSource.contains("group.remainingQuantity.formatted()"), "product detail summarizes positive remaining quantities by expiry group")
+        expect(itemsSource.contains("store.petInventoryBatchGroups(for: itemID)") && inventorySource.contains("quantityText = group.remainingQuantity.formatted(.number.grouping(.never).precision(.fractionLength(0...8)))"), "product detail preloads each positive remaining expiry group with its current quantity")
         expect(initialEditor.contains("PetExpirationDateRow(selectedDate: $initialExpirationDate)") && initialEditor.contains("initialStock > 0") && initialEditor.contains("initialExpirationDate.map(LitterPredictionService.format)"), "new products have a persistent optional expiry row and only positive opening stock creates a batch")
         expect(!inventorySource.contains("initialHasExpiration") && !itemsSource.contains("quickHasExpiration"), "expiry entry uses a selected date instead of an enable switch")
         expect(itemsSource.contains("PetExpirationDateRow(selectedDate: $quickExpirationDate)") && itemsSource.contains("quickExpirationDate.map(LitterPredictionService.format)"), "quick inbound uses the persistent expiry row")

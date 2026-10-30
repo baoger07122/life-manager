@@ -1250,7 +1250,7 @@ struct PetInventoryCostingAcceptance {
         ), let sharedRow = sourceSlice(
             listSource,
             from: "private struct PetProductListRowContent: View {",
-            to: "private struct PetProductThumbnail: View {"
+            to: "struct PetProductThumbnail: View {"
         ), let averagePriceMethod = sourceSlice(
             storeSource,
             from: "    func petWeightedAverageInboundUnitPrice(for productID: String) -> Double? {",

@@ -1,0 +1,44 @@
+name: Validate native expiry UI
+
+on:
+  push:
+    branches:
+      - codex/ios-native-rewrite
+    paths:
+      - "ios-native/**"
+      - ".github/workflows/validate-native-expiry-ui.yml"
+
+jobs:
+  iphone-simulator:
+    runs-on: macos-26
+    steps:
+      - name: Checkout native rewrite branch
+        uses: actions/checkout@v4
+
+      - name: Confirm Apple toolchain
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the native Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+
+      - name: Run iPhone Simulator UI checks
+        working-directory: ios-native
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/native-expiry-ui.xcresult
+        run: |
+          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; data=json.load(sys.stdin); devices=[d for group in data["devices"].values() for d in group if d.get("isAvailable") and d.get("name", "").startswith("iPhone")]; print(devices[0]["udid"] if devices else "")')"
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No available iPhone Simulator device was found." >&2
+            exit 1
+          fi
+          xcodebuild test \
+            -project HomeOSNative.xcodeproj \
+            -scheme HomeOSNative \
+            -destination "platform=iOS Simulator,id=$DEVICE_ID" \
+            -derivedDataPath "${{ runner.temp }}/native-expiry-ui-derived" \
+            -resultBundlePath "$RESULT_BUNDLE" \
+            CODE_SIGNING_ALLOWED=NO

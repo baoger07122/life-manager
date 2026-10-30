@@ -258,11 +258,12 @@ struct PetEventDetailView: View {
 
 struct PetStoredImage: View {
     let reference: String
+    var contentMode: ContentMode = .fill
     private static let cache = NSCache<NSString, UIImage>()
 
     var body: some View {
         if let image = decodedImage {
-            Image(uiImage: image).resizable().scaledToFill()
+            Image(uiImage: image).resizable().aspectRatio(contentMode: contentMode)
         } else {
             ZStack {
                 HomeTheme.background

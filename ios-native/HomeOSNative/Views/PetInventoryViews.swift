@@ -21,55 +21,62 @@ struct PetExpirationDateRow: View {
 struct PetExpirationDatePickerControl: View {
     @Binding var selectedDate: Date?
     var emptyValue = "选择日期"
+    @State private var isChoosingDate = false
+    @State private var temporaryDate = Calendar.current.startOfDay(for: Date())
 
     private var selection: Binding<Date> {
         Binding(
-            get: { selectedDate ?? Calendar.current.startOfDay(for: Date()) },
-            set: {
-                selectedDate = $0
+            get: { selectedDate ?? temporaryDate },
+            set: { newValue in
+                selectedDate = Calendar.current.startOfDay(for: newValue)
+                isChoosingDate = false
                 NativeHaptics.selection()
             }
         )
     }
 
-    private var accessibilityValue: String {
-        selectedDate.map { petExpirationDisplayDate(LitterPredictionService.format($0)) } ?? emptyValue
-    }
-
     var body: some View {
         HStack(spacing: 2) {
-            ZStack(alignment: .trailing) {
+            if selectedDate != nil || isChoosingDate {
                 DatePicker("保质期", selection: selection, displayedComponents: .date)
                     .datePickerStyle(.compact)
                     .labelsHidden()
                     .fixedSize(horizontal: true, vertical: false)
                     .accessibilityLabel("保质期")
-                    .accessibilityValue(accessibilityValue)
                 if selectedDate == nil {
-                    Text(emptyValue)
-                        .font(HomeTypography.body)
-                        .foregroundStyle(HomeTheme.muted)
-                        .padding(.leading, 4)
-                        .padding(.trailing, 18)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .background(HomeTheme.card)
-                        .allowsHitTesting(false)
+                    Button("今天") {
+                        selectedDate = Calendar.current.startOfDay(for: Date())
+                        isChoosingDate = false
+                        NativeHaptics.selection()
+                    }
+                    .font(HomeTypography.supporting.weight(.medium))
+                    .foregroundStyle(HomeTheme.blue)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel("保质期设为今天")
                 }
-            }
-
-            if selectedDate != nil {
                 Button {
                     selectedDate = nil
+                    isChoosingDate = false
                     NativeHaptics.tap()
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16))
+                    Image(systemName: selectedDate == nil ? "xmark.circle" : "xmark.circle.fill")
+                        .font(.system(size: 15))
                         .foregroundStyle(HomeTheme.muted)
                         .frame(width: HomeMetrics.minimumTapTarget, height: HomeMetrics.minimumTapTarget)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("清除日期")
+                .accessibilityLabel(selectedDate == nil ? "取消选择日期" : "清除日期")
+            } else {
+                Button(emptyValue) {
+                    temporaryDate = Calendar.current.startOfDay(for: Date())
+                    isChoosingDate = true
+                    NativeHaptics.tap()
+                }
+                .font(HomeTypography.body)
+                .foregroundStyle(HomeTheme.muted)
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityHint("显示原生日期控件")
             }
         }
         .frame(minHeight: HomeMetrics.controlHeight)
@@ -177,6 +184,7 @@ struct PetInventoryBalanceRowsEditor: View {
     let currentGroups: [PetInventoryExpiryGroup]
     let currentInventory: Double
     let unit: String
+    var showsSummaryHeader = true
 
     private var validationMessage: String? {
         PetInventoryBalanceEditValidation.message(
@@ -214,58 +222,58 @@ struct PetInventoryBalanceRowsEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if showsCollapsedSummary {
-                Button {
-                    isExpanded = true
-                    NativeHaptics.tap()
-                } label: {
-                    HStack(spacing: 8) {
+            if showsSummaryHeader {
+                if showsCollapsedSummary {
+                    Button {
+                        isExpanded = true
+                        NativeHaptics.tap()
+                    } label: {
+                        HStack(spacing: 8) {
+                            Text("保质期")
+                                .font(HomeTypography.body)
+                                .foregroundStyle(HomeTheme.ink)
+                            Spacer()
+                            Text(datedSummary)
+                                .font(HomeTypography.body)
+                                .foregroundStyle(HomeTheme.ink)
+                            Text("\(summaryDates.count)条")
+                                .font(HomeTypography.supporting)
+                                .foregroundStyle(HomeTheme.muted)
+                            Image(systemName: "chevron.down")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(minHeight: HomeMetrics.controlHeight)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                } else if summaryDates.count > 1 {
+                    HStack {
                         Text("保质期")
                             .font(HomeTypography.body)
                             .foregroundStyle(HomeTheme.ink)
                         Spacer()
-                        Text(datedSummary)
-                            .font(HomeTypography.body)
-                            .foregroundStyle(HomeTheme.ink)
-                        Text("\(summaryDates.count)条")
-                            .font(HomeTypography.supporting)
-                            .foregroundStyle(HomeTheme.muted)
-                        Image(systemName: "chevron.down")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.tertiary)
+                        Button("收起") {
+                            isExpanded = false
+                            NativeHaptics.tap()
+                        }
+                        .font(HomeTypography.supporting.weight(.medium))
+                        .foregroundStyle(HomeTheme.muted)
+                        .frame(minHeight: HomeMetrics.minimumTapTarget)
                     }
-                    .frame(minHeight: HomeMetrics.controlHeight)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-            } else if summaryDates.count > 1 {
-                HStack {
+                } else {
                     Text("保质期")
                         .font(HomeTypography.body)
                         .foregroundStyle(HomeTheme.ink)
-                    Spacer()
-                    Button("收起") {
-                        isExpanded = false
-                        NativeHaptics.tap()
-                    }
-                    .font(HomeTypography.supporting.weight(.medium))
-                    .foregroundStyle(HomeTheme.muted)
-                    .frame(minHeight: HomeMetrics.minimumTapTarget)
+                        .frame(minHeight: HomeMetrics.controlHeight, alignment: .leading)
                 }
-            } else {
-                Text("保质期")
-                    .font(HomeTypography.body)
-                    .foregroundStyle(HomeTheme.ink)
-                    .frame(minHeight: HomeMetrics.controlHeight, alignment: .leading)
             }
 
             if currentInventory <= 0 {
-                if !currentGroups.isEmpty {
-                    Text("当前没有可编辑的库存日期。")
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
-                        .padding(.vertical, 8)
-                }
+                Text(currentGroups.isEmpty ? "当前没有库存，可在入库时设置保质期。" : "当前没有可编辑的库存日期。")
+                    .font(HomeTypography.supporting)
+                    .foregroundStyle(HomeTheme.muted)
+                    .padding(.vertical, 8)
             } else if rows.isEmpty {
                 Text("当前库存日期无法读取，请先检查库存流水。")
                     .font(HomeTypography.supporting)

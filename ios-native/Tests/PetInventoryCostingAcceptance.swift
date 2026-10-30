@@ -1153,14 +1153,26 @@ struct PetInventoryCostingAcceptance {
         }
 
         expect(detail.contains("PetPalatabilityReviewGrouping.groups") && detail.contains("store.activePets"), "pet reviews are grouped in current pet-management order")
-        let detailOrder = ["productHeroCard(item)", "inventoryCard(item)", "productReviewCard", "priceCard(item)", "productNotesCard(item)", "transactionCard(item)"]
+        let detailOrder = ["productHeroCard(item)", "inventoryCard(item)", "productReviewCard", "balanceExpiryCard(item)", "priceCard(item)", "productNotesCard(item)", "transactionCard(item)"]
         let detailPositions = detailOrder.compactMap { detail.range(of: $0)?.lowerBound }
-        expect(detailPositions.count == detailOrder.count && detailPositions == detailPositions.sorted(), "the optional item-notes card is second-to-last, immediately before inventory history")
+        expect(detailPositions.count == detailOrder.count && detailPositions == detailPositions.sorted(), "the standalone expiry card sits directly above price history and item notes remain second-to-last")
         if let noteCard = sourceSlice(detail, from: "private func productNotesCard(_ item: PetItem)", to: "private func inventoryCard(_ item: PetItem)") {
             expect(noteCard.contains("if !note.isEmpty"), "the moved item-notes card remains hidden when there is no note")
         } else {
             fatalError("pet item notes card source is missing")
         }
+        if let inventoryCard = sourceSlice(detail, from: "private func inventoryCard(_ item: PetItem)", to: "private func balanceExpiryCard(_ item: PetItem) -> some View {") {
+            expect(!inventoryCard.contains("PetInventoryBalanceRowsEditor") && !inventoryCard.contains("保存保质期"), "the inventory card contains only stock and actions; expiry editing is moved out")
+        } else {
+            fatalError("pet inventory card source is missing")
+        }
+        if let expiryCard = sourceSlice(detail, from: "private func balanceExpiryCard(_ item: PetItem) -> some View {", to: "private func expiryBalanceLabel(") {
+            expect(expiryCard.contains("HomeCard(padding: 12)") && expiryCard.contains("expiryBalanceLabel(\"未设置\"") && expiryCard.contains("展开 · \\(groups.count)条") && expiryCard.contains("sheet = .balanceEdit"), "expiry is a read-only card with an unset state, expandable groups, and a single edit entry")
+            expect(expiryCard.contains("group.expirationDate.map(petExpirationDisplayDate)") && expiryCard.contains("group.remainingQuantity") && expiryCard.contains("unit: item.unit"), "each displayed expiry date remains paired with its quantity and unit")
+        } else {
+            fatalError("pet expiry summary card source is missing")
+        }
+        expect(source.contains("private struct PetInventoryBalanceEditorSheet") && source.contains(".navigationTitle(\"编辑保质期\")") && source.contains("Button(\"取消\")") && source.contains("store.updatePetInventoryBalanceDates(productID: productID, edits: balanceDateEdits)"), "the detail opens one draft editor sheet with cancel/save persistence")
         expect(palatability.contains("ForEach(groups)") && !palatability.contains("DisclosureGroup(isExpanded:") && palatability.contains("ForEach(group.oldestFirstRecords)"), "each pet has one collapsed summary and can reveal every review inline")
         expect(palatability.contains("group.count == 1") && palatability.contains("sheet = .palatability(reviewID: review.id)"), "a single review opens its original editor directly")
         expect(palatability.contains("group.count > 1") && palatability.contains("Text(\"\\(group.count)条\")") && palatability.contains("average.formatted") && palatability.contains("分"), "multi-review summaries show only the adjacent count and average score")
@@ -1270,9 +1282,9 @@ struct PetInventoryCostingAcceptance {
         expect(brandPosition < separatorPosition && separatorPosition < pricePosition && pricePosition < namePosition && namePosition < expirationPosition, "shared rows place price beside brand, followed by product name and optional expiry")
         expect(sharedRow.contains("size: 14, weight: .medium") && sharedRow.contains("Text(averagePriceText ?? \"—\")") && sharedRow.contains("font(.system(size: 12))") && sharedRow.contains("HomeTheme.muted"), "brand and unitless one-decimal price use the requested 14 and 12 point styles")
         expect(sharedRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && sharedRow.contains("Image(systemName: \"star.fill\")") && sharedRow.contains("Text(\"未评分\")") && ratingPosition < specificationPosition && sharedRow.contains(".frame(width: 100, alignment: .trailing)"), "rating and specification share the right column on the first two information lines")
-        expect(sharedRow.contains("if let expirationText {") && sharedRow.contains(".map(petExpirationDisplayDate)") && !sharedRow.contains("?? \"未设日期\"") && sharedRow.contains(".frame(maxWidth: .infinity, minHeight: 48"), "only dated remaining stock gets a third line, with no placeholder height")
+        expect(sharedRow.contains("if let expirationText {") && sharedRow.contains(".map(petExpirationDisplayDate)") && !sharedRow.contains("?? \"未设日期\"") && sharedRow.contains(".frame(maxWidth: .infinity, minHeight: 64"), "only dated remaining stock gets a third line while equal-size thumbnails keep a consistent row height")
         expect(sharedRow.contains("Text(item.name)") && sharedRow.contains("size: 13, weight: .semibold") && sharedRow.contains("Text(flavor)") && sharedRow.contains("font(.system(size: 13))") && sharedRow.contains(".lineLimit(1)") && !sharedRow.contains("minimumScaleFactor"), "name and flavor keep separate 13 point styles without shrinking ordinary content")
-        expect(listSource.contains(".frame(width: 48, height: 48)") && listSource.contains(".clipShape(RoundedRectangle(cornerRadius: 12"), "shared product rows retain the 48 point rounded thumbnail")
+        expect(listSource.contains(".frame(width: 64, height: 64)") && listSource.contains(".clipShape(RoundedRectangle(cornerRadius: 12"), "shared product rows use the 64 point rounded thumbnail")
         expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
         let metricCalls = overview.components(separatedBy: "overviewMetric(").count - 1
         guard let metric = sourceSlice(
@@ -1301,12 +1313,16 @@ struct PetInventoryCostingAcceptance {
         let litterSource = try String(contentsOfFile: "HomeOSNative/Views/LitterViews.swift", encoding: .utf8)
         let storeSource = try String(contentsOfFile: "HomeOSNative/Data/HomeStore.swift", encoding: .utf8)
         let costingSource = try String(contentsOfFile: "HomeOSNative/Data/PetInventoryCosting.swift", encoding: .utf8)
+        let uiTests = try String(contentsOfFile: "UITests/PetExpiryPresentationUITests.swift", encoding: .utf8)
+        let homeSource = try String(contentsOfFile: "HomeOSNative/Views/HomeView.swift", encoding: .utf8)
+        let storedImageSource = try String(contentsOfFile: "HomeOSNative/Views/PetEventViews.swift", encoding: .utf8)
         guard let pending = sourceSlice(itemsSource, from: "struct PetPendingRepurchaseView: View", to: "struct PetNoRepurchaseLibraryView: View"),
               let transactionEditor = sourceSlice(inventorySource, from: "struct PetInventoryTransactionEditorView: View", to: "struct PetProductReviewEditorView: View"),
               let initialEditor = sourceSlice(inventorySource, from: "struct PetItemEditorView: View", to: "private enum PetItemEditorField"),
               let balanceEditor = sourceSlice(inventorySource, from: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable", to: "struct PetItemEditorView: View"),
               let detail = sourceSlice(itemsSource, from: "struct PetItemDetailView: View", to: "func petExpirationDisplayDate"),
-              let productListRow = sourceSlice(itemsSource, from: "private struct PetProductListRowContent: View", to: "private enum PetItemsRoute") else {
+              let productListRow = sourceSlice(itemsSource, from: "private struct PetProductListRowContent: View", to: "private enum PetItemsRoute"),
+              let expiryControl = sourceSlice(inventorySource, from: "struct PetExpirationDatePickerControl: View", to: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable") else {
             fatalError("expiry presentation source sections are missing")
         }
         expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
@@ -1316,14 +1332,23 @@ struct PetInventoryCostingAcceptance {
         expect(!inventorySource.contains("initialHasExpiration") && !itemsSource.contains("quickHasExpiration"), "expiry entry uses a selected date instead of an enable switch")
         expect(itemsSource.contains("PetExpirationDateRow(selectedDate: $quickExpirationDate)") && itemsSource.contains("quickExpirationDate.map(LitterPredictionService.format)"), "quick inbound uses the persistent expiry row")
         expect(inventorySource.contains("PetExpirationDateRow(selectedDate: $expirationDate)") && inventorySource.contains("expirationDate: mode == .inbound"), "full inbound records the selected expiry on its source batch")
-        expect(inventorySource.contains("DatePicker(\"保质期\", selection: selection, displayedComponents: .date)") && inventorySource.contains(".datePickerStyle(.compact)") && inventorySource.contains("Text(emptyValue)") && inventorySource.contains("selectedDate = nil") && inventorySource.contains("Calendar.current.startOfDay(for: Date())"), "expiry uses a native compact date picker, shows an unset placeholder, allows clearing, and does not persist today's fallback date")
+        expect(expiryControl.contains("DatePicker(\"保质期\", selection: selection, displayedComponents: .date)") && expiryControl.contains(".datePickerStyle(.compact)") && expiryControl.contains("if selectedDate != nil || isChoosingDate") && expiryControl.contains("Button(emptyValue)") && expiryControl.contains("Button(\"今天\")"), "expiry keeps the compact native picker behind a separate unset entry and offers an explicit today choice")
+        expect(!expiryControl.contains("Text(emptyValue)") && !expiryControl.contains("ZStack") && !expiryControl.contains("allowsHitTesting(false)") && !expiryControl.contains("overlay"), "an unset row never covers a visible fallback date with placeholder text")
+        expect(expiryControl.contains("selectedDate = nil") && expiryControl.contains("selectedDate ?? temporaryDate"), "opening the picker does not persist its temporary date; clear and cancel remain available")
         expect(!inventorySource.contains("PetExpirationDatePickerSheet") && !inventorySource.contains(".datePickerStyle(.graphical)"), "expiry no longer uses a custom graphical picker sheet")
         expect(balanceEditor.contains("summaryDates.count > 1") && balanceEditor.contains("\\(summaryDates.count)条") && balanceEditor.contains("TextField(\"0\", text: row.quantityText)") && balanceEditor.contains("＋增加日期") && balanceEditor.contains("enteredTotal <= currentInventory") && balanceEditor.contains("保持未设日期"), "balance rows collapse in place, expose editable quantities, constrain totals, and keep any remainder undated")
         expect(initialEditor.contains("PetInventoryBalanceRowsEditor(") && initialEditor.contains("balanceRows = groups.map(PetInventoryBalanceEditDraft.init(group:))") && initialEditor.contains("store.savePetItem("), "item editing prefills each live date group and saves product fields with date edits")
-        expect(detail.contains("PetInventoryBalanceRowsEditor(") && detail.contains("Text(\"保存保质期\")") && detail.contains("store.updatePetInventoryBalanceDates") && detail.contains(".disabled(balanceHasLocalEdits)"), "product detail edits date and quantity rows inline and saves without opening a manager sheet")
+        expect(detail.contains("balanceExpiryCard(item)") && detail.contains("priceCard(item)") && !detail.contains("保存保质期") && itemsSource.contains("private struct PetInventoryBalanceEditorSheet") && itemsSource.contains("case .balanceEdit"), "product detail shows a standalone read-only expiry card above price history and opens one editor sheet")
+        expect(itemsSource.contains("showsSummaryHeader: false") && itemsSource.contains("store.updatePetInventoryBalanceDates(productID: productID, edits: balanceDateEdits)"), "detail expiry editing reuses the shared date/quantity rows and persists through the existing ledger mapping")
         expect(!itemsSource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("拆分日期") && !inventorySource.contains("调整库存日期"), "the nested balance manager and split-date flow are removed")
         expect(storeSource.contains("func appendPetInventoryBalanceEdits(") && storeSource.contains("petInventoryBalanceAllocations.append(contentsOf: additions)") && costingSource.contains("static func editedBalanceAllocations(") && costingSource.contains("sourceAvailableBefore: available"), "date edits persist as replayable balance mappings and preserve transaction records")
-        expect(productListRow.contains("PetItemHomepageAveragePrice.text(") && productListRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)") && productListRow.contains("Text(specificationAndStock)") && productListRow.contains("minHeight: 48") && itemsSource.contains("frame(width: 48, height: 48)") && itemsSource.contains("cornerRadius: 12"), "the existing home row keeps its weighted price, rating/spec-stock, positive-balance expiry and 48-point thumbnail layout")
+        expect(productListRow.contains("PetItemHomepageAveragePrice.text(") && productListRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)") && productListRow.contains("Text(specificationAndStock)") && productListRow.contains("minHeight: 64") && itemsSource.contains("frame(width: 64, height: 64)") && itemsSource.contains("cornerRadius: 12") && itemsSource.contains("contentMode: .fit") && storedImageSource.contains("aspectRatio(contentMode: contentMode)"), "product rows use a 64-point full-image thumbnail with preserved source aspect ratio")
+        expect(productListRow.contains("size: 14, weight: .medium") && productListRow.contains("size: 13, weight: .semibold") && productListRow.contains("frame(width: 100, alignment: .trailing)") && itemsSource.contains("PetProductThumbnail(item: item)"), "the larger thumbnail keeps the approved text sizes and rating/specification column")
+        expect(homeSource.contains("PetProductThumbnail(item: item)"), "the home stock library shares the same thumbnail sizing and fit mode")
+        expect(uiTests.contains("app.datePickers.count, 0") && uiTests.contains("XCTAttachment(screenshot: XCUIScreen.main.screenshot())") && uiTests.contains("保质期设为今天"), "iPhone Simulator UI checks capture the unset date state and exercise explicit today selection")
+        expect(uiTests.contains("testMultipleExpiryGroupsExpandAndDateRowsOpenTheEditor") && uiTests.contains("2027.03.01") && uiTests.contains("2027.08.08"), "iPhone Simulator UI checks collapse/expand multiple expiry rows and open editing from a date")
+        expect(uiTests.contains("testProductRowsFitLongFlavorAndKeepDatesOnTheirOwnLine") && uiTests.contains("thumbnail.frame.width.rounded(), 64") && uiTests.contains("鸡肉三文鱼蔓越莓") && uiTests.contains("185g × 2罐"), "iPhone Simulator UI checks long flavor, missing rating/date, and three-line expiry row sizing")
+        expect(productListRow.contains("accessibilitySummary") && productListRow.contains("if let expirationText { parts.append(\"保质期 \\(expirationText)\") }"), "list row accessibility preserves product, rating, stock, and optional expiry details for layout checks")
         expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
         expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
         expect(litterSource.contains("PetInventoryBatchAllocationSheet") && storeSource.contains("batchAllocationsByProduct[allocation.productID]"), "cat litter consumption records its batch allocations through the shared ledger")

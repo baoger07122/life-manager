@@ -370,9 +370,7 @@ private struct PetStockItemsView: View {
         List(items) { item in
             NavigationLink { PetItemDetailView(itemID: item.id) } label: {
                 HStack(spacing: 11) {
-                    PetStoredImage(reference: item.image ?? "")
-                        .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    PetProductThumbnail(item: item)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.displayTitle).font(HomeTypography.cardTitle)
                         Text("\(item.spec) · \(store.petInventory(for: item.id).formatted())\(item.unit)")

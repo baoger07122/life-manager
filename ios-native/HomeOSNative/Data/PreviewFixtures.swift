@@ -1,3 +1,4 @@
+#if DEBUG || PLAYGROUND_PREVIEW
 import Foundation
 
 extension HomeBackup {
@@ -8,6 +9,73 @@ extension HomeBackup {
 }
 
 enum PreviewFixtures {
+    static var expiryBalanceUITest: HomeBackup {
+        var backup = homeOS
+        let productID = "preview-pet-food-2"
+        let sourceBatchID = PetInventoryBatchLedger.unassignedBatchID(for: productID)
+        let now = Date().timeIntervalSince1970
+        let effectiveDate = LitterPredictionService.format(Date())
+        backup.petInventoryBalanceAllocations = [
+            PetInventoryBalanceAllocation(
+                id: "preview-expiry-earlier",
+                productID: productID,
+                sourceBatchID: sourceBatchID,
+                sourceAvailableBefore: 12,
+                expirationDate: "2027-03-01",
+                quantity: 5,
+                effectiveDate: effectiveDate,
+                createdAt: now + 1
+            ),
+            PetInventoryBalanceAllocation(
+                id: "preview-expiry-later",
+                productID: productID,
+                sourceBatchID: sourceBatchID,
+                sourceAvailableBefore: 7,
+                expirationDate: "2027-08-08",
+                quantity: 7,
+                effectiveDate: effectiveDate,
+                createdAt: now + 2
+            )
+        ]
+        return backup
+    }
+
+    static var petListUITest: HomeBackup {
+        var backup = expiryBalanceUITest
+        var longFlavorItem = backup.petItems.first { $0.id == "preview-pet-food-2" }!
+        let productID = "preview-pet-food-long-flavor"
+        let now = Date().timeIntervalSince1970
+        longFlavorItem.id = productID
+        longFlavorItem.name = "主食罐"
+        longFlavorItem.variant = "鸡肉三文鱼蔓越莓"
+        longFlavorItem.quantity = 2
+        longFlavorItem.createdAt = now
+        longFlavorItem.updatedAt = now
+        longFlavorItem.image = nil
+        backup.petItems.append(longFlavorItem)
+        backup.petInventoryTransactions.append(PetInventoryTransaction(
+            id: "preview-long-flavor-inbound",
+            productID: productID,
+            type: .inbound,
+            quantityChange: 2,
+            quantityBefore: 0,
+            quantityAfter: 2,
+            unit: longFlavorItem.unit,
+            occurrenceDate: LitterPredictionService.format(Date()),
+            reason: "Simulator 行布局预览",
+            source: .manual,
+            linkedOperationID: nil,
+            totalPrice: nil,
+            unitPrice: nil,
+            purchaseChannel: nil,
+            expirationDate: nil,
+            note: nil,
+            createdAt: now,
+            updatedAt: now
+        ))
+        return backup
+    }
+
     static var homeOS: HomeBackup {
         let calendar = Calendar.current
         let now = Date()
@@ -136,3 +204,4 @@ enum PreviewFixtures {
         )
     }
 }
+#endif

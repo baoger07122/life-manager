@@ -417,6 +417,7 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
             }
             .buttonStyle(.plain)
             .accessibilityLabel("查看\(item.name)详情")
+            .accessibilityIdentifier("pet-product-thumbnail-\(item.id)")
 
             Button {
                 toggleQuickManager(for: item)
@@ -425,7 +426,8 @@ struct PetItemsListView<HeaderContent: View, StatisticsContent: View, FooterCont
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("展开\(item.name)快捷操作")
+            .accessibilityHint("展开快捷库存操作")
+            .accessibilityIdentifier("pet-product-row-content-\(item.id)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14)
@@ -752,6 +754,18 @@ private struct PetProductListRowContent: View {
         return spec.isEmpty ? stockText : "\(spec) × \(stockText)"
     }
 
+    private var accessibilitySummary: String {
+        let rating = store.petProductRating(productID: item.id).map {
+            "评分 \($0.overall.formatted(.number.precision(.fractionLength(1))))"
+        } ?? "未评分"
+        var parts = [brandName, item.displayNameAndVariant]
+        if let averagePriceText { parts.append("单价 \(averagePriceText)") }
+        parts.append(rating)
+        parts.append(specificationAndStock)
+        if let expirationText { parts.append("保质期 \(expirationText)") }
+        return parts.joined(separator: "，")
+    }
+
     var body: some View {
         HStack(alignment: .top, spacing: 11) {
             VStack(alignment: .leading, spacing: 5) {
@@ -821,23 +835,25 @@ private struct PetProductListRowContent: View {
             .frame(width: 100, alignment: .trailing)
         }
         .padding(.leading, 9)
-        .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilitySummary)
     }
 }
 
-private struct PetProductThumbnail: View {
+struct PetProductThumbnail: View {
     let item: PetItem
 
     @ViewBuilder
     var body: some View {
         if let image = item.image, !image.isEmpty {
-            PetStoredImage(reference: image)
-                .frame(width: 48, height: 48)
+            PetStoredImage(reference: image, contentMode: .fit)
+                .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         } else {
             Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "takeoutbag.and.cup.and.straw.fill")
                 .foregroundStyle(HomeTheme.blue)
-                .frame(width: 48, height: 48)
+                .frame(width: 64, height: 64)
                 .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
@@ -1132,13 +1148,7 @@ struct PetRatingsListView: View {
     }
 
     @ViewBuilder private func ratingImage(_ item: PetItem) -> some View {
-        if let image = item.image, !image.isEmpty {
-            PetStoredImage(reference: image).frame(width: 48, height: 48).clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        } else {
-            Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "takeoutbag.and.cup.and.straw.fill")
-                .foregroundStyle(HomeTheme.blue).frame(width: 48, height: 48)
-                .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
+        PetProductThumbnail(item: item)
     }
 }
 
@@ -1652,23 +1662,19 @@ struct PetItemDetailView: View {
     @State private var showArchive = false
     @State private var sheet: PetItemDetailSheet?
     @State private var expandedPalatabilityPetIDs = Set<String>()
-    @State private var balanceRows: [PetInventoryBalanceEditDraft] = []
-    @State private var originalBalanceRows: [PetInventoryBalanceEditDraft] = []
-    @State private var balanceExpanded = false
-    @State private var balanceSaveError: String?
+    @State private var balanceExpiryExpanded = false
     private var item: PetItem? { store.data.petItems.first { $0.id == itemID } }
     private var balanceGroups: [PetInventoryExpiryGroup] { store.petInventoryBatchGroups(for: itemID) }
     private var balanceInventory: Double { store.petInventory(for: itemID) }
-    private var balanceHasLocalEdits: Bool { balanceRows != originalBalanceRows }
-    private var balanceValidationMessage: String? {
-        PetInventoryBalanceEditValidation.message(
-            rows: balanceRows,
-            currentGroups: balanceGroups,
-            currentInventory: balanceInventory
-        )
-    }
-    private var balanceDateEdits: [PetInventoryBalanceEdit] {
-        balanceRows.compactMap(\.balanceEdit).filter { $0.sourceGroupID != nil || $0.quantity > 0.000_001 }
+    private var orderedBalanceGroups: [PetInventoryExpiryGroup] {
+        balanceGroups.sorted { left, right in
+            switch (left.expirationDate, right.expirationDate) {
+            case let (.some(leftDate), .some(rightDate)): return leftDate < rightDate
+            case (.some(_), .none): return true
+            case (.none, .some(_)): return false
+            case (.none, .none): return left.id < right.id
+            }
+        }
     }
 
     var body: some View {
@@ -1679,6 +1685,7 @@ struct PetItemDetailView: View {
                     inventoryCard(item)
                     productReviewCard
                     if isPetFood(item) { palatabilityCard }
+                    balanceExpiryCard(item)
                     priceCard(item)
                     productNotesCard(item)
                     transactionCard(item)
@@ -1690,7 +1697,6 @@ struct PetItemDetailView: View {
         .background(HomeTheme.background)
         .navigationTitle(item?.displayTitle ?? "物品详情")
         .navigationBarTitleDisplayMode(.inline)
-        .task(id: itemID) { reloadBalanceRows() }
         .toolbar {
             if let item {
                 ToolbarItemGroup(placement: .primaryAction) {
@@ -1714,13 +1720,17 @@ struct PetItemDetailView: View {
                 }
             }
         }
-        .sheet(item: $sheet, onDismiss: {
-            if !balanceHasLocalEdits { reloadBalanceRows() }
-        }) { value in
+        .sheet(item: $sheet) { value in
             switch value {
             case .inbound: PetInventoryEditorView(productID: itemID, mode: .inbound)
             case .outbound: PetInventoryEditorView(productID: itemID, mode: .outbound)
             case .adjustment: PetInventoryEditorView(productID: itemID, mode: .adjustment)
+            case .balanceEdit:
+                PetInventoryBalanceEditorSheet(
+                    productID: itemID,
+                    initialGroups: balanceGroups,
+                    unit: item?.unit ?? "件"
+                )
             case .productReview(let reviewID): PetProductReviewEditorView(productID: itemID, reviewID: reviewID)
             case .palatability(let reviewID): PetPalatabilityEditorView(productID: itemID, reviewID: reviewID)
             case .image: PetItemImageEditorSheet(itemID: itemID, initialImage: item?.image)
@@ -1808,59 +1818,93 @@ struct PetItemDetailView: View {
                         inventoryAction("出库", icon: "square.and.arrow.up", color: HomeTheme.blue) { sheet = .outbound }
                         inventoryAction("修正", icon: "pencil", color: HomeTheme.blue) { sheet = .adjustment }
                     }
-                    .disabled(balanceHasLocalEdits)
-                }
-                Divider().overlay(HomeTheme.line)
-                PetInventoryBalanceRowsEditor(
-                    rows: $balanceRows,
-                    isExpanded: $balanceExpanded,
-                    currentGroups: balanceGroups,
-                    currentInventory: balanceInventory,
-                    unit: item.unit
-                )
-                if balanceHasLocalEdits {
-                    Text("请先保存保质期，再做入库、出库或库存修正。")
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                Button {
-                    saveBalanceDates()
-                } label: {
-                    Text("保存保质期")
-                        .font(HomeTypography.body.weight(.medium))
-                        .foregroundStyle(HomeTheme.blue)
-                        .frame(maxWidth: .infinity, minHeight: HomeMetrics.minimumTapTarget)
-                }
-                .buttonStyle(.plain)
-                .disabled(!balanceHasLocalEdits || balanceValidationMessage != nil)
-                if let balanceSaveError {
-                    Text(balanceSaveError)
-                        .font(HomeTypography.supporting)
-                        .foregroundStyle(HomeTheme.danger)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
     }
 
-    private func reloadBalanceRows() {
-        let rows = store.petInventoryBatchGroups(for: itemID).map(PetInventoryBalanceEditDraft.init(group:))
-        balanceRows = rows
-        originalBalanceRows = rows
-        balanceExpanded = rows.count <= 1
-        balanceSaveError = nil
+    private func balanceExpiryCard(_ item: PetItem) -> some View {
+        let groups = orderedBalanceGroups
+        return HomeCard(padding: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Button {
+                        sheet = .balanceEdit
+                        NativeHaptics.tap()
+                    } label: {
+                        Text("保质期")
+                            .font(HomeTypography.cardTitle)
+                            .foregroundStyle(HomeTheme.ink)
+                            .frame(minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("编辑保质期")
+
+                    Spacer(minLength: 8)
+                    if groups.count > 1 {
+                        Button {
+                            balanceExpiryExpanded.toggle()
+                            NativeHaptics.tap()
+                        } label: {
+                            HStack(spacing: 5) {
+                                Text(balanceExpiryExpanded ? "收起" : "展开 · \(groups.count)条")
+                                    .font(HomeTypography.supporting)
+                                    .foregroundStyle(HomeTheme.muted)
+                                Image(systemName: balanceExpiryExpanded ? "chevron.up" : "chevron.down")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(minHeight: HomeMetrics.minimumTapTarget)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(balanceExpiryExpanded ? "收起保质期日期" : "展开保质期日期，\(groups.count)条")
+                    }
+                }
+
+                if groups.isEmpty {
+                    Button {
+                        sheet = .balanceEdit
+                        NativeHaptics.tap()
+                    } label: {
+                        expiryBalanceLabel("未设置", quantity: balanceInventory, unit: item.unit)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    let visibleGroups = groups.count > 1 && !balanceExpiryExpanded ? Array(groups.prefix(1)) : groups
+                    ForEach(Array(visibleGroups.enumerated()), id: \.element.id) { index, group in
+                        if index > 0 { Divider().overlay(HomeTheme.line) }
+                        Button {
+                            sheet = .balanceEdit
+                            NativeHaptics.tap()
+                        } label: {
+                            expiryBalanceLabel(group.expirationDate.map(petExpirationDisplayDate) ?? "未设置", quantity: group.remainingQuantity, unit: item.unit)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(group.expirationDate.map(petExpirationDisplayDate) ?? "未设置")，\(group.remainingQuantity.formatted())\(item.unit)，编辑保质期")
+                    }
+                }
+            }
+        }
     }
 
-    private func saveBalanceDates() {
-        guard balanceValidationMessage == nil else { return }
-        guard store.updatePetInventoryBalanceDates(productID: itemID, edits: balanceDateEdits) else {
-            balanceSaveError = store.lastError ?? "保质期没有保存，请重试。"
-            NativeHaptics.error()
-            return
+    private func expiryBalanceLabel(_ date: String, quantity: Double, unit: String) -> some View {
+        HStack(spacing: 8) {
+            Text(date)
+                .font(HomeTypography.body)
+                .foregroundStyle(HomeTheme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+            Spacer(minLength: 8)
+            Text("\(quantity.formatted())\(unit)")
+                .font(HomeTypography.body)
+                .foregroundStyle(HomeTheme.ink)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
-        reloadBalanceRows()
-        NativeHaptics.success()
+        .frame(maxWidth: .infinity, minHeight: HomeMetrics.controlHeight, alignment: .leading)
+        .contentShape(Rectangle())
     }
 
     private func transactionCard(_ item: PetItem) -> some View {
@@ -2305,10 +2349,105 @@ func petExpirationDisplayDate(_ storedDate: String) -> String {
     return formatter.string(from: date)
 }
 
+private struct PetInventoryBalanceEditorSheet: View {
+    @EnvironmentObject private var store: HomeStore
+    @Environment(\.dismiss) private var dismiss
+    let productID: String
+    let unit: String
+    @State private var rows: [PetInventoryBalanceEditDraft]
+    @State private var rowsExpanded = true
+    @State private var saveError: String?
+
+    init(productID: String, initialGroups: [PetInventoryExpiryGroup], unit: String) {
+        self.productID = productID
+        self.unit = unit
+        _rows = State(initialValue: initialGroups.map(PetInventoryBalanceEditDraft.init(group:)))
+    }
+
+    private var currentGroups: [PetInventoryExpiryGroup] { store.petInventoryBatchGroups(for: productID) }
+    private var currentInventory: Double { store.petInventory(for: productID) }
+    private var validationMessage: String? {
+        PetInventoryBalanceEditValidation.message(
+            rows: rows,
+            currentGroups: currentGroups,
+            currentInventory: currentInventory
+        )
+    }
+    private var balanceDateEdits: [PetInventoryBalanceEdit] {
+        rows.compactMap(\.balanceEdit).filter { $0.sourceGroupID != nil || $0.quantity > 0.000_001 }
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: HomeMetrics.sectionSpacing) {
+                    HomeCard(padding: 12) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("当前库存")
+                                    .font(HomeTypography.cardTitle)
+                                    .foregroundStyle(HomeTheme.ink)
+                                Spacer()
+                                Text("\(currentInventory.formatted())\(unit)")
+                                    .font(HomeTypography.body)
+                                    .foregroundStyle(HomeTheme.muted)
+                            }
+                            Divider().overlay(HomeTheme.line)
+                            PetInventoryBalanceRowsEditor(
+                                rows: $rows,
+                                isExpanded: $rowsExpanded,
+                                currentGroups: currentGroups,
+                                currentInventory: currentInventory,
+                                unit: unit,
+                                showsSummaryHeader: false
+                            )
+                        }
+                    }
+
+                    if let saveError {
+                        Text(saveError)
+                            .font(HomeTypography.supporting)
+                            .foregroundStyle(HomeTheme.danger)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(HomeMetrics.pageInset)
+            }
+            .background(HomeTheme.background)
+            .navigationTitle("编辑保质期")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存", action: save)
+                        .fontWeight(.semibold)
+                        .disabled(validationMessage != nil)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func save() {
+        guard validationMessage == nil else { return }
+        guard store.updatePetInventoryBalanceDates(productID: productID, edits: balanceDateEdits) else {
+            saveError = store.lastError ?? "保质期没有保存，请重试。"
+            NativeHaptics.error()
+            return
+        }
+        NativeHaptics.success()
+        dismiss()
+    }
+}
+
 private enum PetItemDetailSheet: Identifiable {
     case inbound
     case outbound
     case adjustment
+    case balanceEdit
     case productReview(reviewID: String?)
     case palatability(reviewID: String?)
     case image
@@ -2319,6 +2458,7 @@ private enum PetItemDetailSheet: Identifiable {
         case .inbound: "inbound"
         case .outbound: "outbound"
         case .adjustment: "adjustment"
+        case .balanceEdit: "balance-edit"
         case .productReview(let reviewID): "product-review-\(reviewID ?? "new")"
         case .palatability(let reviewID): "palatability-\(reviewID ?? "new")"
         case .image: "image"

@@ -133,9 +133,20 @@ struct PetInventoryStatisticsView: View {
                             .foregroundStyle(HomeTheme.muted)
                     }
                     Spacer()
-                    Text("共\(quantity(category.totalQuantity))件")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(HomeTheme.blue)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("共\(quantity(category.totalQuantity))件")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(HomeTheme.blue)
+                            .lineLimit(1)
+                        Text(category.valuation.wholeAmountText)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(HomeTheme.blue)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .accessibilityLabel(category.valuation.accessibilityLabel)
+                            .accessibilityIdentifier("pet-inventory-category-valuation-\(category.name)")
+                    }
+                    .frame(minWidth: 72, alignment: .trailing)
                 }
                 .padding(.horizontal, HomeMetrics.cardPadding)
                 .frame(minHeight: 58)
@@ -237,18 +248,19 @@ private struct PetInventoryStatisticsSnapshot {
 
         let items = store.activePetItems.filter { $0.resolvedPrimaryCategory == root.name }
         var inventoryByProduct: [String: Double] = [:]
+        var valuationInputByProductID: [String: PetInventoryValuationInput] = [:]
         var valuationInputs: [PetInventoryValuationInput] = []
         for item in items {
             let stock = store.petInventory(for: item.id)
             inventoryByProduct[item.id] = stock
+            let valuationInput = PetInventoryValuationInput(
+                productID: item.id,
+                quantity: stock,
+                weightedUnitPrice: store.petWeightedAverageInboundUnitPrice(for: item.id)
+            )
+            valuationInputByProductID[item.id] = valuationInput
             if stock > 0 || !stock.isFinite {
-                valuationInputs.append(
-                    PetInventoryValuationInput(
-                        productID: item.id,
-                        quantity: stock,
-                        weightedUnitPrice: store.petWeightedAverageInboundUnitPrice(for: item.id)
-                    )
-                )
+                valuationInputs.append(valuationInput)
             }
         }
         let valuation = PetInventoryValuation.summarize(valuationInputs)
@@ -261,6 +273,7 @@ private struct PetInventoryStatisticsSnapshot {
         for item in items {
             let stock = inventoryByProduct[item.id] ?? 0
             guard stock.isFinite, stock > 0 else { continue }
+            guard let valuationInput = valuationInputByProductID[item.id] else { continue }
             totalQuantity += stock
 
             let cleanPackage = item.packageType?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -280,7 +293,8 @@ private struct PetInventoryStatisticsSnapshot {
                 sortValue: sortValue,
                 package: package,
                 quantity: stock,
-                unspecified: resolved == nil && rawSpec.isEmpty
+                unspecified: resolved == nil && rawSpec.isEmpty,
+                valuationInput: valuationInput
             )
             accumulators[item.resolvedSecondaryCategory] = category
 
@@ -314,6 +328,7 @@ private struct PetInventoryCategoryAccumulator {
     var totalQuantity = 0.0
     var packages: [String: Double] = [:]
     var specifications: [String: PetInventorySpecificationAccumulator] = [:]
+    var valuationInputs: [PetInventoryValuationInput] = []
 
     mutating func add(
         specificationKey: String,
@@ -321,10 +336,12 @@ private struct PetInventoryCategoryAccumulator {
         sortValue: Double,
         package: String,
         quantity: Double,
-        unspecified: Bool
+        unspecified: Bool,
+        valuationInput: PetInventoryValuationInput
     ) {
         totalQuantity += quantity
         packages[package, default: 0] += quantity
+        valuationInputs.append(valuationInput)
         var specification = specifications[specificationKey]
             ?? PetInventorySpecificationAccumulator(id: specificationKey, label: specificationLabel, sortValue: sortValue, isUnspecified: unspecified)
         specification.packages[package, default: 0] += quantity
@@ -336,6 +353,7 @@ private struct PetInventoryCategoryAccumulator {
             name: name,
             totalQuantity: totalQuantity,
             packageSummary: Self.packageSummary(packages),
+            valuation: PetInventoryValuation.summarize(valuationInputs),
             specifications: specifications.values
                 .sorted { $0.sortValue == $1.sortValue ? $0.label < $1.label : $0.sortValue < $1.sortValue }
                 .map {
@@ -369,6 +387,7 @@ private struct PetInventoryCategorySummary: Identifiable {
     let name: String
     let totalQuantity: Double
     let packageSummary: String
+    let valuation: PetInventoryValuationSummary
     let specifications: [PetInventorySpecificationSummary]
 }
 

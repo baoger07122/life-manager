@@ -14,7 +14,7 @@ let package = Package(
         .iOSApplication(
             name: "Home OS 原生预览",
             targets: ["AppModule"],
-            displayVersion: "10.30.2",
+            displayVersion: "10.31.1",
             bundleVersion: "52",
             appIcon: .placeholder(icon: .box),
             accentColor: .presetColor(.blue),

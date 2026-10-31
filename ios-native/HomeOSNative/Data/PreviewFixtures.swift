@@ -73,6 +73,94 @@ enum PreviewFixtures {
             createdAt: now,
             updatedAt: now
         ))
+        var largeQuantityItem = backup.petItems.first { $0.id == "preview-pet-food-2" }!
+        let largeQuantityProductID = "preview-pet-food-large-quantity"
+        largeQuantityItem.id = largeQuantityProductID
+        largeQuantityItem.name = "大数量商品"
+        largeQuantityItem.variant = nil
+        largeQuantityItem.quantity = 123_456
+        largeQuantityItem.createdAt = now + 1
+        largeQuantityItem.updatedAt = now + 1
+        largeQuantityItem.image = nil
+        backup.petItems.append(largeQuantityItem)
+        backup.petInventoryTransactions.append(PetInventoryTransaction(
+            id: "preview-large-quantity-inbound",
+            productID: largeQuantityProductID,
+            type: .inbound,
+            quantityChange: 123_456,
+            quantityBefore: 0,
+            quantityAfter: 123_456,
+            unit: largeQuantityItem.unit,
+            occurrenceDate: LitterPredictionService.format(Date()),
+            reason: "Simulator 大数量行预览",
+            source: .manual,
+            linkedOperationID: nil,
+            totalPrice: nil,
+            unitPrice: nil,
+            purchaseChannel: nil,
+            expirationDate: nil,
+            note: nil,
+            createdAt: now + 1,
+            updatedAt: now + 1
+        ))
+        var ratedPricedItem = backup.petItems.first { $0.id == "preview-pet-food-2" }!
+        let ratedPricedProductID = "preview-pet-food-rated-priced"
+        ratedPricedItem.id = ratedPricedProductID
+        ratedPricedItem.name = "加权价试算"
+        ratedPricedItem.variant = "原味"
+        ratedPricedItem.spec = "85g"
+        ratedPricedItem.unit = "盒"
+        ratedPricedItem.packageType = "盒"
+        ratedPricedItem.quantity = 5
+        ratedPricedItem.createdAt = now + 2
+        ratedPricedItem.updatedAt = now + 2
+        ratedPricedItem.image = nil
+        backup.petItems.append(ratedPricedItem)
+        backup.petInventoryTransactions.append(contentsOf: [
+            PetInventoryTransaction(
+                id: "preview-rated-priced-inbound-early", productID: ratedPricedProductID, type: .inbound,
+                quantityChange: 2, quantityBefore: 0, quantityAfter: 2, unit: "盒",
+                occurrenceDate: LitterPredictionService.format(Date()), reason: "Simulator 有价行预览", source: .manual,
+                linkedOperationID: nil, totalPrice: 128, unitPrice: 64,
+                purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now - 20, updatedAt: now - 20
+            ),
+            PetInventoryTransaction(
+                id: "preview-rated-priced-inbound-late", productID: ratedPricedProductID, type: .inbound,
+                quantityChange: 3, quantityBefore: 2, quantityAfter: 5, unit: "盒",
+                occurrenceDate: LitterPredictionService.format(Date()), reason: "Simulator 有价行预览", source: .manual,
+                linkedOperationID: nil, totalPrice: 268, unitPrice: 268 / 3,
+                purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now - 10, updatedAt: now - 10
+            )
+        ])
+        backup.petProductReviews.append(PetProductReview(
+            id: "preview-rated-priced-review", productID: ratedPricedProductID,
+            reviewDate: LitterPredictionService.format(Date()), repurchaseLevel: 5,
+            reviewText: "Simulator 有评分行预览。", createdAt: now + 2, updatedAt: now + 2,
+            dimensionScores: ["适口性": 5, "品质": 5, "性价比": 4, "回购意愿": 5]
+        ))
+        return backup
+    }
+
+    static var petCategoryValuationUITest: HomeBackup {
+        var backup = homeOS
+        let now = Date().timeIntervalSince1970
+        let occurrenceDate = LitterPredictionService.format(Date())
+        let items = [
+            petItem(id: "preview-valuation-bag", type: "猫粮", name: "试算小袋", brand: "验收", spec: "85g", quantity: 1, unit: "袋", primary: "宠物食品", secondary: "猫粮", packageType: "袋"),
+            petItem(id: "preview-valuation-can", type: "猫粮", name: "试算小罐", brand: "验收", spec: "200g", quantity: 2, unit: "罐", primary: "宠物食品", secondary: "猫粮", packageType: "罐"),
+            petItem(id: "preview-valuation-bottle", type: "猫粮", name: "试算大瓶", brand: "验收", spec: "1kg", quantity: 10, unit: "瓶", primary: "宠物食品", secondary: "猫粮", packageType: "瓶"),
+            petItem(id: "preview-valuation-unpriced", type: "主食罐", name: "未计价罐头", brand: "验收", spec: "185g", quantity: 3, unit: "罐", primary: "宠物食品", secondary: "主食罐", packageType: "罐")
+        ]
+        backup.petItems = items
+        backup.petInventoryTransactions = [
+            PetInventoryTransaction(id: "preview-valuation-stock-bag", productID: "preview-valuation-bag", type: .inbound, quantityChange: 1, quantityBefore: 0, quantityAfter: 1, unit: "袋", occurrenceDate: occurrenceDate, reason: "估值 UI 夹具", source: .manual, linkedOperationID: nil, totalPrice: 0.49, unitPrice: 0.49, purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now - 3, updatedAt: now - 3),
+            PetInventoryTransaction(id: "preview-valuation-stock-can", productID: "preview-valuation-can", type: .inbound, quantityChange: 2, quantityBefore: 0, quantityAfter: 2, unit: "罐", occurrenceDate: occurrenceDate, reason: "估值 UI 夹具", source: .manual, linkedOperationID: nil, totalPrice: 0.98, unitPrice: 0.49, purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now - 2, updatedAt: now - 2),
+            PetInventoryTransaction(id: "preview-valuation-stock-bottle", productID: "preview-valuation-bottle", type: .inbound, quantityChange: 10, quantityBefore: 0, quantityAfter: 10, unit: "瓶", occurrenceDate: occurrenceDate, reason: "估值 UI 夹具", source: .manual, linkedOperationID: nil, totalPrice: 15.20, unitPrice: 1.52, purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now - 1, updatedAt: now - 1),
+            PetInventoryTransaction(id: "preview-valuation-stock-unpriced", productID: "preview-valuation-unpriced", type: .inbound, quantityChange: 3, quantityBefore: 0, quantityAfter: 3, unit: "罐", occurrenceDate: occurrenceDate, reason: "估值 UI 夹具", source: .manual, linkedOperationID: nil, totalPrice: nil, unitPrice: nil, purchaseChannel: nil, expirationDate: nil, note: nil, createdAt: now, updatedAt: now)
+        ]
+        backup.petInventoryBalanceAllocations = []
+        backup.petProductReviews = []
+        backup.petPalatabilityReviews = []
         return backup
     }
 

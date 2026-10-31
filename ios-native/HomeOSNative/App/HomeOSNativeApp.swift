@@ -4,6 +4,14 @@ import SwiftUI
 struct HomeOSNativeApp: App {
     @StateObject private var store = HomeStore()
 
+    private var isPetInventoryStatisticsUITestPreview: Bool {
+        #if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-codex-pet-inventory-statistics-ui-preview")
+        #else
+        false
+        #endif
+    }
+
     private var isPetListUITestPreview: Bool {
         #if DEBUG
         ProcessInfo.processInfo.arguments.contains("-codex-pet-list-ui-preview")
@@ -28,7 +36,11 @@ struct HomeOSNativeApp: App {
         WindowGroup {
             Group {
                 #if DEBUG
-                if isPetListUITestPreview {
+                if isPetInventoryStatisticsUITestPreview {
+                    NavigationStack {
+                        PetInventoryStatisticsView(capabilityKey: "petFood")
+                    }
+                } else if isPetListUITestPreview {
                     PetView()
                 } else if let previewItemID = expiryUITestPreviewItemID {
                     NavigationStack {
@@ -51,7 +63,9 @@ struct HomeOSNativeApp: App {
                     }
                     #endif
                     #if DEBUG
-                    if isPetListUITestPreview {
+                    if isPetInventoryStatisticsUITestPreview {
+                        store.replace(with: PreviewFixtures.petCategoryValuationUITest)
+                    } else if isPetListUITestPreview {
                         store.replace(with: PreviewFixtures.petListUITest)
                     } else if expiryUITestPreviewItemID != nil {
                         store.replace(with: PreviewFixtures.expiryBalanceUITest)

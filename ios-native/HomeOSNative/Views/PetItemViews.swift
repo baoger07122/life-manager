@@ -759,7 +759,7 @@ private struct PetProductListRowContent: View {
             "评分 \($0.overall.formatted(.number.precision(.fractionLength(1))))"
         } ?? "未评分"
         var parts = [brandName, item.displayNameAndVariant]
-        if let averagePriceText { parts.append("单价 \(averagePriceText)") }
+        parts.append("单价 \(averagePriceText ?? "—")")
         parts.append(rating)
         parts.append(specificationAndStock)
         if let expirationText { parts.append("保质期 \(expirationText)") }
@@ -767,7 +767,7 @@ private struct PetProductListRowContent: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 11) {
+        HStack(alignment: .center, spacing: 11) {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(brandName)
@@ -800,16 +800,10 @@ private struct PetProductListRowContent: View {
                     }
                 }
 
-                if let expirationText {
-                    Text(expirationText)
-                        .font(.system(size: 12))
-                        .foregroundStyle(HomeTheme.muted)
-                        .lineLimit(1)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: 5) {
+            VStack(alignment: .trailing, spacing: 1) {
                 if let rating = store.petProductRating(productID: item.id) {
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Image(systemName: "star.fill")
@@ -819,23 +813,35 @@ private struct PetProductListRowContent: View {
                     .foregroundStyle(HomeTheme.orange)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 } else {
                     Text("未评分")
                         .font(.system(size: 11))
                         .foregroundStyle(HomeTheme.muted)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
 
                 Text(specificationAndStock)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(HomeTheme.muted)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                if let expirationText {
+                    Text(expirationText)
+                        .font(.system(size: 11))
+                        .foregroundStyle(HomeTheme.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             }
             .frame(width: 100, alignment: .trailing)
         }
         .padding(.leading, 9)
-        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 48, alignment: .center)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilitySummary)
     }
@@ -848,12 +854,12 @@ struct PetProductThumbnail: View {
     var body: some View {
         if let image = item.image, !image.isEmpty {
             PetStoredImage(reference: image, contentMode: .fit)
-                .frame(width: 64, height: 64)
+                .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         } else {
             Image(systemName: item.resolvedSecondaryCategory == "猫砂" ? "circle.hexagongrid.fill" : "takeoutbag.and.cup.and.straw.fill")
                 .foregroundStyle(HomeTheme.blue)
-                .frame(width: 64, height: 64)
+                .frame(width: 48, height: 48)
                 .background(HomeTheme.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
     }
@@ -1826,7 +1832,7 @@ struct PetItemDetailView: View {
     private func balanceExpiryCard(_ item: PetItem) -> some View {
         let groups = orderedBalanceGroups
         return HomeCard(padding: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Button {
                         sheet = .balanceEdit
@@ -1835,7 +1841,7 @@ struct PetItemDetailView: View {
                         Text("保质期")
                             .font(HomeTypography.cardTitle)
                             .foregroundStyle(HomeTheme.ink)
-                            .frame(minHeight: HomeMetrics.minimumTapTarget, alignment: .leading)
+                            .padding(.vertical, 4)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -1855,7 +1861,7 @@ struct PetItemDetailView: View {
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.tertiary)
                             }
-                            .frame(minHeight: HomeMetrics.minimumTapTarget)
+                            .padding(.vertical, 4)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -1903,7 +1909,8 @@ struct PetItemDetailView: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .frame(maxWidth: .infinity, minHeight: HomeMetrics.controlHeight, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
         .contentShape(Rectangle())
     }
 

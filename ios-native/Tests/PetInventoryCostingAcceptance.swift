@@ -1263,6 +1263,18 @@ struct PetInventoryCostingAcceptance {
             statisticsSource,
             from: "private struct PetInventoryStatisticsSnapshot {",
             to: "private struct PetInventoryCategoryAccumulator {"
+        ), let categoryCard = sourceSlice(
+            statisticsSource,
+            from: "    private func categoryCard(_ category: PetInventoryCategorySummary) -> some View {",
+            to: "    private func statisticIcon("
+        ), let categoryAccumulator = sourceSlice(
+            statisticsSource,
+            from: "private struct PetInventoryCategoryAccumulator {",
+            to: "private struct PetInventorySpecificationAccumulator {"
+        ), let categorySummary = sourceSlice(
+            statisticsSource,
+            from: "private struct PetInventoryCategorySummary: Identifiable {",
+            to: "private struct PetInventorySpecificationSummary: Identifiable {"
         ) else {
             fatalError("pet homepage pricing or inventory valuation source is missing")
         }
@@ -1271,20 +1283,24 @@ struct PetInventoryCostingAcceptance {
               let separatorPosition = sharedRow.range(of: "Text(\"·\")")?.lowerBound,
               let pricePosition = sharedRow.range(of: "Text(averagePriceText ?? \"—\")")?.lowerBound,
               let namePosition = sharedRow.range(of: "Text(item.name)")?.lowerBound,
-              let expirationPosition = sharedRow.range(of: "                if let expirationText {\n                    Text(expirationText)")?.lowerBound,
               let ratingPosition = sharedRow.range(of: "if let rating = store.petProductRating")?.lowerBound,
-              let specificationPosition = sharedRow.range(of: "Text(specificationAndStock)")?.lowerBound else {
+              let specificationPosition = sharedRow.range(of: "Text(specificationAndStock)")?.lowerBound,
+              let expirationPosition = sharedRow.range(of: "                if let expirationText {\n                    Text(expirationText)")?.lowerBound,
+              let leadingColumn = sourceSlice(sharedRow, from: "            VStack(alignment: .leading", to: "            VStack(alignment: .trailing"),
+              let trailingColumn = sourceSlice(sharedRow, from: "            VStack(alignment: .trailing", to: "        }\n        .padding(.leading, 9)") else {
             fatalError("homepage price, item name, specification or rating source is missing")
         }
         let sharedRowUseCount = listSource.components(separatedBy: "PetProductListRowContent(item: item)").count - 1
         expect(sharedRowUseCount == 3 && homeRow.contains("PetProductListRowContent(item: item)"), "main, pending-repurchase and no-repurchase product rows share one presentation component")
         expect(sharedRow.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && sharedRow.contains("PetItemHomepageAveragePrice.text") && sharedRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)"), "shared rows use the live weighted price and earliest remaining batch expiry")
-        expect(brandPosition < separatorPosition && separatorPosition < pricePosition && pricePosition < namePosition && namePosition < expirationPosition, "shared rows place price beside brand, followed by product name and optional expiry")
+        expect(brandPosition < separatorPosition && separatorPosition < pricePosition && pricePosition < namePosition, "shared rows place the unitless weighted price beside the brand and the name on its own second line")
         expect(sharedRow.contains("size: 14, weight: .medium") && sharedRow.contains("Text(averagePriceText ?? \"—\")") && sharedRow.contains("font(.system(size: 12))") && sharedRow.contains("HomeTheme.muted"), "brand and unitless one-decimal price use the requested 14 and 12 point styles")
-        expect(sharedRow.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && sharedRow.contains("Image(systemName: \"star.fill\")") && sharedRow.contains("Text(\"未评分\")") && ratingPosition < specificationPosition && sharedRow.contains(".frame(width: 100, alignment: .trailing)"), "rating and specification share the right column on the first two information lines")
-        expect(sharedRow.contains("if let expirationText {") && sharedRow.contains(".map(petExpirationDisplayDate)") && !sharedRow.contains("?? \"未设日期\"") && sharedRow.contains(".frame(maxWidth: .infinity, minHeight: 64"), "only dated remaining stock gets a third line while equal-size thumbnails keep a consistent row height")
+        expect(trailingColumn.contains("VStack(alignment: .trailing, spacing: 1)") && trailingColumn.contains("HStack(alignment: .firstTextBaseline, spacing: 3)") && trailingColumn.contains("Image(systemName: \"star.fill\")") && trailingColumn.contains("Text(\"未评分\")") && ratingPosition < specificationPosition && specificationPosition < expirationPosition && trailingColumn.contains(".frame(width: 100, alignment: .trailing)"), "rating, specification and optional date share a compact right-aligned column")
+        expect(leadingColumn.contains("Text(item.name)") && !leadingColumn.contains("expirationText") && sharedRow.contains("HStack(alignment: .center, spacing: 11)") && sharedRow.contains(".frame(maxWidth: .infinity, minHeight: 48, alignment: .center)"), "the left column stays at two lines and the full row remains vertically centered at 48 points")
+        expect(trailingColumn.contains("Text(specificationAndStock)") && trailingColumn.contains("font(.system(size: 11))") && trailingColumn.contains("Text(expirationText)") && trailingColumn.contains(".minimumScaleFactor(0.78)") && trailingColumn.components(separatedBy: "HomeTheme.muted").count > 2, "specification and expiry use matching compact gray text without wrapping")
+        expect(sharedRow.contains("if let expirationText {") && sharedRow.contains(".map(petExpirationDisplayDate)") && !sharedRow.contains("?? \"未设日期\""), "only dated remaining stock gets the third right-side line without an unset placeholder")
         expect(sharedRow.contains("Text(item.name)") && sharedRow.contains("size: 13, weight: .semibold") && sharedRow.contains("Text(flavor)") && sharedRow.contains("font(.system(size: 13))") && sharedRow.contains(".lineLimit(1)") && !sharedRow.contains("minimumScaleFactor"), "name and flavor keep separate 13 point styles without shrinking ordinary content")
-        expect(listSource.contains(".frame(width: 64, height: 64)") && listSource.contains(".clipShape(RoundedRectangle(cornerRadius: 12"), "shared product rows use the 64 point rounded thumbnail")
+        expect(listSource.contains(".frame(width: 48, height: 48)") && listSource.contains(".clipShape(RoundedRectangle(cornerRadius: 12"), "shared product rows restore the 48 point rounded thumbnail")
         expect(averagePriceMethod.contains("data.petInventoryTransactions") && averagePriceMethod.contains("PetInventoryCosting.weightedAverageInboundUnitPrice(events)"), "weighted prices are recomputed from current transaction data")
         let metricCalls = overview.components(separatedBy: "overviewMetric(").count - 1
         guard let metric = sourceSlice(
@@ -1304,6 +1320,9 @@ struct PetInventoryCostingAcceptance {
         expect(overview.contains("PetInventoryValuation.integerText(snapshot.totalQuantity)") && netContent.contains("mass(snapshot.totalMassGrams)") && netContent.contains("volume(snapshot.totalVolumeMilliliters)") && statisticsSource.contains("PetInventoryValuation.integerText(scaled)"), "quantity and net-content overview values use integer-only display formatting")
         expect(valuationSource.contains("\"库存估值\"") && valuationSource.contains("\"已计价小计\"") && valuationSource.contains("未计价商品"), "partial valuation is distinguished in its accessible summary without a visible note row")
         expect(snapshot.contains("store.petInventory(for: item.id)") && snapshot.contains("store.petWeightedAverageInboundUnitPrice(for: item.id)") && snapshot.contains("PetInventoryValuation.summarize"), "statistics estimate current stock against live weighted inbound prices")
+        expect(snapshot.contains("valuationInputByProductID") && snapshot.contains("category.add(") && snapshot.contains("valuationInput: valuationInput"), "category estimates reuse the same per-product stock and unrounded weighted-price inputs as the overview")
+        expect(categoryAccumulator.contains("valuationInputs.append(valuationInput)") && categoryAccumulator.contains("PetInventoryValuation.summarize(valuationInputs)") && categorySummary.contains("let valuation: PetInventoryValuationSummary"), "each category runs the shared raw-precision valuation summary")
+        expect(categoryCard.contains("category.valuation.wholeAmountText") && categoryCard.contains("VStack(alignment: .trailing, spacing: 2)") && categoryCard.contains("font(.system(size: 12, weight: .medium))") && categoryCard.contains(".foregroundStyle(HomeTheme.blue)"), "category headers show a smaller blue integer valuation on a second right-aligned line")
         expect(petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petFood\")") && petHomeSource.contains("PetInventoryStatisticsView(capabilityKey: \"petSupply\")"), "food and supply count buttons use their root-specific statistics destinations")
     }
 
@@ -1322,7 +1341,8 @@ struct PetInventoryCostingAcceptance {
               let balanceEditor = sourceSlice(inventorySource, from: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable", to: "struct PetItemEditorView: View"),
               let detail = sourceSlice(itemsSource, from: "struct PetItemDetailView: View", to: "func petExpirationDisplayDate"),
               let productListRow = sourceSlice(itemsSource, from: "private struct PetProductListRowContent: View", to: "private enum PetItemsRoute"),
-              let expiryControl = sourceSlice(inventorySource, from: "struct PetExpirationDatePickerControl: View", to: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable") else {
+              let expiryControl = sourceSlice(inventorySource, from: "struct PetExpirationDatePickerControl: View", to: "struct PetInventoryBalanceEditDraft: Identifiable, Hashable"),
+              let expiryCard = sourceSlice(detail, from: "    private func balanceExpiryCard(_ item: PetItem) -> some View {", to: "    private func transactionCard(_ item: PetItem) -> some View {") else {
             fatalError("expiry presentation source sections are missing")
         }
         expect(itemsSource.contains("case .expiryNearest") && itemsSource.contains("保质期由近到远") && itemsSource.contains("@AppStorage(\"homeos.pet.items.sortMode\")"), "expiry sort uses the existing remembered sort selection")
@@ -1342,12 +1362,14 @@ struct PetInventoryCostingAcceptance {
         expect(itemsSource.contains("showsSummaryHeader: false") && itemsSource.contains("store.updatePetInventoryBalanceDates(productID: productID, edits: balanceDateEdits)"), "detail expiry editing reuses the shared date/quantity rows and persists through the existing ledger mapping")
         expect(!itemsSource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("PetInventoryBalanceManagerView") && !inventorySource.contains("拆分日期") && !inventorySource.contains("调整库存日期"), "the nested balance manager and split-date flow are removed")
         expect(storeSource.contains("func appendPetInventoryBalanceEdits(") && storeSource.contains("petInventoryBalanceAllocations.append(contentsOf: additions)") && costingSource.contains("static func editedBalanceAllocations(") && costingSource.contains("sourceAvailableBefore: available"), "date edits persist as replayable balance mappings and preserve transaction records")
-        expect(productListRow.contains("PetItemHomepageAveragePrice.text(") && productListRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)") && productListRow.contains("Text(specificationAndStock)") && productListRow.contains("minHeight: 64") && itemsSource.contains("frame(width: 64, height: 64)") && itemsSource.contains("cornerRadius: 12") && itemsSource.contains("contentMode: .fit") && storedImageSource.contains("aspectRatio(contentMode: contentMode)"), "product rows use a 64-point full-image thumbnail with preserved source aspect ratio")
-        expect(productListRow.contains("size: 14, weight: .medium") && productListRow.contains("size: 13, weight: .semibold") && productListRow.contains("frame(width: 100, alignment: .trailing)") && itemsSource.contains("PetProductThumbnail(item: item)"), "the larger thumbnail keeps the approved text sizes and rating/specification column")
+        expect(expiryCard.contains("VStack(alignment: .leading, spacing: 8)") && !expiryCard.contains(".frame(minHeight: HomeMetrics.minimumTapTarget") && !expiryCard.contains("HomeMetrics.controlHeight") && expiryCard.contains(".padding(.vertical, 4)"), "read-only expiry card sizes to its content without reserving full control rows")
+        expect(productListRow.contains("PetItemHomepageAveragePrice.text(") && productListRow.contains("store.petInventoryEarliestExpirationDate(for: item.id)") && productListRow.contains("Text(specificationAndStock)") && productListRow.contains("minHeight: 48") && itemsSource.contains("frame(width: 48, height: 48)") && itemsSource.contains("cornerRadius: 12") && itemsSource.contains("contentMode: .fit") && storedImageSource.contains("aspectRatio(contentMode: contentMode)"), "product rows restore a 48-point full-image thumbnail and preserve its source aspect ratio")
+        expect(productListRow.contains("size: 14, weight: .medium") && productListRow.contains("size: 13, weight: .semibold") && productListRow.contains("frame(width: 100, alignment: .trailing)") && productListRow.contains("VStack(alignment: .trailing, spacing: 1)") && itemsSource.contains("PetProductThumbnail(item: item)"), "compact thumbnails retain approved left text styles and use a tight right detail column")
         expect(homeSource.contains("PetProductThumbnail(item: item)"), "the home stock library shares the same thumbnail sizing and fit mode")
         expect(uiTests.contains("app.datePickers.count, 0") && uiTests.contains("XCTAttachment(screenshot: XCUIScreen.main.screenshot())") && uiTests.contains("保质期设为今天"), "iPhone Simulator UI checks capture the unset date state and exercise explicit today selection")
-        expect(uiTests.contains("testMultipleExpiryGroupsExpandAndDateRowsOpenTheEditor") && uiTests.contains("2027.03.01") && uiTests.contains("2027.08.08"), "iPhone Simulator UI checks collapse/expand multiple expiry rows and open editing from a date")
-        expect(uiTests.contains("testProductRowsFitLongFlavorAndKeepDatesOnTheirOwnLine") && uiTests.contains("thumbnail.frame.width.rounded(), 64") && uiTests.contains("鸡肉三文鱼蔓越莓") && uiTests.contains("185g × 2罐"), "iPhone Simulator UI checks long flavor, missing rating/date, and three-line expiry row sizing")
+        expect(uiTests.contains("testMultipleExpiryGroupsExpandAndDateRowsOpenTheEditor") && uiTests.contains("2027.03.01") && uiTests.contains("2027.08.08") && uiTests.contains("firstDate.frame.minY - expiryTitle.frame.maxY"), "iPhone Simulator UI checks multi-date expand/collapse, compact card spacing and editing from a date row")
+        expect(uiTests.contains("testProductRowsFitLongFlavorAndKeepDatesOnTheirOwnLine") && uiTests.contains("thumbnail.frame.width.rounded(), 48") && uiTests.contains("undatedRow.frame.height.rounded(), 48") && uiTests.contains("datedRow.frame.height.rounded(), 48") && uiTests.contains("鸡肉三文鱼蔓越莓") && uiTests.contains("123") && uiTests.contains("185g × 2罐"), "iPhone Simulator UI checks compact row height, long flavor, price/rating states, optional dates and large counts")
+        expect(uiTests.contains("testPetCategoryValuationSumsUnroundedPerProductStockValues") && uiTests.contains("¥17") && uiTests.contains("pet-inventory-category-valuation-主食罐"), "iPhone Simulator UI checks exact category valuation across package units and the no-price state")
         expect(productListRow.contains("accessibilitySummary") && productListRow.contains("if let expirationText { parts.append(\"保质期 \\(expirationText)\") }"), "list row accessibility preserves product, rating, stock, and optional expiry details for layout checks")
         expect(transactionEditor.contains("transaction.expirationDate.map(petExpirationDisplayDate)") && transactionEditor.contains("updateExpirationDate: transaction?.type == .inbound && transaction?.tracksExpirationBatch == true") && transactionEditor.contains("无法单独修改到期日期"), "inbound transaction detail edits tracked expiry batches and explains uncertain legacy batches")
         expect(inventorySource.contains("PetInventoryBatchAllocationSheet") && transactionEditor.contains("excludingTransactionID: transaction.id"), "editing an outbound restores its old allocations before choosing replacements")
@@ -1363,6 +1385,14 @@ struct PetInventoryCostingAcceptance {
         ])
         expectClose(full.amount, 34.01, "inventory value multiplies on-hand quantity by weighted inbound unit price")
         expect(full.amountText == "¥34.01" && full.wholeAmountText == "¥34" && full.title == "库存估值" && !full.isIncomplete, "full valuation preserves raw precision and displays a whole-currency overview value")
+
+        let mixedPackageCategory = PetInventoryValuation.summarize([
+            PetInventoryValuationInput(productID: "one-bag", quantity: 1, weightedUnitPrice: 0.49),
+            PetInventoryValuationInput(productID: "two-cans", quantity: 2, weightedUnitPrice: 0.49),
+            PetInventoryValuationInput(productID: "ten-bottles", quantity: 10, weightedUnitPrice: 1.52)
+        ])
+        expectClose(mixedPackageCategory.amount, 16.67, "category value multiplies each product's own stock by its raw weighted price across package units")
+        expect(mixedPackageCategory.wholeAmountText == "¥17", "category total rounds only after the precise product values have been summed")
 
         let partial = PetInventoryValuation.summarize([
             PetInventoryValuationInput(productID: "food", quantity: 3, weightedUnitPrice: 4.67),

@@ -54,6 +54,9 @@ final class PetExpiryPresentationUITests: XCTestCase {
 
         let firstDate = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "2027.03.01")).firstMatch
         XCTAssertTrue(firstDate.waitForExistence(timeout: 5), "the collapsed card shows its nearest expiry")
+        XCTAssertLessThanOrEqual(expiryTitle.frame.height, 32, "the read-only expiry heading should not reserve a full editor control row")
+        XCTAssertLessThanOrEqual(firstDate.frame.height, 32, "a single visible date row should size to its content")
+        XCTAssertLessThanOrEqual(firstDate.frame.minY - expiryTitle.frame.maxY, 16, "the heading-to-date gap stays close to other detail cards")
         XCTAssertTrue(app.buttons["展开保质期日期，2条"].exists)
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "2027.08.08")).firstMatch.exists)
         let collapsedCard = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -87,22 +90,58 @@ final class PetExpiryPresentationUITests: XCTestCase {
             app.swipeUp()
         }
         XCTAssertTrue(thumbnail.waitForExistence(timeout: 5))
-        XCTAssertEqual(thumbnail.frame.width.rounded(), 64, "all product rows use the same 64-point thumbnail width")
-        XCTAssertEqual(thumbnail.frame.height.rounded(), 64, "the thumbnail fills the three-line row height without growing into a poster")
+        XCTAssertEqual(thumbnail.frame.width.rounded(), 48, "the thumbnail uses the original compact list width")
+        XCTAssertEqual(thumbnail.frame.height.rounded(), 48, "the thumbnail stays centered in the compact row")
 
         let undatedRow = app.buttons["pet-product-row-content-preview-pet-food-long-flavor"]
         XCTAssertTrue(undatedRow.waitForExistence(timeout: 5))
+        XCTAssertEqual(undatedRow.frame.height.rounded(), 48, "three compact details on the right do not grow the two-line product row")
         XCTAssertTrue(undatedRow.label.contains("鸡肉三文鱼蔓越莓"))
         XCTAssertTrue(undatedRow.label.contains("未评分"))
+        XCTAssertTrue(undatedRow.label.contains("单价 —"))
         XCTAssertTrue(undatedRow.label.contains("185g × 2罐"))
         XCTAssertFalse(undatedRow.label.contains("保质期"), "an undated product has no placeholder expiry line")
 
         let datedRow = app.buttons["pet-product-row-content-preview-pet-food-2"]
         XCTAssertTrue(datedRow.waitForExistence(timeout: 5))
+        XCTAssertEqual(datedRow.frame.height.rounded(), 48, "a dated three-line summary fits the same row height")
         XCTAssertTrue(datedRow.label.contains("保质期 2027.03.01"), "a product with a dated balance keeps the third expiry line")
 
+        let ratedPricedRow = app.buttons["pet-product-row-content-preview-pet-food-rated-priced"]
+        scrollDownUntilHittable(ratedPricedRow, in: app)
+        XCTAssertTrue(ratedPricedRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(ratedPricedRow.label.contains("评分"))
+        XCTAssertTrue(ratedPricedRow.label.contains("单价 ¥79.2"))
+        XCTAssertTrue(ratedPricedRow.label.contains("85g × 5盒"))
+        XCTAssertEqual(ratedPricedRow.frame.height.rounded(), 48, "the rated, priced row keeps the same height")
+
+        let largeQuantityRow = app.buttons["pet-product-row-content-preview-pet-food-large-quantity"]
+        scrollUntilHittable(largeQuantityRow, in: app)
+        XCTAssertTrue(largeQuantityRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(largeQuantityRow.label.contains("123") && largeQuantityRow.label.contains("罐"))
+        XCTAssertEqual(largeQuantityRow.frame.height.rounded(), 48, "large stock counts remain on one line without increasing the row")
+
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        attachment.name = "64 point pet product rows"
+        attachment.name = "48 point compact pet product rows"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    func testPetCategoryValuationSumsUnroundedPerProductStockValues() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-codex-pet-inventory-statistics-ui-preview"]
+        app.launch()
+
+        let foodValuation = app.staticTexts["pet-inventory-category-valuation-猫粮"]
+        XCTAssertTrue(foodValuation.waitForExistence(timeout: 5))
+        XCTAssertTrue(foodValuation.label.contains("¥17"), "1×0.49 + 2×0.49 + 10×1.52 is summed before whole-currency rounding")
+
+        let unpricedValuation = app.staticTexts["pet-inventory-category-valuation-主食罐"]
+        XCTAssertTrue(unpricedValuation.waitForExistence(timeout: 5))
+        XCTAssertTrue(unpricedValuation.label.contains("—"), "a category without a valid inbound price does not display ¥0")
+
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "Pet category stock valuations"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
@@ -121,6 +160,13 @@ final class PetExpiryPresentationUITests: XCTestCase {
         for _ in 0..<8 {
             if element.isHittable { return }
             app.swipeUp()
+        }
+    }
+
+    private func scrollDownUntilHittable(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<8 {
+            if element.isHittable { return }
+            app.swipeDown()
         }
     }
 }
